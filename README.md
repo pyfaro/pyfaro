@@ -71,7 +71,8 @@ Milestones are planning targets, not release announcements or dates.
 | v1.1.0 — Workspaces & Tasks | Workspace orchestration, DAG, local cache |
 | v1.2.0 — Agent Integration | Structured diagnostics and agent workflows |
 
-Follow the [issues](https://github.com/pyfaro/pyfaro/issues) and
+Follow the [development roadmap](https://github.com/orgs/pyfaro/projects/1),
+[issues](https://github.com/pyfaro/pyfaro/issues), and
 [milestones](https://github.com/pyfaro/pyfaro/milestones).
 The authoritative [backlog manifest](tools/github-backlog/pyfaro-issues.json)
 is included alongside its import tools. All backlog issues remain open until

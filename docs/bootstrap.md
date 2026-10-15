@@ -65,13 +65,33 @@ After the checks existed and passed, branch protection was applied to `main`:
 - Enforce protections for administrators and require linear history.
 - Disallow force pushes and branch deletion.
 
-## Limitation and next step
+## Development roadmap Project
 
-The optional **Pyfaro Development Roadmap** Project could not be created:
-the current OAuth token has `repo`, `workflow`, `read:org`, and `gist`, but no
-`read:project`/`project` scope. GitHub rejected the project query with
-`INSUFFICIENT_SCOPES`. No organization-wide permissions or billing were changed.
-Milestones and linked issue dependencies provide the initial planning surface.
+The initial Project setup was blocked by `INSUFFICIENT_SCOPES`. After the
+maintainer authorized the `project` OAuth scope, the public
+[Pyfaro Development Roadmap](https://github.com/orgs/pyfaro/projects/1) was
+created under the `pyfaro` organization and linked to `pyfaro/pyfaro`.
+
+All 65 official issues are included once, remain open, and start with the
+Project status `Todo`. The Project reuses native issue labels and milestones;
+there are no duplicated priority or milestone fields. Five saved views provide
+the initial planning surface:
+
+| View | Scope and layout |
+| --- | --- |
+| Backlog | All open issues, table |
+| MVP | Open issues through v0.3.0, table grouped by milestone |
+| Current Milestone | v0.1.0 Foundation, board with Status columns |
+| Roadmap | All issues, table grouped by milestone |
+| High Priority | Open `priority:P0` issues, table |
+
+Each view shows the title, status, milestone, labels, and assignees. The Project
+README links the views and records the status/priority conventions and sources
+of truth. The Current Milestone filter must be updated when the active milestone
+changes. Roadmap grouping uses the existing milestones without inventing release
+dates. No organization access privileges or billing settings were changed.
+
+## Next step
 
 Start with [F01 / #1](https://github.com/pyfaro/pyfaro/issues/1): review and
 finalize the command, compatibility, and exit-code contract against ADR 0001.
