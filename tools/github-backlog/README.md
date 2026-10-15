@@ -51,6 +51,10 @@ After applying, fresh reads verify metadata, acceptance criteria, and native
 dependency edges. `issue-map.json` records backlog IDs, issue numbers, and URLs.
 No issue is automatically closed, and no releases or tags are created.
 
+The committed [issue map](issue-map.json) links the official symbolic IDs to
+the live tracker. The initial full import created 65 issues. An interrupted
+dependency-linking pass was resumed by reusing all 65, with no duplicates.
+
 ```sh
 # From this directory, validate the complete plan and run importer tests:
 python import_github.py --repo pyfaro/pyfaro
