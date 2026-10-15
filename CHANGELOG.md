@@ -2,12 +2,34 @@
 
 ## Unreleased
 
+## 0.1.0-alpha.1 — Pending publication
+
+This experimental release candidate has not been published. CLI and
+configuration interfaces may change during the alpha series.
+
 ### Added
 
+- `pyfaro init [PATH]`: non-writing preview and explicit `--apply` for
+  standalone Python projects, using uv for new metadata and `uv.lock`.
+- Minimal, validated `[tool.pyfaro]` configuration, preservation of existing
+  project/tool settings, idempotent initialization, `--offline`, and `--uv`.
+- Restoration of metadata/lockfiles on delegated failures or cancellation,
+  process-tree cleanup, and actionable uv availability/version diagnostics.
+- Unit tests, real-uv integration tests, portable failure/cancellation
+  fixtures, pinned uv CI, and package/publication dry-run checks.
 - Minimal Rust CLI with help and version output.
 - Architecture and contributor documentation, Apache-2.0 licensing, and
   community and security policies.
 - Multi-platform Rust CI, dependency auditing, and Dependabot updates.
 - Official planning backlog and resumable GitHub import tooling.
 
-No Pyfaro release has shipped. Milestone versions describe planned work.
+### Release scope
+
+- First manual crates.io alpha preparation is independent of B06. B06
+  remains responsible for automated distribution and GitHub Releases for
+  the public beta. Existing roadmap milestones have not been moved.
+- Only initialization is implemented; workspaces and other workflow
+  commands remain planned. No Pyfaro release has shipped yet.
+- This first alpha supports applying initialization on Linux. macOS and
+  Windows retain builds and previews but explicitly reject `--apply` until
+  their process-lifecycle guarantees are implemented.
