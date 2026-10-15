@@ -1,16 +1,43 @@
 [package]
 name = "pyfaro"
-version = "0.1.0-dev.0"
+version = "0.1.0-alpha.1"
 edition = "2024"
 rust-version = "1.90"
-description = "The unified Python development toolchain"
+description = "Experimental Python project workflows powered by uv"
 license = "Apache-2.0"
 repository = "https://github.com/pyfaro/pyfaro"
 readme = "README.md"
-publish = false
+documentation = "https://github.com/pyfaro/pyfaro/blob/main/docs/init.md"
+keywords = ["python", "uv", "cli", "developer-tools"]
+categories = ["command-line-utilities", "development-tools"]
+publish = ["crates-io"]
+include = [
+    "/src/**",
+    "/tests/**",
+    "/Cargo.toml",
+    "/Cargo.lock",
+    "/README.md",
+    "/LICENSE",
+    "/CHANGELOG.md",
+    "/CONTRIBUTING.md",
+    "/CODE_OF_CONDUCT.md",
+    "/SECURITY.md",
+    "/docs/init.md",
+    "/docs/releasing.md",
+    "/docs/architecture/0001-project-architecture.md",
+]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
+ctrlc = "3.5"
+semver = "1.0"
+tempfile = "3.23"
+thiserror = "2.0"
+toml_edit = "0.23.7"
+which = "8.0"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = { version = "0.31", features = ["signal", "process"] }
 
 [lints.rust]
 unsafe_code = "forbid"

@@ -7,9 +7,15 @@ Thank you for helping build Pyfaro. Please follow our
 
 - Git and Rust through rustup. `rust-toolchain.toml` pins Rust 1.90.0 with
   rustfmt and Clippy; the package's minimum supported Rust version is 1.90.
-- Python 3.10+ and authenticated GitHub CLI only for backlog maintenance.
-- uv, Ruff, ty, and pytest will be required for future adapter integration
-  tests; the current scaffold does not run them.
+- Python 3.10+ and uv **0.9.26** for the initialization integration tests.
+  CI pins Python 3.12 and uv 0.9.26 for the Linux workflow tests. macOS and
+  Windows verify builds, previews, and explicit rejection of `--apply` in
+  this Linux-first alpha. Successful uv scenarios run offline in disposable
+  directories; no Python packages
+  are installed. Failure scenarios use a portable Rust executable fixture.
+- Authenticated GitHub CLI for backlog maintenance.
+- Ruff, ty, and pytest will be needed by their future adapters; the current
+  initialization slice does not install or invoke them.
 
 ```sh
 git clone https://github.com/pyfaro/pyfaro.git
@@ -48,8 +54,10 @@ version pinned in `.github/workflows/security.yml`, then run `cargo audit`.
 - Add tests for externally observable behavior and meaningful failure cases.
   Use disposable fixtures and isolated environments for future Python tests.
 
-The initial CLI uses Clap's help/version status 0 and usage-error status 2.
-See the ADR for the planned application and subprocess status contract.
+The CLI uses Clap's help/version status 0 and usage-error status 2. Initialization
+errors use status 1; delegated uv failures preserve their numeric exit code;
+cancellation uses 130. Test both preservation and idempotence when changing
+initialization. See the [init guide](docs/init.md) and the ADR for the contract.
 
 ## Branches and pull requests
 
