@@ -1,0 +1,5 @@
+* text=auto eol=lf
+*.md whitespace=-blank-at-eol
+tools/github-backlog/pyfaro-issues.csv -text whitespace=cr-at-eol
+*.zip binary
+*.png binary

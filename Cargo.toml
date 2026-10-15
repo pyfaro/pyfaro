@@ -1,0 +1,24 @@
+[package]
+name = "pyfaro"
+version = "0.1.0-dev.0"
+edition = "2024"
+rust-version = "1.90"
+description = "The unified Python development toolchain"
+license = "Apache-2.0"
+repository = "https://github.com/pyfaro/pyfaro"
+readme = "README.md"
+publish = false
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+
+[[bin]]
+name = "pyfaro"
+path = "src/main.rs"

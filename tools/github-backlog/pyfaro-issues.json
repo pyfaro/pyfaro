@@ -1,0 +1,1440 @@
+{
+  "project": "Pyfaro",
+  "repository": "pyfaro/pyfaro",
+  "milestones": [
+    {
+      "title": "v0.1.0 — Foundation",
+      "description": "Architecture, socle Rust, configuration et qualité du dépôt."
+    },
+    {
+      "title": "v0.2.0 — Project Management",
+      "description": "Création de projets et gestion du runtime et des dépendances via uv."
+    },
+    {
+      "title": "v0.3.0 — Code Quality",
+      "description": "Lint, format, typage et tests avec une interface homogène — MVP."
+    },
+    {
+      "title": "v0.4.0 — Developer Experience",
+      "description": "Mode développement, presets et tâches simples."
+    },
+    {
+      "title": "v0.5.0 — Public Beta",
+      "description": "Build, installations multiplateformes et première distribution publique."
+    },
+    {
+      "title": "v1.0.0 — Stable Release",
+      "description": "Compatibilité, sécurité, performance, documentation et engagements de stabilité."
+    },
+    {
+      "title": "v1.1.0 — Workspaces & Tasks",
+      "description": "Workspaces, graphe de tâches, parallélisme et cache."
+    },
+    {
+      "title": "v1.2.0 — Agent Integration",
+      "description": "Diagnostics et workflows structurés pour agents de programmation."
+    }
+  ],
+  "labels": [
+    {
+      "name": "type:feature",
+      "color": "0652DD",
+      "description": "New capability"
+    },
+    {
+      "name": "type:enhancement",
+      "color": "A2EEEF",
+      "description": "Improvement to an existing capability"
+    },
+    {
+      "name": "type:bug",
+      "color": "D73A4A",
+      "description": "Defect"
+    },
+    {
+      "name": "type:chore",
+      "color": "BFD4F2",
+      "description": "Maintenance and infrastructure"
+    },
+    {
+      "name": "type:docs",
+      "color": "0075CA",
+      "description": "Documentation"
+    },
+    {
+      "name": "type:testing",
+      "color": "D4C5F9",
+      "description": "Tests and quality assurance"
+    },
+    {
+      "name": "type:research",
+      "color": "FBCA04",
+      "description": "Architecture decisions and investigation"
+    },
+    {
+      "name": "priority:P0",
+      "color": "B60205",
+      "description": "Blocking for the assigned milestone"
+    },
+    {
+      "name": "priority:P1",
+      "color": "E99695",
+      "description": "Important for the assigned milestone"
+    },
+    {
+      "name": "priority:P2",
+      "color": "C2E0C6",
+      "description": "Can be deferred"
+    },
+    {
+      "name": "area:cli",
+      "color": "3D87A8",
+      "description": "Command-line interface"
+    },
+    {
+      "name": "area:core",
+      "color": "3D87A8",
+      "description": "Shared Rust infrastructure"
+    },
+    {
+      "name": "area:config",
+      "color": "3D87A8",
+      "description": "Configuration and defaults"
+    },
+    {
+      "name": "area:uv",
+      "color": "3D87A8",
+      "description": "uv adapter, Python and dependency management"
+    },
+    {
+      "name": "area:quality",
+      "color": "3D87A8",
+      "description": "Linting, formatting and type checking"
+    },
+    {
+      "name": "area:testing",
+      "color": "3D87A8",
+      "description": "Test orchestration and fixtures"
+    },
+    {
+      "name": "area:dev",
+      "color": "3D87A8",
+      "description": "Interactive development lifecycle"
+    },
+    {
+      "name": "area:templates",
+      "color": "3D87A8",
+      "description": "Project scaffolding and presets"
+    },
+    {
+      "name": "area:tasks",
+      "color": "3D87A8",
+      "description": "Tasks, scheduling and caching"
+    },
+    {
+      "name": "area:workspaces",
+      "color": "3D87A8",
+      "description": "Monorepos and multi-package projects"
+    },
+    {
+      "name": "area:distribution",
+      "color": "3D87A8",
+      "description": "Build, installer and release"
+    },
+    {
+      "name": "area:ci",
+      "color": "3D87A8",
+      "description": "Continuous integration and delivery"
+    },
+    {
+      "name": "area:docs",
+      "color": "3D87A8",
+      "description": "Documentation and community"
+    },
+    {
+      "name": "area:security",
+      "color": "3D87A8",
+      "description": "Security and supply chain"
+    },
+    {
+      "name": "area:agents",
+      "color": "3D87A8",
+      "description": "Automation and AI agent integrations"
+    }
+  ],
+  "issues": [
+    {
+      "id": "F01",
+      "milestone": "v0.1.0 — Foundation",
+      "title": "[core] Define Pyfaro scope, command contract and architecture ADR",
+      "labels": [
+        "type:research",
+        "area:core",
+        "priority:P0"
+      ],
+      "summary": "Document what Pyfaro owns versus delegates (uv, Ruff, ty, pytest), compatibility rules and command naming.",
+      "acceptance": [
+        "ADR merged with CLI command matrix and exit-code semantics",
+        "Explicitly forbid a second dependency resolver or lockfile",
+        "Decision on external tool management and reproducibility"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "F02",
+      "milestone": "v0.1.0 — Foundation",
+      "title": "[cli] Bootstrap the Rust CLI workspace",
+      "labels": [
+        "type:feature",
+        "area:cli",
+        "priority:P0"
+      ],
+      "summary": "Create a buildable Rust CLI with modular subcommands, global flags and useful help.",
+      "acceptance": [
+        "`pyfaro --help` and `pyfaro --version` work",
+        "Unknown commands return non-zero with a helpful message",
+        "Release and debug builds succeed on Linux, macOS and Windows"
+      ],
+      "depends_on": [
+        "F01"
+      ]
+    },
+    {
+      "id": "F03",
+      "milestone": "v0.1.0 — Foundation",
+      "title": "[config] Parse and validate [tool.pyfaro] in pyproject.toml",
+      "labels": [
+        "type:feature",
+        "area:config",
+        "priority:P0"
+      ],
+      "summary": "Define typed configuration and meaningful errors for invalid user settings.",
+      "acceptance": [
+        "Supports default values, path resolution and schema validation",
+        "Respects existing [tool.ruff], [tool.ty] and other tool sections",
+        "No new standalone project metadata file required"
+      ],
+      "depends_on": [
+        "F02"
+      ]
+    },
+    {
+      "id": "F04",
+      "milestone": "v0.1.0 — Foundation",
+      "title": "[core] Detect project roots and execution context",
+      "labels": [
+        "type:feature",
+        "area:core",
+        "priority:P0"
+      ],
+      "summary": "Find the closest valid Python project without changing the current directory.",
+      "acceptance": [
+        "Walks ancestors to find pyproject.toml",
+        "`--project <path>` overrides discovery",
+        "Handles nested directories and symlinks deterministically"
+      ],
+      "depends_on": [
+        "F02"
+      ]
+    },
+    {
+      "id": "F05",
+      "milestone": "v0.1.0 — Foundation",
+      "title": "[core] Build a cross-platform subprocess runner",
+      "labels": [
+        "type:feature",
+        "area:core",
+        "priority:P0"
+      ],
+      "summary": "Implement safe process execution to delegate to external tools.",
+      "acceptance": [
+        "Preserves exit codes and forwards environment appropriately",
+        "Supports streaming stdout/stderr and Ctrl-C cancellation",
+        "Never invokes a shell implicitly for tool adapters"
+      ],
+      "depends_on": [
+        "F02"
+      ]
+    },
+    {
+      "id": "F06",
+      "milestone": "v0.1.0 — Foundation",
+      "title": "[core] Discover uv and other tool versions",
+      "labels": [
+        "type:feature",
+        "area:core",
+        "priority:P0"
+      ],
+      "summary": "Resolve uv, ruff, ty and pytest paths and report missing or incompatible tools.",
+      "acceptance": [
+        "Discovery respects virtual environments and PATH",
+        "Version information is reported consistently",
+        "Missing tools produce actionable errors, without unexpected installation"
+      ],
+      "depends_on": [
+        "F05"
+      ]
+    },
+    {
+      "id": "F07",
+      "milestone": "v0.1.0 — Foundation",
+      "title": "[ci] Set up Rust checks and multi-OS CI",
+      "labels": [
+        "type:chore",
+        "area:ci",
+        "priority:P0"
+      ],
+      "summary": "Protect trunk with formatting, Clippy, unit tests and smoke builds.",
+      "acceptance": [
+        "CI matrix covers Linux, macOS and Windows",
+        "Rustfmt, Clippy and tests gate merging",
+        "No credentials committed to repository"
+      ],
+      "depends_on": [
+        "F02"
+      ]
+    },
+    {
+      "id": "F08",
+      "milestone": "v0.1.0 — Foundation",
+      "title": "[docs] Add project governance and issue templates",
+      "labels": [
+        "type:docs",
+        "area:docs",
+        "priority:P1"
+      ],
+      "summary": "Make the repository contributor-ready.",
+      "acceptance": [
+        "README explains goals and non-goals",
+        "License, CONTRIBUTING, CODE_OF_CONDUCT and SECURITY files provided",
+        "Bug report, feature request and pull-request templates available"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "F09",
+      "milestone": "v0.1.0 — Foundation",
+      "title": "[testing] Create fixture-based CLI integration test harness",
+      "labels": [
+        "type:testing",
+        "area:testing",
+        "priority:P0"
+      ],
+      "summary": "Introduce disposable Python project fixtures and subprocess assertions.",
+      "acceptance": [
+        "Tests run without polluting user environment",
+        "Fixtures cover success and failure output and exit codes",
+        "CI executes smoke fixtures across supported OSes"
+      ],
+      "depends_on": [
+        "F05",
+        "F07"
+      ]
+    },
+    {
+      "id": "P01",
+      "milestone": "v0.2.0 — Project Management",
+      "title": "[uv] Implement the uv process adapter",
+      "labels": [
+        "type:feature",
+        "area:uv",
+        "priority:P0"
+      ],
+      "summary": "Delegate package and environment operations to uv with version-aware command construction.",
+      "acceptance": [
+        "uv output and exit codes propagate correctly",
+        "Argument passing is safe on all OSes",
+        "Integration tests use a pinned uv version"
+      ],
+      "depends_on": [
+        "F05",
+        "F06"
+      ]
+    },
+    {
+      "id": "P02",
+      "milestone": "v0.2.0 — Project Management",
+      "title": "[templates] Implement `pyfaro create` for libraries",
+      "labels": [
+        "type:feature",
+        "area:templates",
+        "priority:P0"
+      ],
+      "summary": "Generate a valid src-layout library project with Pyfaro defaults.",
+      "acceptance": [
+        "Creates pyproject.toml, src, tests and README",
+        "Accepts name, target directory and Python version",
+        "Generated project can sync, test and build"
+      ],
+      "depends_on": [
+        "P01",
+        "F03"
+      ]
+    },
+    {
+      "id": "P03",
+      "milestone": "v0.2.0 — Project Management",
+      "title": "[templates] Implement `pyfaro create` for CLIs",
+      "labels": [
+        "type:feature",
+        "area:templates",
+        "priority:P1"
+      ],
+      "summary": "Generate an installable Python command-line project.",
+      "acceptance": [
+        "Produces valid console_scripts entry point",
+        "Supports package and command naming",
+        "Template passes Pyfaro checks"
+      ],
+      "depends_on": [
+        "P02"
+      ]
+    },
+    {
+      "id": "P04",
+      "milestone": "v0.2.0 — Project Management",
+      "title": "[config] Implement `pyfaro init` for existing projects",
+      "labels": [
+        "type:feature",
+        "area:config",
+        "priority:P0"
+      ],
+      "summary": "Opt in existing pyproject.toml projects without destructive changes.",
+      "acceptance": [
+        "Shows proposed modifications before applying",
+        "Preserves third-party tool configuration and dependencies",
+        "A second run is idempotent"
+      ],
+      "depends_on": [
+        "F03",
+        "P01"
+      ]
+    },
+    {
+      "id": "P05",
+      "milestone": "v0.2.0 — Project Management",
+      "title": "[uv] Implement `pyfaro add` and `pyfaro remove`",
+      "labels": [
+        "type:feature",
+        "area:uv",
+        "priority:P0"
+      ],
+      "summary": "Expose dependency changes through uv, including groups and development dependencies.",
+      "acceptance": [
+        "Supports dependency specifiers and --dev",
+        "Updates pyproject.toml and uv.lock via uv",
+        "Returns useful solver errors"
+      ],
+      "depends_on": [
+        "P01"
+      ]
+    },
+    {
+      "id": "P06",
+      "milestone": "v0.2.0 — Project Management",
+      "title": "[uv] Implement `pyfaro sync` and reproducible mode",
+      "labels": [
+        "type:feature",
+        "area:uv",
+        "priority:P0"
+      ],
+      "summary": "Synchronize project dependencies and support frozen/locked workflows.",
+      "acceptance": [
+        "Default sync is delegated to uv",
+        "`--locked` refuses stale lock state",
+        "Does not maintain an independent lockfile"
+      ],
+      "depends_on": [
+        "P01"
+      ]
+    },
+    {
+      "id": "P07",
+      "milestone": "v0.2.0 — Project Management",
+      "title": "[cli] Implement `pyfaro run` with argument passthrough",
+      "labels": [
+        "type:feature",
+        "area:cli",
+        "priority:P0"
+      ],
+      "summary": "Run scripts and commands in the project environment.",
+      "acceptance": [
+        "Preserves all arguments after `--`",
+        "Executes inside the project environment",
+        "Propagates command failures and exit codes"
+      ],
+      "depends_on": [
+        "P01",
+        "F05"
+      ]
+    },
+    {
+      "id": "P08",
+      "milestone": "v0.2.0 — Project Management",
+      "title": "[uv] Expose Python version management via uv",
+      "labels": [
+        "type:feature",
+        "area:uv",
+        "priority:P1"
+      ],
+      "summary": "Provide thin wrappers for listing, installing and pinning interpreters.",
+      "acceptance": [
+        "`pyfaro python list|install|pin` delegates to uv",
+        "Obeys requires-python and .python-version",
+        "No custom Python installer or runtime cache"
+      ],
+      "depends_on": [
+        "P01"
+      ]
+    },
+    {
+      "id": "P09",
+      "milestone": "v0.2.0 — Project Management",
+      "title": "[cli] Implement `pyfaro doctor` environment diagnostics",
+      "labels": [
+        "type:feature",
+        "area:cli",
+        "priority:P1"
+      ],
+      "summary": "Explain problems with interpreters, tools, project layout and configuration.",
+      "acceptance": [
+        "Reports Python, uv and relevant tool versions",
+        "Identifies conflicting configuration and missing dependencies",
+        "Exits non-zero for blocking issues"
+      ],
+      "depends_on": [
+        "F03",
+        "F06",
+        "P01"
+      ]
+    },
+    {
+      "id": "Q01",
+      "milestone": "v0.3.0 — Code Quality",
+      "title": "[quality] Implement `pyfaro lint` with Ruff",
+      "labels": [
+        "type:feature",
+        "area:quality",
+        "priority:P0"
+      ],
+      "summary": "Lint configured project files by invoking Ruff.",
+      "acceptance": [
+        "Uses project Ruff configuration unchanged",
+        "Supports target paths and normal exit codes",
+        "Clearly reports when Ruff is unavailable"
+      ],
+      "depends_on": [
+        "P07",
+        "F03"
+      ]
+    },
+    {
+      "id": "Q02",
+      "milestone": "v0.3.0 — Code Quality",
+      "title": "[quality] Implement `pyfaro fmt` with Ruff",
+      "labels": [
+        "type:feature",
+        "area:quality",
+        "priority:P0"
+      ],
+      "summary": "Expose Ruff formatting and non-mutating verification mode.",
+      "acceptance": [
+        "`pyfaro fmt` writes format changes",
+        "`pyfaro fmt --check` never modifies files",
+        "Uses project exclusions and Ruff settings"
+      ],
+      "depends_on": [
+        "Q01"
+      ]
+    },
+    {
+      "id": "Q03",
+      "milestone": "v0.3.0 — Code Quality",
+      "title": "[quality] Implement `pyfaro type` with ty",
+      "labels": [
+        "type:feature",
+        "area:quality",
+        "priority:P0"
+      ],
+      "summary": "Run ty check in the resolved project environment.",
+      "acceptance": [
+        "Resolves project dependencies for type analysis",
+        "Passes explicit paths and preserves ty diagnostics",
+        "Documents limitations and supported ty version"
+      ],
+      "depends_on": [
+        "P07",
+        "F03"
+      ]
+    },
+    {
+      "id": "Q04",
+      "milestone": "v0.3.0 — Code Quality",
+      "title": "[quality] Implement non-destructive `pyfaro check`",
+      "labels": [
+        "type:feature",
+        "area:quality",
+        "priority:P0"
+      ],
+      "summary": "Run formatting verification, lint and type checking as one quality gate.",
+      "acceptance": [
+        "Runs Ruff format --check, Ruff lint and ty check",
+        "Does not modify source files by default",
+        "Aggregate non-zero exit on any failure; readable summary"
+      ],
+      "depends_on": [
+        "Q01",
+        "Q02",
+        "Q03"
+      ]
+    },
+    {
+      "id": "Q05",
+      "milestone": "v0.3.0 — Code Quality",
+      "title": "[quality] Add explicit `pyfaro check --fix`",
+      "labels": [
+        "type:enhancement",
+        "area:quality",
+        "priority:P1"
+      ],
+      "summary": "Apply supported safe formatter and linter fixes on request.",
+      "acceptance": [
+        "Never fixes source files without --fix",
+        "Explains which checks can automatically fix issues",
+        "Reruns verification and reports remaining issues"
+      ],
+      "depends_on": [
+        "Q04"
+      ]
+    },
+    {
+      "id": "Q06",
+      "milestone": "v0.3.0 — Code Quality",
+      "title": "[testing] Implement `pyfaro test` with pytest",
+      "labels": [
+        "type:feature",
+        "area:testing",
+        "priority:P0"
+      ],
+      "summary": "Run pytest through the project environment.",
+      "acceptance": [
+        "`pyfaro test` invokes pytest with correct cwd",
+        "Forwards filters, marker arguments and test paths",
+        "Returns pytest exit code and works in CI"
+      ],
+      "depends_on": [
+        "P07"
+      ]
+    },
+    {
+      "id": "Q07",
+      "milestone": "v0.3.0 — Code Quality",
+      "title": "[templates] Ship pinned quality and test defaults",
+      "labels": [
+        "type:feature",
+        "area:templates",
+        "priority:P0"
+      ],
+      "summary": "New projects opt in to known-working Ruff, ty and pytest versions.",
+      "acceptance": [
+        "Generated templates include dev dependency group and lockfile instructions",
+        "Tool configs are owned by their standard pyproject sections",
+        "`pyfaro check` and `pyfaro test` pass immediately"
+      ],
+      "depends_on": [
+        "P02",
+        "Q04",
+        "Q06"
+      ]
+    },
+    {
+      "id": "Q08",
+      "milestone": "v0.3.0 — Code Quality",
+      "title": "[testing] Test quality commands on real fixtures",
+      "labels": [
+        "type:testing",
+        "area:testing",
+        "priority:P0"
+      ],
+      "summary": "Cover success, failures, exclusions and no-write-by-default.",
+      "acceptance": [
+        "Fixtures include library and CLI projects",
+        "Tests assert check never writes files and --fix is explicit",
+        "Pyfaro returns consistent codes for lint/type/test failures"
+      ],
+      "depends_on": [
+        "Q04",
+        "Q05",
+        "Q06"
+      ]
+    },
+    {
+      "id": "D01",
+      "milestone": "v0.4.0 — Developer Experience",
+      "title": "[templates] Add FastAPI project preset",
+      "labels": [
+        "type:feature",
+        "area:templates",
+        "priority:P0"
+      ],
+      "summary": "Generate a small functional FastAPI application with tests.",
+      "acceptance": [
+        "Preset includes application entry point and smoke test",
+        "Project works with create, dev, check and test",
+        "Dependencies are managed through uv"
+      ],
+      "depends_on": [
+        "P02",
+        "Q07"
+      ]
+    },
+    {
+      "id": "D02",
+      "milestone": "v0.4.0 — Developer Experience",
+      "title": "[dev] Implement process supervisor for `pyfaro dev`",
+      "labels": [
+        "type:feature",
+        "area:dev",
+        "priority:P0"
+      ],
+      "summary": "Run a long-lived development process with clean lifecycle management.",
+      "acceptance": [
+        "Ctrl-C stops child processes without orphaning",
+        "Correct environment and working directory",
+        "Exit errors surface clearly"
+      ],
+      "depends_on": [
+        "F05",
+        "P07"
+      ]
+    },
+    {
+      "id": "D03",
+      "milestone": "v0.4.0 — Developer Experience",
+      "title": "[dev] Add FastAPI dev runner and reload",
+      "labels": [
+        "type:feature",
+        "area:dev",
+        "priority:P0"
+      ],
+      "summary": "Start Uvicorn with an appropriate reload configuration for FastAPI presets.",
+      "acceptance": [
+        "`pyfaro dev` starts the template app",
+        "Edits trigger reload and syntax errors are visible",
+        "No second bespoke filesystem watcher for FastAPI"
+      ],
+      "depends_on": [
+        "D01",
+        "D02"
+      ]
+    },
+    {
+      "id": "D04",
+      "milestone": "v0.4.0 — Developer Experience",
+      "title": "[config] Configure dev entry point and arguments",
+      "labels": [
+        "type:feature",
+        "area:config",
+        "priority:P1"
+      ],
+      "summary": "Add [tool.pyfaro.dev] settings for project-specific development commands.",
+      "acceptance": [
+        "Supports entry point, arguments and reload switch",
+        "Explicit setting takes precedence over preset",
+        "Invalid values are detected before launch"
+      ],
+      "depends_on": [
+        "D02",
+        "F03"
+      ]
+    },
+    {
+      "id": "D06",
+      "milestone": "v0.4.0 — Developer Experience",
+      "title": "[tasks] Specify safe task invocation semantics",
+      "labels": [
+        "type:research",
+        "area:tasks",
+        "priority:P0"
+      ],
+      "summary": "Define shell/no-shell behavior, quoting, cancellation and environment handling.",
+      "acceptance": [
+        "Documented resolution of tasks vs executable programs",
+        "Explicit opt-in for shell constructs and no implicit shell injection",
+        "Cross-platform escaping semantics tested"
+      ],
+      "depends_on": [
+        "P07"
+      ]
+    },
+    {
+      "id": "D05",
+      "milestone": "v0.4.0 — Developer Experience",
+      "title": "[tasks] Implement named custom tasks",
+      "labels": [
+        "type:feature",
+        "area:tasks",
+        "priority:P1"
+      ],
+      "summary": "Support named commands configured under [tool.pyfaro.tasks].",
+      "acceptance": [
+        "`pyfaro run <task>` executes a named task",
+        "Task and program names cannot collide silently",
+        "Explicit cwd and environment fields are supported"
+      ],
+      "depends_on": [
+        "P07",
+        "F03",
+        "D06"
+      ]
+    },
+    {
+      "id": "D07",
+      "milestone": "v0.4.0 — Developer Experience",
+      "title": "[dev] Improve live development logs and errors",
+      "labels": [
+        "type:enhancement",
+        "area:dev",
+        "priority:P1"
+      ],
+      "summary": "Provide legible prefixed logs, signal handling and startup diagnostics.",
+      "acceptance": [
+        "stdout/stderr remains readable and Ctrl-C reliable",
+        "Failure to bind a port produces useful guidance",
+        "Verbose mode reveals invoked command"
+      ],
+      "depends_on": [
+        "D02"
+      ]
+    },
+    {
+      "id": "D08",
+      "milestone": "v0.4.0 — Developer Experience",
+      "title": "[docs] Write end-to-end FastAPI getting-started guide",
+      "labels": [
+        "type:docs",
+        "area:docs",
+        "priority:P1"
+      ],
+      "summary": "Document the workflow from install to a running app and passing CI.",
+      "acceptance": [
+        "Tutorial demonstrates create, add, dev, check, test and build",
+        "Examples work on at least Linux and Windows",
+        "Known prerequisites and tool versions documented"
+      ],
+      "depends_on": [
+        "D01",
+        "D03"
+      ]
+    },
+    {
+      "id": "B01",
+      "milestone": "v0.5.0 — Public Beta",
+      "title": "[uv] Implement `pyfaro build` using uv build",
+      "labels": [
+        "type:feature",
+        "area:uv",
+        "priority:P0"
+      ],
+      "summary": "Build Python wheels and sdists without reimplementing packaging.",
+      "acceptance": [
+        "Supports wheel and sdist artifacts",
+        "Preserves PEP 517/518 build-backend configuration",
+        "Validates generated artifacts in CI"
+      ],
+      "depends_on": [
+        "P01",
+        "P02"
+      ]
+    },
+    {
+      "id": "B02",
+      "milestone": "v0.5.0 — Public Beta",
+      "title": "[distribution] Build standalone Pyfaro executables",
+      "labels": [
+        "type:feature",
+        "area:distribution",
+        "priority:P0"
+      ],
+      "summary": "Produce reproducible release artifacts for supported platforms.",
+      "acceptance": [
+        "Artifacts for Linux x86_64, macOS x86_64/aarch64, and Windows x86_64",
+        "Artifacts contain CLI and display version",
+        "Checksums published alongside archives"
+      ],
+      "depends_on": [
+        "F02",
+        "F07"
+      ]
+    },
+    {
+      "id": "B03",
+      "milestone": "v0.5.0 — Public Beta",
+      "title": "[distribution] Provide secure installation and upgrade path",
+      "labels": [
+        "type:feature",
+        "area:distribution",
+        "priority:P0"
+      ],
+      "summary": "Ship installation instructions/scripts and a clear path to install uv prerequisites.",
+      "acceptance": [
+        "Documented installation on all supported OSes",
+        "Verify downloaded binaries/checksums; no silent unsafe installers",
+        "`pyfaro doctor` explains missing uv and offers actionable steps"
+      ],
+      "depends_on": [
+        "B02",
+        "P09"
+      ]
+    },
+    {
+      "id": "B04",
+      "milestone": "v0.5.0 — Public Beta",
+      "title": "[cli] Add shell completion and friendly help",
+      "labels": [
+        "type:enhancement",
+        "area:cli",
+        "priority:P1"
+      ],
+      "summary": "Improve interactive CLI discoverability.",
+      "acceptance": [
+        "Supports Bash, Zsh and Fish completions",
+        "Top-level help includes realistic workflow examples",
+        "CLI flags documented consistently"
+      ],
+      "depends_on": [
+        "F02"
+      ]
+    },
+    {
+      "id": "B05",
+      "milestone": "v0.5.0 — Public Beta",
+      "title": "[core] Standardize error codes and verbose diagnostics",
+      "labels": [
+        "type:enhancement",
+        "area:core",
+        "priority:P0"
+      ],
+      "summary": "Expose consistent failures and command invocation traces for troubleshooting.",
+      "acceptance": [
+        "Document stable exit codes (including tool forwarding rules)",
+        "`--verbose` displays tool versions and executed commands",
+        "Errors avoid leaking tokens or sensitive environment values"
+      ],
+      "depends_on": [
+        "F05",
+        "P09"
+      ]
+    },
+    {
+      "id": "B06",
+      "milestone": "v0.5.0 — Public Beta",
+      "title": "[ci] Set up GitHub Releases and crates.io publication",
+      "labels": [
+        "type:chore",
+        "area:ci",
+        "priority:P0"
+      ],
+      "summary": "Automate signed/tagged public pre-releases with documented ownership.",
+      "acceptance": [
+        "Tag-to-release pipeline publishes verified artifacts",
+        "crate version and CLI version match release tag",
+        "Publish credentials minimized; release notes generated"
+      ],
+      "depends_on": [
+        "B02"
+      ]
+    },
+    {
+      "id": "B07",
+      "milestone": "v0.5.0 — Public Beta",
+      "title": "[docs] Publish CLI and configuration reference",
+      "labels": [
+        "type:docs",
+        "area:docs",
+        "priority:P0"
+      ],
+      "summary": "Document all public commands and configuration defaults.",
+      "acceptance": [
+        "Each command has usage, flags and exit codes",
+        "[tool.pyfaro] configuration examples are copyable",
+        "Installation and troubleshooting documented"
+      ],
+      "depends_on": [
+        "B01",
+        "B03"
+      ]
+    },
+    {
+      "id": "B08",
+      "milestone": "v0.5.0 — Public Beta",
+      "title": "[security] Document data/privacy and install trust model",
+      "labels": [
+        "type:docs",
+        "area:security",
+        "priority:P1"
+      ],
+      "summary": "Set default-no-telemetry stance and identify download and execution trust boundaries.",
+      "acceptance": [
+        "No telemetry or outbound reporting from Pyfaro by default",
+        "Document uv/network accesses distinctly",
+        "Explicit disclosure of third-party binaries and updates"
+      ],
+      "depends_on": [
+        "B03"
+      ]
+    },
+    {
+      "id": "S01",
+      "milestone": "v1.0.0 — Stable Release",
+      "title": "[core] Create supported-version compatibility matrix",
+      "labels": [
+        "type:testing",
+        "area:core",
+        "priority:P0"
+      ],
+      "summary": "Test supported Python/uv/Ruff/ty/pytest combinations and platforms.",
+      "acceptance": [
+        "Maintained version support policy",
+        "CI matrix includes defined Python versions and OSes",
+        "Failures of pinned integration versions are detected"
+      ],
+      "depends_on": [
+        "Q08",
+        "B06"
+      ]
+    },
+    {
+      "id": "S02",
+      "milestone": "v1.0.0 — Stable Release",
+      "title": "[config] Validate existing-project interoperability",
+      "labels": [
+        "type:testing",
+        "area:config",
+        "priority:P0"
+      ],
+      "summary": "Ensure Pyfaro does not rewrite or break conventional uv-based Python projects.",
+      "acceptance": [
+        "Existing pyproject.toml tool sections remain untouched",
+        "Sync/check/test work with common src layouts",
+        "No unnecessary changes to uv.lock or dependencies"
+      ],
+      "depends_on": [
+        "P04",
+        "Q04"
+      ]
+    },
+    {
+      "id": "S03",
+      "milestone": "v1.0.0 — Stable Release",
+      "title": "[security] Threat-model subprocesses and release supply chain",
+      "labels": [
+        "type:chore",
+        "area:security",
+        "priority:P0"
+      ],
+      "summary": "Harden process execution, binary supply and CI permissions.",
+      "acceptance": [
+        "Argument injection, task shell opt-in and path traversal covered by tests",
+        "Checksums or attestations for release assets",
+        "Least-privilege permissions for release automation"
+      ],
+      "depends_on": [
+        "D06",
+        "B06"
+      ]
+    },
+    {
+      "id": "S04",
+      "milestone": "v1.0.0 — Stable Release",
+      "title": "[core] Define backwards compatibility and deprecation policy",
+      "labels": [
+        "type:docs",
+        "area:core",
+        "priority:P0"
+      ],
+      "summary": "Freeze the public v1 command, configuration and output contracts.",
+      "acceptance": [
+        "Compatibility guarantees for flags and [tool.pyfaro] documented",
+        "Breaking changes and deprecation mechanism defined",
+        "External tool versions and lock behavior spelled out"
+      ],
+      "depends_on": [
+        "B05",
+        "B07"
+      ]
+    },
+    {
+      "id": "S05",
+      "milestone": "v1.0.0 — Stable Release",
+      "title": "[ci] Add end-to-end smoke matrix on clean machines",
+      "labels": [
+        "type:testing",
+        "area:ci",
+        "priority:P0"
+      ],
+      "summary": "Verify first install, create, run, check, test and build without developer-specific setup.",
+      "acceptance": [
+        "Smoke tests on clean Linux/macOS/Windows runners",
+        "New user flow executes from fresh checkout",
+        "No hidden PATH or local environment dependency"
+      ],
+      "depends_on": [
+        "B03",
+        "B06",
+        "D03"
+      ]
+    },
+    {
+      "id": "S06",
+      "milestone": "v1.0.0 — Stable Release",
+      "title": "[core] Establish baseline performance benchmarks",
+      "labels": [
+        "type:testing",
+        "area:core",
+        "priority:P1"
+      ],
+      "summary": "Measure CLI startup and representative workflows without inventing performance claims.",
+      "acceptance": [
+        "Benchmarks cover startup, check, test and create",
+        "Results compared against direct underlying tools",
+        "Benchmarks published and regressions investigated"
+      ],
+      "depends_on": [
+        "Q04",
+        "B01"
+      ]
+    },
+    {
+      "id": "S07",
+      "milestone": "v1.0.0 — Stable Release",
+      "title": "[docs] Publish migration, troubleshooting and examples",
+      "labels": [
+        "type:docs",
+        "area:docs",
+        "priority:P1"
+      ],
+      "summary": "Prepare complete public documentation for stable release.",
+      "acceptance": [
+        "Migration guide for uv + Ruff + pytest projects",
+        "Examples for library, CLI and FastAPI workflows",
+        "Common failure modes and limitations documented"
+      ],
+      "depends_on": [
+        "S02",
+        "D08"
+      ]
+    },
+    {
+      "id": "S08",
+      "milestone": "v1.0.0 — Stable Release",
+      "title": "[distribution] Ship Pyfaro 1.0 with changelog and support policy",
+      "labels": [
+        "type:chore",
+        "area:distribution",
+        "priority:P0"
+      ],
+      "summary": "Make stable release with verified install commands and stable docs.",
+      "acceptance": [
+        "No unresolved milestone-blocking P0 defects",
+        "Versioned release notes and reproducible artifacts",
+        "Stable download instructions and support matrix published"
+      ],
+      "depends_on": [
+        "S01",
+        "S03",
+        "S04",
+        "S05",
+        "S07"
+      ]
+    },
+    {
+      "id": "W01",
+      "milestone": "v1.1.0 — Workspaces & Tasks",
+      "title": "[workspaces] Discover uv workspace members",
+      "labels": [
+        "type:feature",
+        "area:workspaces",
+        "priority:P0"
+      ],
+      "summary": "Use native uv workspaces rather than creating an independent package graph.",
+      "acceptance": [
+        "Finds root and members from uv-compatible configuration",
+        "Determines active member from current directory",
+        "Clear errors for broken workspace definitions"
+      ],
+      "depends_on": [
+        "S08"
+      ]
+    },
+    {
+      "id": "W02",
+      "milestone": "v1.1.0 — Workspaces & Tasks",
+      "title": "[workspaces] Add package-scoped command selection",
+      "labels": [
+        "type:feature",
+        "area:workspaces",
+        "priority:P0"
+      ],
+      "summary": "Run check/test/tasks against selected workspace packages.",
+      "acceptance": [
+        "Supports --package and --all where meaningful",
+        "Stable member selection and ordered output",
+        "Workspace filters do not alter uv workspace metadata"
+      ],
+      "depends_on": [
+        "W01"
+      ]
+    },
+    {
+      "id": "W03",
+      "milestone": "v1.1.0 — Workspaces & Tasks",
+      "title": "[tasks] Define dependency-aware task DAG",
+      "labels": [
+        "type:feature",
+        "area:tasks",
+        "priority:P0"
+      ],
+      "summary": "Allow declared task dependencies and reject cycles.",
+      "acceptance": [
+        "Supports depends-on links in task configuration",
+        "Cycle and missing-task errors name offending chain",
+        "Does not execute a task more than once per graph run"
+      ],
+      "depends_on": [
+        "D05"
+      ]
+    },
+    {
+      "id": "W04",
+      "milestone": "v1.1.0 — Workspaces & Tasks",
+      "title": "[tasks] Execute independent tasks in parallel",
+      "labels": [
+        "type:feature",
+        "area:tasks",
+        "priority:P1"
+      ],
+      "summary": "Schedule task DAG with bounded concurrency.",
+      "acceptance": [
+        "Configurable concurrency; deterministic failure summary",
+        "Cancel remaining work on Ctrl-C",
+        "No accidental interleaving that obscures task identity"
+      ],
+      "depends_on": [
+        "W03"
+      ]
+    },
+    {
+      "id": "W05",
+      "milestone": "v1.1.0 — Workspaces & Tasks",
+      "title": "[tasks] Add opt-in local content-addressed task cache",
+      "labels": [
+        "type:feature",
+        "area:tasks",
+        "priority:P1"
+      ],
+      "summary": "Avoid repeating deterministic tasks when declared inputs are unchanged.",
+      "acceptance": [
+        "Cache key includes inputs, config and toolchain versions",
+        "Tasks declare outputs; side-effect tasks are uncached by default",
+        "Manual --no-cache switch and explainable hits/misses"
+      ],
+      "depends_on": [
+        "W03"
+      ]
+    },
+    {
+      "id": "W06",
+      "milestone": "v1.1.0 — Workspaces & Tasks",
+      "title": "[tasks] Implement cache safety and invalidation tests",
+      "labels": [
+        "type:testing",
+        "area:tasks",
+        "priority:P0"
+      ],
+      "summary": "Verify stale artifacts, environmental changes and deletion do not cause false hits.",
+      "acceptance": [
+        "Changed inputs and tool versions invalidate cache",
+        "Missing or altered outputs cause reruns",
+        "Cache corruption falls back to normal execution"
+      ],
+      "depends_on": [
+        "W05"
+      ]
+    },
+    {
+      "id": "W07",
+      "milestone": "v1.1.0 — Workspaces & Tasks",
+      "title": "[tasks] Add `pyfaro tasks list|graph` inspector",
+      "labels": [
+        "type:enhancement",
+        "area:tasks",
+        "priority:P1"
+      ],
+      "summary": "Help developers understand declared tasks and task ordering.",
+      "acceptance": [
+        "List displays task summary and source config",
+        "Graph displays dependencies and detects cycles",
+        "Text output works without terminal UI"
+      ],
+      "depends_on": [
+        "W03"
+      ]
+    },
+    {
+      "id": "W08",
+      "milestone": "v1.1.0 — Workspaces & Tasks",
+      "title": "[ci] Demonstrate incremental monorepo checks in CI",
+      "labels": [
+        "type:docs",
+        "area:ci",
+        "priority:P1"
+      ],
+      "summary": "Document repeatable multi-package checks and caching.",
+      "acceptance": [
+        "Example workspace project with shared library and API",
+        "CI example runs selective checks and tests",
+        "Explains why uv caches and task caches are different"
+      ],
+      "depends_on": [
+        "W02",
+        "W05"
+      ]
+    },
+    {
+      "id": "A01",
+      "milestone": "v1.2.0 — Agent Integration",
+      "title": "[agents] Specify a versioned JSON output contract",
+      "labels": [
+        "type:research",
+        "area:agents",
+        "priority:P0"
+      ],
+      "summary": "Define machine-readable results for check, test, doctor and tasks.",
+      "acceptance": [
+        "Schema defines tool version, command, status and structured errors",
+        "Schema has explicit version field and backwards-compatibility rules",
+        "No parsing ANSI terminal output to produce JSON"
+      ],
+      "depends_on": [
+        "S04"
+      ]
+    },
+    {
+      "id": "A02",
+      "milestone": "v1.2.0 — Agent Integration",
+      "title": "[agents] Implement `--output json` across diagnostics",
+      "labels": [
+        "type:feature",
+        "area:agents",
+        "priority:P0"
+      ],
+      "summary": "Expose structured results consistently to tools and agents.",
+      "acceptance": [
+        "check/test/doctor support JSON where adapters expose data",
+        "stdout valid JSON; human-friendly logs on stderr when needed",
+        "Exit codes remain meaningful"
+      ],
+      "depends_on": [
+        "A01"
+      ]
+    },
+    {
+      "id": "A03",
+      "milestone": "v1.2.0 — Agent Integration",
+      "title": "[agents] Normalize file diagnostics and source locations",
+      "labels": [
+        "type:feature",
+        "area:agents",
+        "priority:P0"
+      ],
+      "summary": "Convert available Ruff/ty/pytest information into a shared diagnostic model.",
+      "acceptance": [
+        "Includes severity, message, tool and file/range when available",
+        "Preserves upstream diagnostic details in an extension field",
+        "Missing source ranges are represented explicitly, not invented"
+      ],
+      "depends_on": [
+        "A02"
+      ]
+    },
+    {
+      "id": "A04",
+      "milestone": "v1.2.0 — Agent Integration",
+      "title": "[agents] Introduce changed-files quality checks",
+      "labels": [
+        "type:feature",
+        "area:agents",
+        "priority:P1"
+      ],
+      "summary": "Check only affected paths when supported by underlying tools.",
+      "acceptance": [
+        "Supports explicit path selection and optional git-based change discovery",
+        "Defines behavior for renames/deleted files",
+        "Does not claim sound incremental typing if dependencies require full project checking"
+      ],
+      "depends_on": [
+        "Q04",
+        "A02"
+      ]
+    },
+    {
+      "id": "A05",
+      "milestone": "v1.2.0 — Agent Integration",
+      "title": "[agents] Provide CI-friendly annotations and SARIF export",
+      "labels": [
+        "type:enhancement",
+        "area:agents",
+        "priority:P1"
+      ],
+      "summary": "Make normalized diagnostics consumable by code scanning interfaces.",
+      "acceptance": [
+        "SARIF export documents supported fields",
+        "GitHub annotations point to correct source locations",
+        "Machine output tested against known fixtures"
+      ],
+      "depends_on": [
+        "A03"
+      ]
+    },
+    {
+      "id": "A06",
+      "milestone": "v1.2.0 — Agent Integration",
+      "title": "[agents] Add agent-safe execution guidelines and examples",
+      "labels": [
+        "type:docs",
+        "area:agents",
+        "priority:P1"
+      ],
+      "summary": "Document non-interactive operation and low-risk workflows for AI coding agents.",
+      "acceptance": [
+        "Example AGENTS.md template and deterministic command sequence",
+        "No auto-fix without explicit request",
+        "Document which commands can write files or contact network"
+      ],
+      "depends_on": [
+        "A02",
+        "A04"
+      ]
+    },
+    {
+      "id": "A07",
+      "milestone": "v1.2.0 — Agent Integration",
+      "title": "[core] Draft RFC for future plugin/adapter API",
+      "labels": [
+        "type:research",
+        "area:core",
+        "priority:P2"
+      ],
+      "summary": "Evaluate demand for alternate type checkers, test runners and framework adapters before committing to a public plugin API.",
+      "acceptance": [
+        "RFC proposes extension points and versioning approach",
+        "Defines out-of-scope changes (no alternate lockfile/backend)",
+        "No public plugin API shipped without proven use cases"
+      ],
+      "depends_on": [
+        "S08"
+      ]
+    }
+  ]
+}

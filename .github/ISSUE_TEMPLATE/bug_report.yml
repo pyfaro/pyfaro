@@ -1,0 +1,31 @@
+name: Bug report
+description: Report a reproducible defect (not a security vulnerability).
+title: '[bug] '
+labels: ['type:bug', 'area:cli', 'priority:P1']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues first. Report vulnerabilities privately via
+        https://github.com/pyfaro/pyfaro/security/advisories/new.
+        Maintainers will adjust the default area and priority during triage.
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Pyfaro commit/version, OS, and relevant tool versions.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include a minimal example and exact commands; redact secrets.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true

@@ -1,0 +1,196 @@
+id,milestone,title,labels,summary,acceptance_criteria,depends_on
+F01,v0.1.0 — Foundation,"[core] Define Pyfaro scope, command contract and architecture ADR","type:research,area:core,priority:P0","Document what Pyfaro owns versus delegates (uv, Ruff, ty, pytest), compatibility rules and command naming.","- ADR merged with CLI command matrix and exit-code semantics
+- Explicitly forbid a second dependency resolver or lockfile
+- Decision on external tool management and reproducibility",
+F02,v0.1.0 — Foundation,[cli] Bootstrap the Rust CLI workspace,"type:feature,area:cli,priority:P0","Create a buildable Rust CLI with modular subcommands, global flags and useful help.","- `pyfaro --help` and `pyfaro --version` work
+- Unknown commands return non-zero with a helpful message
+- Release and debug builds succeed on Linux, macOS and Windows",F01
+F03,v0.1.0 — Foundation,[config] Parse and validate [tool.pyfaro] in pyproject.toml,"type:feature,area:config,priority:P0",Define typed configuration and meaningful errors for invalid user settings.,"- Supports default values, path resolution and schema validation
+- Respects existing [tool.ruff], [tool.ty] and other tool sections
+- No new standalone project metadata file required",F02
+F04,v0.1.0 — Foundation,[core] Detect project roots and execution context,"type:feature,area:core,priority:P0",Find the closest valid Python project without changing the current directory.,"- Walks ancestors to find pyproject.toml
+- `--project <path>` overrides discovery
+- Handles nested directories and symlinks deterministically",F02
+F05,v0.1.0 — Foundation,[core] Build a cross-platform subprocess runner,"type:feature,area:core,priority:P0",Implement safe process execution to delegate to external tools.,"- Preserves exit codes and forwards environment appropriately
+- Supports streaming stdout/stderr and Ctrl-C cancellation
+- Never invokes a shell implicitly for tool adapters",F02
+F06,v0.1.0 — Foundation,[core] Discover uv and other tool versions,"type:feature,area:core,priority:P0","Resolve uv, ruff, ty and pytest paths and report missing or incompatible tools.","- Discovery respects virtual environments and PATH
+- Version information is reported consistently
+- Missing tools produce actionable errors, without unexpected installation",F05
+F07,v0.1.0 — Foundation,[ci] Set up Rust checks and multi-OS CI,"type:chore,area:ci,priority:P0","Protect trunk with formatting, Clippy, unit tests and smoke builds.","- CI matrix covers Linux, macOS and Windows
+- Rustfmt, Clippy and tests gate merging
+- No credentials committed to repository",F02
+F08,v0.1.0 — Foundation,[docs] Add project governance and issue templates,"type:docs,area:docs,priority:P1",Make the repository contributor-ready.,"- README explains goals and non-goals
+- License, CONTRIBUTING, CODE_OF_CONDUCT and SECURITY files provided
+- Bug report, feature request and pull-request templates available",
+F09,v0.1.0 — Foundation,[testing] Create fixture-based CLI integration test harness,"type:testing,area:testing,priority:P0",Introduce disposable Python project fixtures and subprocess assertions.,"- Tests run without polluting user environment
+- Fixtures cover success and failure output and exit codes
+- CI executes smoke fixtures across supported OSes","F05,F07"
+P01,v0.2.0 — Project Management,[uv] Implement the uv process adapter,"type:feature,area:uv,priority:P0",Delegate package and environment operations to uv with version-aware command construction.,"- uv output and exit codes propagate correctly
+- Argument passing is safe on all OSes
+- Integration tests use a pinned uv version","F05,F06"
+P02,v0.2.0 — Project Management,[templates] Implement `pyfaro create` for libraries,"type:feature,area:templates,priority:P0",Generate a valid src-layout library project with Pyfaro defaults.,"- Creates pyproject.toml, src, tests and README
+- Accepts name, target directory and Python version
+- Generated project can sync, test and build","P01,F03"
+P03,v0.2.0 — Project Management,[templates] Implement `pyfaro create` for CLIs,"type:feature,area:templates,priority:P1",Generate an installable Python command-line project.,"- Produces valid console_scripts entry point
+- Supports package and command naming
+- Template passes Pyfaro checks",P02
+P04,v0.2.0 — Project Management,[config] Implement `pyfaro init` for existing projects,"type:feature,area:config,priority:P0",Opt in existing pyproject.toml projects without destructive changes.,"- Shows proposed modifications before applying
+- Preserves third-party tool configuration and dependencies
+- A second run is idempotent","F03,P01"
+P05,v0.2.0 — Project Management,[uv] Implement `pyfaro add` and `pyfaro remove`,"type:feature,area:uv,priority:P0","Expose dependency changes through uv, including groups and development dependencies.","- Supports dependency specifiers and --dev
+- Updates pyproject.toml and uv.lock via uv
+- Returns useful solver errors",P01
+P06,v0.2.0 — Project Management,[uv] Implement `pyfaro sync` and reproducible mode,"type:feature,area:uv,priority:P0",Synchronize project dependencies and support frozen/locked workflows.,"- Default sync is delegated to uv
+- `--locked` refuses stale lock state
+- Does not maintain an independent lockfile",P01
+P07,v0.2.0 — Project Management,[cli] Implement `pyfaro run` with argument passthrough,"type:feature,area:cli,priority:P0",Run scripts and commands in the project environment.,"- Preserves all arguments after `--`
+- Executes inside the project environment
+- Propagates command failures and exit codes","P01,F05"
+P08,v0.2.0 — Project Management,[uv] Expose Python version management via uv,"type:feature,area:uv,priority:P1","Provide thin wrappers for listing, installing and pinning interpreters.","- `pyfaro python list|install|pin` delegates to uv
+- Obeys requires-python and .python-version
+- No custom Python installer or runtime cache",P01
+P09,v0.2.0 — Project Management,[cli] Implement `pyfaro doctor` environment diagnostics,"type:feature,area:cli,priority:P1","Explain problems with interpreters, tools, project layout and configuration.","- Reports Python, uv and relevant tool versions
+- Identifies conflicting configuration and missing dependencies
+- Exits non-zero for blocking issues","F03,F06,P01"
+Q01,v0.3.0 — Code Quality,[quality] Implement `pyfaro lint` with Ruff,"type:feature,area:quality,priority:P0",Lint configured project files by invoking Ruff.,"- Uses project Ruff configuration unchanged
+- Supports target paths and normal exit codes
+- Clearly reports when Ruff is unavailable","P07,F03"
+Q02,v0.3.0 — Code Quality,[quality] Implement `pyfaro fmt` with Ruff,"type:feature,area:quality,priority:P0",Expose Ruff formatting and non-mutating verification mode.,"- `pyfaro fmt` writes format changes
+- `pyfaro fmt --check` never modifies files
+- Uses project exclusions and Ruff settings",Q01
+Q03,v0.3.0 — Code Quality,[quality] Implement `pyfaro type` with ty,"type:feature,area:quality,priority:P0",Run ty check in the resolved project environment.,"- Resolves project dependencies for type analysis
+- Passes explicit paths and preserves ty diagnostics
+- Documents limitations and supported ty version","P07,F03"
+Q04,v0.3.0 — Code Quality,[quality] Implement non-destructive `pyfaro check`,"type:feature,area:quality,priority:P0","Run formatting verification, lint and type checking as one quality gate.","- Runs Ruff format --check, Ruff lint and ty check
+- Does not modify source files by default
+- Aggregate non-zero exit on any failure; readable summary","Q01,Q02,Q03"
+Q05,v0.3.0 — Code Quality,[quality] Add explicit `pyfaro check --fix`,"type:enhancement,area:quality,priority:P1",Apply supported safe formatter and linter fixes on request.,"- Never fixes source files without --fix
+- Explains which checks can automatically fix issues
+- Reruns verification and reports remaining issues",Q04
+Q06,v0.3.0 — Code Quality,[testing] Implement `pyfaro test` with pytest,"type:feature,area:testing,priority:P0",Run pytest through the project environment.,"- `pyfaro test` invokes pytest with correct cwd
+- Forwards filters, marker arguments and test paths
+- Returns pytest exit code and works in CI",P07
+Q07,v0.3.0 — Code Quality,[templates] Ship pinned quality and test defaults,"type:feature,area:templates,priority:P0","New projects opt in to known-working Ruff, ty and pytest versions.","- Generated templates include dev dependency group and lockfile instructions
+- Tool configs are owned by their standard pyproject sections
+- `pyfaro check` and `pyfaro test` pass immediately","P02,Q04,Q06"
+Q08,v0.3.0 — Code Quality,[testing] Test quality commands on real fixtures,"type:testing,area:testing,priority:P0","Cover success, failures, exclusions and no-write-by-default.","- Fixtures include library and CLI projects
+- Tests assert check never writes files and --fix is explicit
+- Pyfaro returns consistent codes for lint/type/test failures","Q04,Q05,Q06"
+D01,v0.4.0 — Developer Experience,[templates] Add FastAPI project preset,"type:feature,area:templates,priority:P0",Generate a small functional FastAPI application with tests.,"- Preset includes application entry point and smoke test
+- Project works with create, dev, check and test
+- Dependencies are managed through uv","P02,Q07"
+D02,v0.4.0 — Developer Experience,[dev] Implement process supervisor for `pyfaro dev`,"type:feature,area:dev,priority:P0",Run a long-lived development process with clean lifecycle management.,"- Ctrl-C stops child processes without orphaning
+- Correct environment and working directory
+- Exit errors surface clearly","F05,P07"
+D03,v0.4.0 — Developer Experience,[dev] Add FastAPI dev runner and reload,"type:feature,area:dev,priority:P0",Start Uvicorn with an appropriate reload configuration for FastAPI presets.,"- `pyfaro dev` starts the template app
+- Edits trigger reload and syntax errors are visible
+- No second bespoke filesystem watcher for FastAPI","D01,D02"
+D04,v0.4.0 — Developer Experience,[config] Configure dev entry point and arguments,"type:feature,area:config,priority:P1",Add [tool.pyfaro.dev] settings for project-specific development commands.,"- Supports entry point, arguments and reload switch
+- Explicit setting takes precedence over preset
+- Invalid values are detected before launch","D02,F03"
+D06,v0.4.0 — Developer Experience,[tasks] Specify safe task invocation semantics,"type:research,area:tasks,priority:P0","Define shell/no-shell behavior, quoting, cancellation and environment handling.","- Documented resolution of tasks vs executable programs
+- Explicit opt-in for shell constructs and no implicit shell injection
+- Cross-platform escaping semantics tested",P07
+D05,v0.4.0 — Developer Experience,[tasks] Implement named custom tasks,"type:feature,area:tasks,priority:P1",Support named commands configured under [tool.pyfaro.tasks].,"- `pyfaro run <task>` executes a named task
+- Task and program names cannot collide silently
+- Explicit cwd and environment fields are supported","P07,F03,D06"
+D07,v0.4.0 — Developer Experience,[dev] Improve live development logs and errors,"type:enhancement,area:dev,priority:P1","Provide legible prefixed logs, signal handling and startup diagnostics.","- stdout/stderr remains readable and Ctrl-C reliable
+- Failure to bind a port produces useful guidance
+- Verbose mode reveals invoked command",D02
+D08,v0.4.0 — Developer Experience,[docs] Write end-to-end FastAPI getting-started guide,"type:docs,area:docs,priority:P1",Document the workflow from install to a running app and passing CI.,"- Tutorial demonstrates create, add, dev, check, test and build
+- Examples work on at least Linux and Windows
+- Known prerequisites and tool versions documented","D01,D03"
+B01,v0.5.0 — Public Beta,[uv] Implement `pyfaro build` using uv build,"type:feature,area:uv,priority:P0",Build Python wheels and sdists without reimplementing packaging.,"- Supports wheel and sdist artifacts
+- Preserves PEP 517/518 build-backend configuration
+- Validates generated artifacts in CI","P01,P02"
+B02,v0.5.0 — Public Beta,[distribution] Build standalone Pyfaro executables,"type:feature,area:distribution,priority:P0",Produce reproducible release artifacts for supported platforms.,"- Artifacts for Linux x86_64, macOS x86_64/aarch64, and Windows x86_64
+- Artifacts contain CLI and display version
+- Checksums published alongside archives","F02,F07"
+B03,v0.5.0 — Public Beta,[distribution] Provide secure installation and upgrade path,"type:feature,area:distribution,priority:P0",Ship installation instructions/scripts and a clear path to install uv prerequisites.,"- Documented installation on all supported OSes
+- Verify downloaded binaries/checksums; no silent unsafe installers
+- `pyfaro doctor` explains missing uv and offers actionable steps","B02,P09"
+B04,v0.5.0 — Public Beta,[cli] Add shell completion and friendly help,"type:enhancement,area:cli,priority:P1",Improve interactive CLI discoverability.,"- Supports Bash, Zsh and Fish completions
+- Top-level help includes realistic workflow examples
+- CLI flags documented consistently",F02
+B05,v0.5.0 — Public Beta,[core] Standardize error codes and verbose diagnostics,"type:enhancement,area:core,priority:P0",Expose consistent failures and command invocation traces for troubleshooting.,"- Document stable exit codes (including tool forwarding rules)
+- `--verbose` displays tool versions and executed commands
+- Errors avoid leaking tokens or sensitive environment values","F05,P09"
+B06,v0.5.0 — Public Beta,[ci] Set up GitHub Releases and crates.io publication,"type:chore,area:ci,priority:P0",Automate signed/tagged public pre-releases with documented ownership.,"- Tag-to-release pipeline publishes verified artifacts
+- crate version and CLI version match release tag
+- Publish credentials minimized; release notes generated",B02
+B07,v0.5.0 — Public Beta,[docs] Publish CLI and configuration reference,"type:docs,area:docs,priority:P0",Document all public commands and configuration defaults.,"- Each command has usage, flags and exit codes
+- [tool.pyfaro] configuration examples are copyable
+- Installation and troubleshooting documented","B01,B03"
+B08,v0.5.0 — Public Beta,[security] Document data/privacy and install trust model,"type:docs,area:security,priority:P1",Set default-no-telemetry stance and identify download and execution trust boundaries.,"- No telemetry or outbound reporting from Pyfaro by default
+- Document uv/network accesses distinctly
+- Explicit disclosure of third-party binaries and updates",B03
+S01,v1.0.0 — Stable Release,[core] Create supported-version compatibility matrix,"type:testing,area:core,priority:P0",Test supported Python/uv/Ruff/ty/pytest combinations and platforms.,"- Maintained version support policy
+- CI matrix includes defined Python versions and OSes
+- Failures of pinned integration versions are detected","Q08,B06"
+S02,v1.0.0 — Stable Release,[config] Validate existing-project interoperability,"type:testing,area:config,priority:P0",Ensure Pyfaro does not rewrite or break conventional uv-based Python projects.,"- Existing pyproject.toml tool sections remain untouched
+- Sync/check/test work with common src layouts
+- No unnecessary changes to uv.lock or dependencies","P04,Q04"
+S03,v1.0.0 — Stable Release,[security] Threat-model subprocesses and release supply chain,"type:chore,area:security,priority:P0","Harden process execution, binary supply and CI permissions.","- Argument injection, task shell opt-in and path traversal covered by tests
+- Checksums or attestations for release assets
+- Least-privilege permissions for release automation","D06,B06"
+S04,v1.0.0 — Stable Release,[core] Define backwards compatibility and deprecation policy,"type:docs,area:core,priority:P0","Freeze the public v1 command, configuration and output contracts.","- Compatibility guarantees for flags and [tool.pyfaro] documented
+- Breaking changes and deprecation mechanism defined
+- External tool versions and lock behavior spelled out","B05,B07"
+S05,v1.0.0 — Stable Release,[ci] Add end-to-end smoke matrix on clean machines,"type:testing,area:ci,priority:P0","Verify first install, create, run, check, test and build without developer-specific setup.","- Smoke tests on clean Linux/macOS/Windows runners
+- New user flow executes from fresh checkout
+- No hidden PATH or local environment dependency","B03,B06,D03"
+S06,v1.0.0 — Stable Release,[core] Establish baseline performance benchmarks,"type:testing,area:core,priority:P1",Measure CLI startup and representative workflows without inventing performance claims.,"- Benchmarks cover startup, check, test and create
+- Results compared against direct underlying tools
+- Benchmarks published and regressions investigated","Q04,B01"
+S07,v1.0.0 — Stable Release,"[docs] Publish migration, troubleshooting and examples","type:docs,area:docs,priority:P1",Prepare complete public documentation for stable release.,"- Migration guide for uv + Ruff + pytest projects
+- Examples for library, CLI and FastAPI workflows
+- Common failure modes and limitations documented","S02,D08"
+S08,v1.0.0 — Stable Release,[distribution] Ship Pyfaro 1.0 with changelog and support policy,"type:chore,area:distribution,priority:P0",Make stable release with verified install commands and stable docs.,"- No unresolved milestone-blocking P0 defects
+- Versioned release notes and reproducible artifacts
+- Stable download instructions and support matrix published","S01,S03,S04,S05,S07"
+W01,v1.1.0 — Workspaces & Tasks,[workspaces] Discover uv workspace members,"type:feature,area:workspaces,priority:P0",Use native uv workspaces rather than creating an independent package graph.,"- Finds root and members from uv-compatible configuration
+- Determines active member from current directory
+- Clear errors for broken workspace definitions",S08
+W02,v1.1.0 — Workspaces & Tasks,[workspaces] Add package-scoped command selection,"type:feature,area:workspaces,priority:P0",Run check/test/tasks against selected workspace packages.,"- Supports --package and --all where meaningful
+- Stable member selection and ordered output
+- Workspace filters do not alter uv workspace metadata",W01
+W03,v1.1.0 — Workspaces & Tasks,[tasks] Define dependency-aware task DAG,"type:feature,area:tasks,priority:P0",Allow declared task dependencies and reject cycles.,"- Supports depends-on links in task configuration
+- Cycle and missing-task errors name offending chain
+- Does not execute a task more than once per graph run",D05
+W04,v1.1.0 — Workspaces & Tasks,[tasks] Execute independent tasks in parallel,"type:feature,area:tasks,priority:P1",Schedule task DAG with bounded concurrency.,"- Configurable concurrency; deterministic failure summary
+- Cancel remaining work on Ctrl-C
+- No accidental interleaving that obscures task identity",W03
+W05,v1.1.0 — Workspaces & Tasks,[tasks] Add opt-in local content-addressed task cache,"type:feature,area:tasks,priority:P1",Avoid repeating deterministic tasks when declared inputs are unchanged.,"- Cache key includes inputs, config and toolchain versions
+- Tasks declare outputs; side-effect tasks are uncached by default
+- Manual --no-cache switch and explainable hits/misses",W03
+W06,v1.1.0 — Workspaces & Tasks,[tasks] Implement cache safety and invalidation tests,"type:testing,area:tasks,priority:P0","Verify stale artifacts, environmental changes and deletion do not cause false hits.","- Changed inputs and tool versions invalidate cache
+- Missing or altered outputs cause reruns
+- Cache corruption falls back to normal execution",W05
+W07,v1.1.0 — Workspaces & Tasks,[tasks] Add `pyfaro tasks list|graph` inspector,"type:enhancement,area:tasks,priority:P1",Help developers understand declared tasks and task ordering.,"- List displays task summary and source config
+- Graph displays dependencies and detects cycles
+- Text output works without terminal UI",W03
+W08,v1.1.0 — Workspaces & Tasks,[ci] Demonstrate incremental monorepo checks in CI,"type:docs,area:ci,priority:P1",Document repeatable multi-package checks and caching.,"- Example workspace project with shared library and API
+- CI example runs selective checks and tests
+- Explains why uv caches and task caches are different","W02,W05"
+A01,v1.2.0 — Agent Integration,[agents] Specify a versioned JSON output contract,"type:research,area:agents,priority:P0","Define machine-readable results for check, test, doctor and tasks.","- Schema defines tool version, command, status and structured errors
+- Schema has explicit version field and backwards-compatibility rules
+- No parsing ANSI terminal output to produce JSON",S04
+A02,v1.2.0 — Agent Integration,[agents] Implement `--output json` across diagnostics,"type:feature,area:agents,priority:P0",Expose structured results consistently to tools and agents.,"- check/test/doctor support JSON where adapters expose data
+- stdout valid JSON; human-friendly logs on stderr when needed
+- Exit codes remain meaningful",A01
+A03,v1.2.0 — Agent Integration,[agents] Normalize file diagnostics and source locations,"type:feature,area:agents,priority:P0",Convert available Ruff/ty/pytest information into a shared diagnostic model.,"- Includes severity, message, tool and file/range when available
+- Preserves upstream diagnostic details in an extension field
+- Missing source ranges are represented explicitly, not invented",A02
+A04,v1.2.0 — Agent Integration,[agents] Introduce changed-files quality checks,"type:feature,area:agents,priority:P1",Check only affected paths when supported by underlying tools.,"- Supports explicit path selection and optional git-based change discovery
+- Defines behavior for renames/deleted files
+- Does not claim sound incremental typing if dependencies require full project checking","Q04,A02"
+A05,v1.2.0 — Agent Integration,[agents] Provide CI-friendly annotations and SARIF export,"type:enhancement,area:agents,priority:P1",Make normalized diagnostics consumable by code scanning interfaces.,"- SARIF export documents supported fields
+- GitHub annotations point to correct source locations
+- Machine output tested against known fixtures",A03
+A06,v1.2.0 — Agent Integration,[agents] Add agent-safe execution guidelines and examples,"type:docs,area:agents,priority:P1",Document non-interactive operation and low-risk workflows for AI coding agents.,"- Example AGENTS.md template and deterministic command sequence
+- No auto-fix without explicit request
+- Document which commands can write files or contact network","A02,A04"
+A07,v1.2.0 — Agent Integration,[core] Draft RFC for future plugin/adapter API,"type:research,area:core,priority:P2","Evaluate demand for alternate type checkers, test runners and framework adapters before committing to a public plugin API.","- RFC proposes extension points and versioning approach
+- Defines out-of-scope changes (no alternate lockfile/backend)
+- No public plugin API shipped without proven use cases",S08

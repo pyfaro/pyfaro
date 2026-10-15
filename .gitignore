@@ -1,0 +1,12 @@
+/target/
+/.graphify/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+.env.*
+!.env.example
+.graphify/cache/
+.graphify/branch.json
+.graphify/worktree.json
+.graphify/needs_update

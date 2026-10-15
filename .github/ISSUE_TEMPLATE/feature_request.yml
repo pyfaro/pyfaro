@@ -1,0 +1,27 @@
+name: Feature request
+description: Propose a focused improvement consistent with Pyfaro's scope.
+title: '[proposal] '
+labels: ['type:feature', 'area:cli', 'priority:P2']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Review the roadmap and search existing issues before proposing work.
+        Maintainers will adjust the default area and priority during triage.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and use case
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed outcome and acceptance criteria
+      description: Explain how this integrates existing tools.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Existing tools and alternatives considered

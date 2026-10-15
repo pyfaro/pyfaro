@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/pyfaro/pyfaro/discussions
+    about: Ask questions and discuss early ideas.
+  - name: Report a vulnerability privately
+    url: https://github.com/pyfaro/pyfaro/security/advisories/new
+    about: Keep security reports out of public issues.
