@@ -1,0 +1,262 @@
+{
+  "F01": {
+    "number": 1,
+    "url": "https://github.com/pyfaro/pyfaro/issues/1"
+  },
+  "F02": {
+    "number": 2,
+    "url": "https://github.com/pyfaro/pyfaro/issues/2"
+  },
+  "F03": {
+    "number": 3,
+    "url": "https://github.com/pyfaro/pyfaro/issues/3"
+  },
+  "F04": {
+    "number": 4,
+    "url": "https://github.com/pyfaro/pyfaro/issues/4"
+  },
+  "F05": {
+    "number": 5,
+    "url": "https://github.com/pyfaro/pyfaro/issues/5"
+  },
+  "F06": {
+    "number": 6,
+    "url": "https://github.com/pyfaro/pyfaro/issues/6"
+  },
+  "F07": {
+    "number": 7,
+    "url": "https://github.com/pyfaro/pyfaro/issues/7"
+  },
+  "F08": {
+    "number": 8,
+    "url": "https://github.com/pyfaro/pyfaro/issues/8"
+  },
+  "F09": {
+    "number": 9,
+    "url": "https://github.com/pyfaro/pyfaro/issues/9"
+  },
+  "P01": {
+    "number": 10,
+    "url": "https://github.com/pyfaro/pyfaro/issues/10"
+  },
+  "P02": {
+    "number": 11,
+    "url": "https://github.com/pyfaro/pyfaro/issues/11"
+  },
+  "P03": {
+    "number": 12,
+    "url": "https://github.com/pyfaro/pyfaro/issues/12"
+  },
+  "P04": {
+    "number": 13,
+    "url": "https://github.com/pyfaro/pyfaro/issues/13"
+  },
+  "P05": {
+    "number": 14,
+    "url": "https://github.com/pyfaro/pyfaro/issues/14"
+  },
+  "P06": {
+    "number": 15,
+    "url": "https://github.com/pyfaro/pyfaro/issues/15"
+  },
+  "P07": {
+    "number": 16,
+    "url": "https://github.com/pyfaro/pyfaro/issues/16"
+  },
+  "P08": {
+    "number": 17,
+    "url": "https://github.com/pyfaro/pyfaro/issues/17"
+  },
+  "P09": {
+    "number": 18,
+    "url": "https://github.com/pyfaro/pyfaro/issues/18"
+  },
+  "Q01": {
+    "number": 19,
+    "url": "https://github.com/pyfaro/pyfaro/issues/19"
+  },
+  "Q02": {
+    "number": 20,
+    "url": "https://github.com/pyfaro/pyfaro/issues/20"
+  },
+  "Q03": {
+    "number": 21,
+    "url": "https://github.com/pyfaro/pyfaro/issues/21"
+  },
+  "Q04": {
+    "number": 22,
+    "url": "https://github.com/pyfaro/pyfaro/issues/22"
+  },
+  "Q05": {
+    "number": 23,
+    "url": "https://github.com/pyfaro/pyfaro/issues/23"
+  },
+  "Q06": {
+    "number": 24,
+    "url": "https://github.com/pyfaro/pyfaro/issues/24"
+  },
+  "Q07": {
+    "number": 25,
+    "url": "https://github.com/pyfaro/pyfaro/issues/25"
+  },
+  "Q08": {
+    "number": 26,
+    "url": "https://github.com/pyfaro/pyfaro/issues/26"
+  },
+  "D01": {
+    "number": 27,
+    "url": "https://github.com/pyfaro/pyfaro/issues/27"
+  },
+  "D02": {
+    "number": 28,
+    "url": "https://github.com/pyfaro/pyfaro/issues/28"
+  },
+  "D03": {
+    "number": 29,
+    "url": "https://github.com/pyfaro/pyfaro/issues/29"
+  },
+  "D04": {
+    "number": 30,
+    "url": "https://github.com/pyfaro/pyfaro/issues/30"
+  },
+  "D06": {
+    "number": 31,
+    "url": "https://github.com/pyfaro/pyfaro/issues/31"
+  },
+  "D05": {
+    "number": 32,
+    "url": "https://github.com/pyfaro/pyfaro/issues/32"
+  },
+  "D07": {
+    "number": 33,
+    "url": "https://github.com/pyfaro/pyfaro/issues/33"
+  },
+  "D08": {
+    "number": 34,
+    "url": "https://github.com/pyfaro/pyfaro/issues/34"
+  },
+  "B01": {
+    "number": 35,
+    "url": "https://github.com/pyfaro/pyfaro/issues/35"
+  },
+  "B02": {
+    "number": 36,
+    "url": "https://github.com/pyfaro/pyfaro/issues/36"
+  },
+  "B03": {
+    "number": 37,
+    "url": "https://github.com/pyfaro/pyfaro/issues/37"
+  },
+  "B04": {
+    "number": 38,
+    "url": "https://github.com/pyfaro/pyfaro/issues/38"
+  },
+  "B05": {
+    "number": 39,
+    "url": "https://github.com/pyfaro/pyfaro/issues/39"
+  },
+  "B06": {
+    "number": 40,
+    "url": "https://github.com/pyfaro/pyfaro/issues/40"
+  },
+  "B07": {
+    "number": 41,
+    "url": "https://github.com/pyfaro/pyfaro/issues/41"
+  },
+  "B08": {
+    "number": 42,
+    "url": "https://github.com/pyfaro/pyfaro/issues/42"
+  },
+  "S01": {
+    "number": 43,
+    "url": "https://github.com/pyfaro/pyfaro/issues/43"
+  },
+  "S02": {
+    "number": 44,
+    "url": "https://github.com/pyfaro/pyfaro/issues/44"
+  },
+  "S03": {
+    "number": 45,
+    "url": "https://github.com/pyfaro/pyfaro/issues/45"
+  },
+  "S04": {
+    "number": 46,
+    "url": "https://github.com/pyfaro/pyfaro/issues/46"
+  },
+  "S05": {
+    "number": 47,
+    "url": "https://github.com/pyfaro/pyfaro/issues/47"
+  },
+  "S06": {
+    "number": 48,
+    "url": "https://github.com/pyfaro/pyfaro/issues/48"
+  },
+  "S07": {
+    "number": 49,
+    "url": "https://github.com/pyfaro/pyfaro/issues/49"
+  },
+  "S08": {
+    "number": 50,
+    "url": "https://github.com/pyfaro/pyfaro/issues/50"
+  },
+  "W01": {
+    "number": 51,
+    "url": "https://github.com/pyfaro/pyfaro/issues/51"
+  },
+  "W02": {
+    "number": 52,
+    "url": "https://github.com/pyfaro/pyfaro/issues/52"
+  },
+  "W03": {
+    "number": 53,
+    "url": "https://github.com/pyfaro/pyfaro/issues/53"
+  },
+  "W04": {
+    "number": 54,
+    "url": "https://github.com/pyfaro/pyfaro/issues/54"
+  },
+  "W05": {
+    "number": 55,
+    "url": "https://github.com/pyfaro/pyfaro/issues/55"
+  },
+  "W06": {
+    "number": 56,
+    "url": "https://github.com/pyfaro/pyfaro/issues/56"
+  },
+  "W07": {
+    "number": 57,
+    "url": "https://github.com/pyfaro/pyfaro/issues/57"
+  },
+  "W08": {
+    "number": 58,
+    "url": "https://github.com/pyfaro/pyfaro/issues/58"
+  },
+  "A01": {
+    "number": 59,
+    "url": "https://github.com/pyfaro/pyfaro/issues/59"
+  },
+  "A02": {
+    "number": 60,
+    "url": "https://github.com/pyfaro/pyfaro/issues/60"
+  },
+  "A03": {
+    "number": 61,
+    "url": "https://github.com/pyfaro/pyfaro/issues/61"
+  },
+  "A04": {
+    "number": 62,
+    "url": "https://github.com/pyfaro/pyfaro/issues/62"
+  },
+  "A05": {
+    "number": 63,
+    "url": "https://github.com/pyfaro/pyfaro/issues/63"
+  },
+  "A06": {
+    "number": 64,
+    "url": "https://github.com/pyfaro/pyfaro/issues/64"
+  },
+  "A07": {
+    "number": 65,
+    "url": "https://github.com/pyfaro/pyfaro/issues/65"
+  }
+}
