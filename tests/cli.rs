@@ -11,7 +11,8 @@ fn help_describes_the_current_development_status() {
     let stdout =
         String::from_utf8(output.stdout).expect("help should be UTF-8");
     assert!(stdout.contains("Usage: pyfaro"));
-    assert!(stdout.contains("not implemented yet"));
+    assert!(stdout.contains("Experimental alpha"));
+    assert!(stdout.contains("init"));
     assert!(output.stderr.is_empty());
 }
 
