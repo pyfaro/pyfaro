@@ -951,35 +951,37 @@ fn declared_dependencies(
     let selected_groups = match default_setting {
         None => Some(vec!["dev".to_owned()]),
         Some((_, value)) if value.as_str() == Some("all") => None,
-        Some((config, value)) if let Some(values) = value.as_array() => {
-            let mut names = Vec::new();
-            for entry in values.iter() {
-                if let Some(name) = entry.as_str() {
-                    names.push(normalize_group_name(name));
-                } else {
-                    report.line(
-                        Severity::Error,
-                        format!(
-                            "dependencies: {} must contain only group names",
-                            config.label("default-groups")
-                        ),
-                    )?;
-                    invalid = true;
+        Some((config, value)) => match value.as_array() {
+            Some(values) => {
+                let mut names = Vec::new();
+                for entry in values.iter() {
+                    if let Some(name) = entry.as_str() {
+                        names.push(normalize_group_name(name));
+                    } else {
+                        report.line(
+                            Severity::Error,
+                            format!(
+                                "dependencies: {} must contain only group names",
+                                config.label("default-groups")
+                            ),
+                        )?;
+                        invalid = true;
+                    }
                 }
+                Some(names)
             }
-            Some(names)
-        }
-        Some((config, _)) => {
-            report.line(
-                Severity::Error,
-                format!(
-                    "dependencies: {} must be a list or 'all'",
-                    config.label("default-groups")
-                ),
-            )?;
-            invalid = true;
-            Some(Vec::new())
-        }
+            None => {
+                report.line(
+                    Severity::Error,
+                    format!(
+                        "dependencies: {} must be a list or 'all'",
+                        config.label("default-groups")
+                    ),
+                )?;
+                invalid = true;
+                Some(Vec::new())
+            }
+        },
     };
     let disabled_groups: Vec<String> = env::var("UV_NO_GROUP")
         .unwrap_or_default()
