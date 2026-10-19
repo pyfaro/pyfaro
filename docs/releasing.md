@@ -81,9 +81,12 @@ Use a clean checkout of the merged preparation commit, not the PR branch,
 and the pinned Rust toolchain. Install uv 0.9.26 separately and provide
 Python 3.10+ (CI uses 3.12). Repeat these commands after merge and record
 the commit and resulting archive checksum in issue #77 before requesting
-publication approval. No publishing token is needed:
+publication approval. The following Unix shell block stops at the first
+failure. On Windows, run each command separately in PowerShell and stop if
+`$LASTEXITCODE` is nonzero. No publishing token is needed:
 
 ```sh
+set -e
 cargo fmt --all -- --check
 cargo clippy --locked --all-targets --all-features -- -D warnings
 cargo test --locked --all-targets
@@ -118,15 +121,31 @@ test "$before" = "$(sha256sum ../pyfaro-alpha2-init-smoke/pyproject.toml ../pyfa
 The final comparison must succeed: reapplying must leave both project files
 byte-for-byte unchanged.
 
-On every platform, start from a fresh disposable path and smoke-test the
-other commands against a dependency-free project:
+On Linux or macOS, start from a fresh disposable path and smoke-test the
+other commands against a dependency-free project. Stop at the first failure:
 
 ```sh
+set -e
 uv init --bare ../pyfaro-alpha2-workflow-smoke
 cargo run --locked -- sync --project ../pyfaro-alpha2-workflow-smoke --offline
 cargo run --locked -- run --project ../pyfaro-alpha2-workflow-smoke --locked --offline -- python --version
 cargo run --locked -- tools uv
 cargo run --locked -- tools --project ../pyfaro-alpha2-workflow-smoke
+```
+
+On Windows, run the equivalent commands in PowerShell with an exit-status
+check after each external process:
+
+```powershell
+function Invoke-Checked([scriptblock]$Command) {
+    & $Command
+    if ($LASTEXITCODE -ne 0) { throw "Release check failed: $LASTEXITCODE" }
+}
+Invoke-Checked { uv init --bare ../pyfaro-alpha2-workflow-smoke }
+Invoke-Checked { cargo run --locked -- sync --project ../pyfaro-alpha2-workflow-smoke --offline }
+Invoke-Checked { cargo run --locked -- run --project ../pyfaro-alpha2-workflow-smoke --locked --offline -- python --version }
+Invoke-Checked { cargo run --locked -- tools uv }
+Invoke-Checked { cargo run --locked -- tools --project ../pyfaro-alpha2-workflow-smoke }
 ```
 
 The commands should exit successfully. `sync` creates `.venv` and `uv.lock`,
