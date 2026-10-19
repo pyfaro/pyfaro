@@ -8,7 +8,7 @@ use clap::{Args, Parser, Subcommand};
 #[command(version, about, long_about = None)]
 #[command(arg_required_else_help = true)]
 #[command(
-    after_help = "Experimental alpha: only init is implemented; other workflow commands are not implemented yet."
+    after_help = "Experimental alpha: init and sync are implemented; other workflow commands are not implemented yet."
 )]
 pub(crate) struct Cli {
     #[command(subcommand)]
@@ -19,6 +19,8 @@ pub(crate) struct Cli {
 pub(crate) enum Command {
     /// Preview or apply uv-backed project initialization
     Init(InitArgs),
+    /// Synchronize the project environment through uv
+    Sync(SyncArgs),
 }
 
 #[derive(Args)]
@@ -30,6 +32,29 @@ pub(crate) struct InitArgs {
     /// Apply the displayed plan; without this flag no files are written
     #[arg(long)]
     pub apply: bool,
+
+    /// uv executable (a path or a name found on PATH)
+    #[arg(long, default_value = "uv")]
+    pub uv: OsString,
+
+    /// Disable network access in uv
+    #[arg(long)]
+    pub offline: bool,
+}
+
+#[derive(Args)]
+pub(crate) struct SyncArgs {
+    /// Project directory (defaults to the current directory)
+    #[arg(default_value = ".")]
+    pub path: PathBuf,
+
+    /// Refuse to update an absent or stale uv.lock
+    #[arg(long, conflicts_with = "frozen")]
+    pub locked: bool,
+
+    /// Use uv.lock without checking it against project metadata
+    #[arg(long)]
+    pub frozen: bool,
 
     /// uv executable (a path or a name found on PATH)
     #[arg(long, default_value = "uv")]

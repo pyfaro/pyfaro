@@ -7,9 +7,10 @@ quality checks, tests, and development workflows into one cohesive CLI.
 ## Status
 
 **Experimental alpha — [`0.1.0-alpha.1`](https://crates.io/crates/pyfaro/0.1.0-alpha.1),
-published on 2026-10-19.** `pyfaro init`, `pyfaro --help`, and
-`pyfaro --version` are implemented. Interfaces may change between alpha versions.
-The `main` branch now targets an unpublished `0.1.0-alpha.2` development build;
+published on 2026-10-19.** The published alpha implements `init`, `--help`,
+and `--version`. Interfaces may change between alpha versions.
+The development branch adds `sync` and targets an unpublished
+`0.1.0-alpha.2` build;
 the installation command below installs the published `alpha.1`.
 
 The first alpha targets **Linux** for `init --apply`. macOS and Windows
@@ -53,6 +54,11 @@ executable. See the [init guide](docs/init.md) for exact behavior, error
 handling, and alpha limitations, and the [release instructions](docs/releasing.md)
 for the publication approval gate.
 
+In the development build, `pyfaro sync [PATH]` creates or updates the
+project's `.venv` and `uv.lock` through uv. Use `--locked` to reject stale
+locks or `--frozen` to install from an existing lock without checking it.
+See the [sync guide](docs/sync.md) for the mode differences.
+
 ## Planned experience
 
 - Create and initialize Python projects with opinionated, editable defaults.
@@ -62,7 +68,7 @@ for the publication approval gate.
 - Combine non-destructive quality checks with clear diagnostics.
 - Build Python distributions through uv; later add workspaces and task graphs.
 
-Remaining planned commands: `create`, `add`, `remove`, `sync`, `run`, `dev`,
+Remaining planned commands: `create`, `add`, `remove`, `run`, `dev`,
 `lint`, `fmt`, `type`, `check`, `test`, `build`, and `doctor`.
 These commands are roadmap items, not working functionality. The initial
 `init` slice is available ahead of the broader project-management milestone.
@@ -98,7 +104,8 @@ cargo run --locked -- --version
 ```
 
 Python, uv, Ruff, ty, and pytest are not needed to compile the Rust binary.
-Running `init --apply` and the integration tests requires uv and Python.
+Running `init --apply`, `sync`, and their integration tests requires uv and
+Python.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for checks and development conventions.
 
 ## Roadmap
@@ -120,8 +127,8 @@ Follow the [development roadmap](https://github.com/orgs/pyfaro/projects/1),
 [issues](https://github.com/pyfaro/pyfaro/issues), and
 [milestones](https://github.com/pyfaro/pyfaro/milestones).
 The authoritative [backlog manifest](tools/github-backlog/pyfaro-issues.json)
-is included alongside its import tools. All backlog issues remain open until
-their full acceptance criteria have been reviewed.
+is included alongside its import tools. Tickets close only after their full
+acceptance criteria have been reviewed.
 
 ## Community and security
 

@@ -13,6 +13,7 @@ fn help_describes_the_current_development_status() {
     assert!(stdout.contains("Usage: pyfaro"));
     assert!(stdout.contains("Experimental alpha"));
     assert!(stdout.contains("init"));
+    assert!(stdout.contains("sync"));
     assert!(output.stderr.is_empty());
 }
 

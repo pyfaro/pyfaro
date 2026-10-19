@@ -6,6 +6,8 @@
   arguments and delegated output and exit codes.
 - Add process-group and Windows Job Object containment for future delegated
   workflows. `init --apply` remains Linux-only in this alpha series.
+- Add `pyfaro sync [PATH]` with uv-owned environment/lockfile updates,
+  `--locked` stale-lock rejection, and `--frozen` lockfile reuse.
 
 ## 0.1.0-alpha.1 — 2026-10-19
 

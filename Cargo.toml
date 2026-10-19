@@ -23,6 +23,7 @@ include = [
     "/CODE_OF_CONDUCT.md",
     "/SECURITY.md",
     "/docs/init.md",
+    "/docs/sync.md",
     "/docs/uv-adapter.md",
     "/docs/releasing.md",
     "/docs/architecture/0001-project-architecture.md",
