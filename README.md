@@ -58,12 +58,17 @@ for the publication approval gate.
 In the development build, `pyfaro sync [PATH]` creates or updates the
 project's `.venv` and `uv.lock` through uv. Use `--locked` to reject stale
 locks or `--frozen` to install from an existing lock without checking it.
+From a nested directory, Pyfaro selects the nearest `pyproject.toml`;
+positional `PATH` starts discovery elsewhere, while `--project <PATH>`
+selects an exact project instead.
 See the [sync guide](docs/sync.md) for the mode differences.
 
 `pyfaro run -- <program> [args...]` executes through uv in the project
 environment. For example, `pyfaro run -- python -m pytest` runs pytest from
 the project. Use `--project <PATH>` to select another project, or `--locked`
-to reject a stale lock before execution. See the [run guide](docs/run.md).
+to reject a stale lock before execution. Without `--project`, `run` also
+discovers the nearest project from a nested directory. See the
+[run guide](docs/run.md).
 
 ## Planned experience
 

@@ -2,6 +2,7 @@ mod cli;
 mod error;
 mod init;
 mod process;
+mod project;
 mod run;
 mod sync;
 mod uv;

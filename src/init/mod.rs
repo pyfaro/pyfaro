@@ -4,16 +4,16 @@ mod files;
 use std::fs;
 use std::io;
 use std::io::Write;
-use std::path::{Path, PathBuf};
 
 use crate::cli::InitArgs;
 use crate::error::{Error, Failures, Result};
 use crate::process;
+use crate::project;
 use crate::uv;
 use files::Snapshot;
 
 pub(crate) fn run(args: InitArgs) -> Result<()> {
-    let root = resolve_root(&args.path)?;
+    let root = project::target(&args.path)?;
     let metadata = Snapshot::read(root.join("pyproject.toml"))?;
     let lockfile = Snapshot::read(root.join("uv.lock"))?;
     if !metadata.exists() && lockfile.exists() {
@@ -125,32 +125,4 @@ fn print_plan(
     }
 
     Ok(())
-}
-
-fn resolve_root(path: &Path) -> Result<PathBuf> {
-    let absolute = std::path::absolute(path)
-        .map_err(|error| Error::io("resolve", path, error))?;
-    let mut ancestor = absolute.as_path();
-    let mut missing = Vec::new();
-    while !ancestor
-        .try_exists()
-        .map_err(|error| Error::io("inspect", ancestor, error))?
-    {
-        let name = ancestor.file_name().ok_or_else(|| {
-            Error::Project(format!(
-                "cannot resolve {}; use a path with an existing parent",
-                path.display()
-            ))
-        })?;
-        missing.push(name.to_owned());
-        ancestor = ancestor.parent().ok_or_else(|| {
-            Error::Project("missing project parent directory".into())
-        })?;
-    }
-    let mut root = fs::canonicalize(ancestor)
-        .map_err(|error| Error::io("resolve", ancestor, error))?;
-    for name in missing.into_iter().rev() {
-        root.push(name);
-    }
-    Ok(root)
 }

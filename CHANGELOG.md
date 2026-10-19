@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0-alpha.2 development
 
+- Discover the nearest project for `sync` and `run` from nested directories,
+  with explicit project selection and deterministic symlink resolution.
 - Extract a shared, version-gated uv adapter from `init`, preserving OS-native
   arguments and delegated output and exit codes.
 - Add process-group and Windows Job Object containment for future delegated

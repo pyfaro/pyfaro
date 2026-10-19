@@ -90,6 +90,7 @@ fn run_uses_the_project_environment_for_inline_metadata_scripts() {
         .args(["run", "--offline", "--project"])
         .arg(project.path())
         .args(["--", "./-task.py"])
+        .current_dir(project.path())
         .env("UV_CACHE_DIR", project.path().join("uv-cache"))
         .output()
         .unwrap();
@@ -150,6 +151,7 @@ fn run_preserves_path_lookup_for_python_named_executables() {
         .args(["run", "--locked", "--offline", "--project"])
         .arg(project.path())
         .args(["--", "tool.py"])
+        .current_dir(project.path())
         .env("UV_CACHE_DIR", &cache)
         .output()
         .unwrap();
@@ -161,6 +163,7 @@ fn run_preserves_path_lookup_for_python_named_executables() {
         .args(["run", "--locked", "--offline", "--project"])
         .arg(project.path())
         .args(["--", "tool.py"])
+        .current_dir(project.path())
         .env("UV_CACHE_DIR", &cache)
         .output()
         .unwrap();

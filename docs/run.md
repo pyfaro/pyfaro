@@ -13,8 +13,13 @@ pyfaro run --project ./my-project -- python scripts/task.py --verbose
 The first `--` belongs to Pyfaro. Everything after it, including spaces,
 Unicode, leading dashes, and another `--`, is passed as separate OS-native
 arguments to uv and then the program. Pyfaro does not invoke a shell.
-`--project <PATH>` defaults to the current directory, which must contain
-`pyproject.toml`. uv synchronizes that project's environment by default and
+Without `--project`, Pyfaro finds the nearest `pyproject.toml` in the current
+directory or its ancestors. `--project <PATH>` selects that exact directory
+and requires its own `pyproject.toml`; it never falls back to a parent.
+Discovery resolves symlinks first and does not change Pyfaro's process-wide
+working directory. The program keeps the caller's working directory, so
+relative script paths and arguments remain relative to the invocation point.
+uv synchronizes the selected environment by default and
 runs the program inside it. `--locked` refuses a missing or stale `uv.lock`;
 `--frozen` uses an existing lock without checking it. These modes are
 mutually exclusive.
