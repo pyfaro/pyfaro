@@ -29,10 +29,9 @@ pub(super) fn run(
     nix::sys::prctl::set_child_subreaper(true).map_err(|error| {
         Error::io("enable Linux child reaping for", &program, error.into())
     })?;
-    let mut child = command
-        .process_group(0)
-        .spawn()
-        .map_err(|source| Error::UvStart { path: program.clone(), source })?;
+    let mut child = command.process_group(0).spawn().map_err(|source| {
+        Error::ProcessStart { path: program.clone(), source }
+    })?;
     let input = if relay {
         child.stdin.take().map(super::unix_input::Relay::start)
     } else {

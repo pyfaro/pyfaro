@@ -8,7 +8,7 @@ use clap::{Args, Parser, Subcommand};
 #[command(version, about, long_about = None)]
 #[command(arg_required_else_help = true)]
 #[command(
-    after_help = "Experimental alpha: init, sync, and run are implemented; other workflow commands are not implemented yet."
+    after_help = "Experimental alpha: init, sync, run, and tools are implemented; other workflow commands are not implemented yet."
 )]
 pub(crate) struct Cli {
     #[command(subcommand)]
@@ -23,6 +23,32 @@ pub(crate) enum Command {
     Sync(SyncArgs),
     /// Run a command in the project environment through uv
     Run(RunArgs),
+    /// Show resolved paths and versions of external tools
+    Tools(ToolsArgs),
+}
+
+#[derive(Args)]
+pub(crate) struct ToolsArgs {
+    /// Check one tool and fail if it is missing or incompatible
+    #[arg(value_enum)]
+    pub tool: Option<Tool>,
+
+    /// Explicit project directory; otherwise discover the nearest project
+    #[arg(long)]
+    pub project: Option<PathBuf>,
+
+    /// uv executable (a path or a name found on PATH)
+    #[arg(long)]
+    pub uv: Option<OsString>,
+}
+
+#[derive(Clone, Copy, clap::ValueEnum)]
+#[value(rename_all = "lower")]
+pub(crate) enum Tool {
+    Uv,
+    Ruff,
+    Ty,
+    Pytest,
 }
 
 #[derive(Args)]

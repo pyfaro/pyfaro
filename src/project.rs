@@ -54,10 +54,7 @@ fn find(start: &Path, exact: bool) -> Result<PathBuf> {
             directory.display()
         )))
     } else {
-        Err(Error::Project(format!(
-            "no pyproject.toml found from {}; use --project <PATH>",
-            directory.display()
-        )))
+        Err(Error::NoProject { directory })
     }
 }
 

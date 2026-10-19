@@ -12,7 +12,9 @@ output. `init` and `sync` use null stdin; `run` passes redirected input
 through and relays foreground-terminal input on Unix, where the delegated
 process group cannot read directly from the parent's foreground terminal.
 Terminal-specific child features that require stdin itself to be a TTY are
-not emulated. The version probe uses null stdin and a temporary stdout file.
+not emulated. The version probe uses null stdin and temporary stdout/stderr
+files. It reads the first version line and includes up to 4096 bytes of
+stderr on failure.
 Pyfaro returns uv's numeric failure status and reports its
 own discovery, version, spawn, and process-cleanup errors separately. It never
 installs uv or downloads Python; uv receives `--no-python-downloads`.

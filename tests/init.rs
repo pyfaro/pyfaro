@@ -314,6 +314,18 @@ fn absent_or_incompatible_uv_fails_without_changing_the_project() {
                 .contains("unsupported uv version")
         );
     }
+    let probe_failure = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["init", "--apply", "--uv"])
+        .arg(support::fixture_uv())
+        .arg(project.path())
+        .env("PYFARO_FIXTURE_VERSION_FAIL", "1")
+        .output()
+        .unwrap();
+    assert_eq!(probe_failure.status.code(), Some(7), "{probe_failure:?}");
+    assert!(
+        String::from_utf8_lossy(&probe_failure.stderr)
+            .contains("fixture interpreter is broken")
+    );
     assert_eq!(
         fs::read_to_string(project.path().join("pyproject.toml")).unwrap(),
         original

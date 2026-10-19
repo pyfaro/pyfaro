@@ -28,10 +28,12 @@ pub(crate) enum Error {
     },
     #[error("{0}")]
     Project(String),
+    #[error("no pyproject.toml found from {}; use --project <PATH>", directory.display())]
+    NoProject { directory: PathBuf },
     #[error(
-        "could not start uv at {path}: {source}; install uv or use --uv <path>"
+        "could not start executable at {path}: {source}; check installation and executable permissions"
     )]
-    UvStart {
+    ProcessStart {
         path: PathBuf,
         #[source]
         source: io::Error,
@@ -46,8 +48,30 @@ pub(crate) enum Error {
     },
     #[error("uv {operation} failed ({status}); see uv's output above")]
     UvStatus { operation: &'static str, status: ExitStatus },
+    #[error("uv --version failed for {path} ({status}): {stderr}")]
+    UvProbe { path: PathBuf, status: ExitStatus, stderr: String },
     #[error("unsupported uv version: {0}; use uv >=0.9.26 (tested: 0.9.26)")]
     UvVersion(String),
+    #[error("{tool}: {reason}")]
+    Tool { tool: &'static str, reason: String },
+    #[error(
+        "could not locate {tool} at {path}: {source}; check the selected environment"
+    )]
+    ToolLookup {
+        tool: &'static str,
+        path: PathBuf,
+        #[source]
+        source: which::Error,
+    },
+    #[error(
+        "could not inspect {tool} at {path}: {source}; repair or replace the selected installation"
+    )]
+    ToolProbe {
+        tool: &'static str,
+        path: PathBuf,
+        #[source]
+        source: Box<Error>,
+    },
     #[error("could not install the cancellation handler: {0}")]
     CancellationSetup(#[from] ctrlc::Error),
     #[error("operation cancelled")]
@@ -122,7 +146,9 @@ impl Error {
 
     pub fn exit_code(&self) -> i32 {
         match self {
-            Self::UvStatus { status, .. } => status.code().unwrap_or(1),
+            Self::UvStatus { status, .. } | Self::UvProbe { status, .. } => {
+                status.code().unwrap_or(1)
+            }
             Self::Cancelled => 130,
             _ => 1,
         }

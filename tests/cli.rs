@@ -15,6 +15,7 @@ fn help_describes_the_current_development_status() {
     assert!(stdout.contains("init"));
     assert!(stdout.contains("sync"));
     assert!(stdout.contains("run"));
+    assert!(stdout.contains("tools"));
     assert!(output.stderr.is_empty());
 }
 

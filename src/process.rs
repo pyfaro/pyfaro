@@ -1,13 +1,11 @@
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 use std::io;
-use std::io::IsTerminal;
-#[cfg(any(target_os = "linux", target_os = "macos"))]
+use std::io::{IsTerminal, Read};
 use std::path::Path;
 use std::process::{Command, ExitStatus, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-#[cfg(any(target_os = "linux", target_os = "macos"))]
 use crate::error::Error;
 use crate::error::Result;
 
@@ -33,6 +31,19 @@ pub(crate) fn cancellation() -> Result<Arc<AtomicBool>> {
     let signal = Arc::clone(&cancelled);
     ctrlc::set_handler(move || signal.store(true, Ordering::SeqCst))?;
     Ok(cancelled)
+}
+
+pub(crate) fn read_diagnostic(path: &Path) -> Result<String> {
+    let mut captured = Vec::new();
+    std::fs::File::open(path)
+        .map_err(|error| Error::io("read", path, error))?
+        .take(4096)
+        .read_to_end(&mut captured)
+        .map_err(|error| Error::io("read", path, error))?;
+    Ok(String::from_utf8_lossy(&captured)
+        .trim()
+        .replace('\r', "\\r")
+        .replace('\n', "\\n"))
 }
 
 pub(crate) fn run(

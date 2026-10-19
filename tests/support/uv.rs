@@ -11,9 +11,29 @@ fn main() {
         }
         return;
     }
-    if args == ["--version"] {
+    let executable = env::current_exe().unwrap();
+    let stem = executable.file_stem().unwrap().to_string_lossy();
+    if (stem == "ty" && args == ["version"])
+        || (stem != "ty" && args == ["--version"])
+    {
+        if env::var_os("PYFARO_FIXTURE_VERSION_FAIL").is_some() {
+            eprintln!("fixture interpreter is broken");
+            if env::var_os("PYFARO_FIXTURE_VERSION_MULTILINE").is_some() {
+                eprintln!("second diagnostic line");
+            }
+            process::exit(7);
+        }
+        let default = match stem.as_ref() {
+            "ruff" => "ruff 0.14.0",
+            "ty" => "ty 0.0.1-alpha.24",
+            "pytest" => "pytest 8.4.2",
+            _ => "uv 0.9.26",
+        };
         println!("{}", env::var("PYFARO_FIXTURE_VERSION")
-            .unwrap_or_else(|_| "uv 0.9.26".into()));
+            .unwrap_or_else(|_| default.into()));
+        if env::var_os("PYFARO_FIXTURE_VERSION_EXTRA").is_some() {
+            println!("plugin printed another line");
+        }
         return;
     }
     if args.iter().any(|arg| arg == "record") {

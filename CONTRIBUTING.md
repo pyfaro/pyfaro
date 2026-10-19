@@ -9,13 +9,15 @@ Thank you for helping build Pyfaro. Please follow our
   rustfmt and Clippy; the package's minimum supported Rust version is 1.90.
 - Python 3.10+ and uv **0.9.26** for workflow integration tests.
   CI pins Python 3.12 and uv 0.9.26 on all three platforms. macOS and
-  Windows run `sync` and `run`, plus builds, previews, explicit rejection of
-  `init --apply`, and portable process tests. Successful uv scenarios run
+  Windows run `sync`, `run`, and tool-discovery tests, plus builds,
+  previews, explicit rejection of `init --apply`, and portable process tests.
+  Successful uv scenarios run
   offline in disposable directories without third-party package installation.
   Failure scenarios use a portable Rust executable fixture.
 - Authenticated GitHub CLI for backlog maintenance.
-- Ruff, ty, and pytest will be needed by their future adapters; the current
-  uv workflows do not install them automatically.
+- Ruff, ty, and pytest are not needed to compile or run fixture-based discovery
+  tests. `pyfaro tools` inspects installed copies; future workflow adapters
+  will use them. Pyfaro does not install these tools automatically.
 
 ```sh
 git clone https://github.com/pyfaro/pyfaro.git
