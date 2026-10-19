@@ -126,11 +126,12 @@ with uv. `init --apply` is intentionally unsupported on macOS and Windows:
 
 ```sh
 set -e
-cargo run --locked -- init ../pyfaro-release-init-smoke
-cargo run --locked -- init ../pyfaro-release-init-smoke --apply --offline
-before=$(sha256sum ../pyfaro-release-init-smoke/pyproject.toml ../pyfaro-release-init-smoke/uv.lock)
-cargo run --locked -- init ../pyfaro-release-init-smoke --apply --offline
-test "$before" = "$(sha256sum ../pyfaro-release-init-smoke/pyproject.toml ../pyfaro-release-init-smoke/uv.lock)"
+smoke_project="$(mktemp -d)/project"
+cargo run --locked -- init "$smoke_project"
+cargo run --locked -- init "$smoke_project" --apply --offline
+before=$(sha256sum "$smoke_project/pyproject.toml" "$smoke_project/uv.lock")
+cargo run --locked -- init "$smoke_project" --apply --offline
+test "$before" = "$(sha256sum "$smoke_project/pyproject.toml" "$smoke_project/uv.lock")"
 ```
 
 The final comparison must succeed: reapplying must leave both project files
@@ -141,11 +142,12 @@ other commands against a dependency-free project. Stop at the first failure:
 
 ```sh
 set -e
-uv init --bare ../pyfaro-release-workflow-smoke
-cargo run --locked -- sync --project ../pyfaro-release-workflow-smoke --offline
-cargo run --locked -- run --project ../pyfaro-release-workflow-smoke --locked --offline -- python --version
+smoke_project="$(mktemp -d)/project"
+uv init --bare "$smoke_project"
+cargo run --locked -- sync --project "$smoke_project" --offline
+cargo run --locked -- run --project "$smoke_project" --locked --offline -- python --version
 cargo run --locked -- tools uv
-cargo run --locked -- tools --project ../pyfaro-release-workflow-smoke
+cargo run --locked -- tools --project "$smoke_project"
 ```
 
 On Windows, run the equivalent commands in PowerShell with an exit-status
@@ -156,12 +158,16 @@ function Invoke-Checked([scriptblock]$Command) {
     & $Command
     if ($LASTEXITCODE -ne 0) { throw "Release check failed: $LASTEXITCODE" }
 }
-Invoke-Checked { uv init --bare ../pyfaro-release-workflow-smoke }
-Invoke-Checked { cargo run --locked -- sync --project ../pyfaro-release-workflow-smoke --offline }
-Invoke-Checked { cargo run --locked -- run --project ../pyfaro-release-workflow-smoke --locked --offline -- python --version }
+$smokeProject = Join-Path ([IO.Path]::GetTempPath()) ('pyfaro-release-' + [guid]::NewGuid().ToString('N'))
+Invoke-Checked { uv init --bare $smokeProject }
+Invoke-Checked { cargo run --locked -- sync --project $smokeProject --offline }
+Invoke-Checked { cargo run --locked -- run --project $smokeProject --locked --offline -- python --version }
 Invoke-Checked { cargo run --locked -- tools uv }
-Invoke-Checked { cargo run --locked -- tools --project ../pyfaro-release-workflow-smoke }
+Invoke-Checked { cargo run --locked -- tools --project $smokeProject }
 ```
+
+Each block uses a fresh temporary project path. Remove its directory after
+recording the evidence; keep it temporarily if a check fails for diagnosis.
 
 The commands should exit successfully. `sync` creates `.venv` and `uv.lock`,
 `run` prints the interpreter version, and `tools uv` reports the selected uv
