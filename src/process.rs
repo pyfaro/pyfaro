@@ -1,8 +1,14 @@
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use std::io;
 use std::io::IsTerminal;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use std::path::Path;
 use std::process::{Command, ExitStatus, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use crate::error::Error;
 use crate::error::Result;
 
 #[cfg(target_os = "linux")]
@@ -70,16 +76,52 @@ fn run_with_input(
     }
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn finish_with_relay(
+    operation: Result<()>,
+    cleanup: Result<ExitStatus>,
+    relay: io::Result<Option<()>>,
+    program: &Path,
+) -> Result<ExitStatus> {
+    let outcome = match (operation, cleanup) {
+        (Ok(()), status) => status,
+        (Err(error), Ok(_)) => Err(error),
+        (Err(operation), Err(source)) => Err(Error::OperationCleanup {
+            operation: Box::new(operation),
+            source: Box::new(source),
+        }),
+    };
+    if let Err(source) = relay
+        && matches!(&outcome, Ok(status) if status.success())
+    {
+        return Err(Error::io("relay terminal input", program, source));
+    }
+    outcome
+}
+
 #[cfg(all(test, target_os = "linux"))]
 mod tests {
     use crate::error::Error;
     use crate::test_support;
     use std::fs;
+    use std::os::unix::process::ExitStatusExt;
     use std::process::Stdio;
     use std::thread;
     use std::time::{Duration, Instant};
 
     use super::*;
+
+    #[test]
+    fn relay_failure_preserves_a_failed_command_status() {
+        let failed = ExitStatus::from_raw(23 << 8);
+        let result = finish_with_relay(
+            Ok(()),
+            Ok(failed),
+            Err(io::Error::other("relay failed")),
+            Path::new("uv"),
+        );
+        assert_eq!(result.unwrap().code(), Some(23));
+    }
 
     #[test]
     fn cancellation_stops_and_reaps_the_entire_process_tree() {

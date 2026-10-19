@@ -16,6 +16,12 @@ pub(crate) fn run(args: RunArgs) -> Result<()> {
             root.display()
         )));
     }
+    if !root.join("pyproject.toml").is_file() {
+        return Err(Error::Project(format!(
+            "project directory has no pyproject.toml: {}",
+            root.display()
+        )));
+    }
     let cancelled = process::cancellation()?;
     let uv = uv::Uv::discover(args.uv, args.offline, &cancelled)?;
     let mut command = vec![
@@ -30,9 +36,11 @@ pub(crate) fn run(args: RunArgs) -> Result<()> {
     }
     command.push(OsString::from("--"));
     let program = Path::new(&args.command[0]);
-    if program.extension().is_some_and(|extension| {
-        extension.eq_ignore_ascii_case(OsStr::new("py"))
-    }) && root.join(program).is_file()
+    if program.components().count() > 1
+        && program.extension().is_some_and(|extension| {
+            extension.eq_ignore_ascii_case(OsStr::new("py"))
+        })
+        && root.join(program).is_file()
     {
         command.push(OsString::from("python"));
         command.push(OsString::from("--"));

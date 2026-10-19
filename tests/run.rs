@@ -89,7 +89,7 @@ fn run_uses_the_project_environment_for_inline_metadata_scripts() {
     let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
         .args(["run", "--offline", "--project"])
         .arg(project.path())
-        .args(["--", "-task.py"])
+        .args(["--", "./-task.py"])
         .env("UV_CACHE_DIR", project.path().join("uv-cache"))
         .output()
         .unwrap();
@@ -134,6 +134,47 @@ fn run_preserves_path_lookup_for_python_named_executables() {
         .unwrap();
     assert!(output.status.success(), "{output:?}");
     assert_eq!(String::from_utf8_lossy(&output.stdout).trim_end(), "PATH_OK");
+    fs::write(project.path().join("tool.py"), "print('PROJECT_FILE')\n")
+        .unwrap();
+    let local = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["run", "--locked", "--offline", "--project"])
+        .arg(project.path())
+        .args(["--", "tool.py"])
+        .env("UV_CACHE_DIR", &cache)
+        .output()
+        .unwrap();
+    assert!(local.status.success(), "{local:?}");
+    assert_eq!(
+        String::from_utf8_lossy(&local.stdout).trim_end(),
+        "PROJECT_FILE"
+    );
+}
+
+#[test]
+fn run_rejects_a_directory_without_project_metadata() {
+    let parent = tempdir().unwrap();
+    fs::write(
+        parent.path().join("pyproject.toml"),
+        "[project]\nname = 'parent-example'\nversion = '1.0.0'\nrequires-python = '>=3.10'\n",
+    )
+    .unwrap();
+    let child = parent.path().join("child");
+    fs::create_dir(&child).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["run", "--locked", "--offline", "--project"])
+        .arg(&child)
+        .args(["--", "python", "-c", "print('should not run')"])
+        .env("UV_CACHE_DIR", parent.path().join("uv-cache"))
+        .output()
+        .unwrap();
+    assert!(!output.status.success(), "{output:?}");
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("pyproject.toml"),
+        "{output:?}"
+    );
+    assert!(output.stdout.is_empty());
+    assert!(!parent.path().join("uv.lock").exists());
+    assert!(!parent.path().join(".venv").exists());
 }
 
 #[test]

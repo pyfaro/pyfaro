@@ -63,20 +63,7 @@ pub(super) fn run(
     };
     let cleanup = cleanup(&mut child, group, &program);
     let relay_result = input.map(super::unix_input::Relay::finish).transpose();
-    let outcome = match (result, cleanup) {
-        (Ok(()), status) => status,
-        (Err(error), Ok(_)) => Err(error),
-        (Err(operation), Err(source)) => Err(Error::OperationCleanup {
-            operation: Box::new(operation),
-            source: Box::new(source),
-        }),
-    };
-    if let Err(source) = relay_result
-        && matches!(&outcome, Ok(status) if status.success())
-    {
-        return Err(Error::io("relay terminal input", &program, source));
-    }
-    outcome
+    super::finish_with_relay(result, cleanup, relay_result, &program)
 }
 
 fn leader_exited(group: Pid) -> io::Result<bool> {
