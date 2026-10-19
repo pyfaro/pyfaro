@@ -14,6 +14,12 @@ pub(crate) enum Error {
     },
     #[error("invalid pyproject.toml: {0}")]
     Toml(#[from] toml_edit::TomlError),
+    #[error("invalid {path}: {source}")]
+    ConfigToml {
+        path: PathBuf,
+        #[source]
+        source: toml_edit::TomlError,
+    },
     #[error("{0}")]
     Project(String),
     #[error(

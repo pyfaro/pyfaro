@@ -15,13 +15,9 @@ impl Config {
         let source = fs::read_to_string(&metadata).map_err(|error| {
             Error::io("read project metadata", &metadata, error)
         })?;
-        let document: DocumentMut =
-            source.parse().map_err(|error: toml_edit::TomlError| {
-                Error::Project(format!(
-                    "invalid {}: {error}",
-                    metadata.display()
-                ))
-            })?;
+        let document: DocumentMut = source.parse().map_err(|source| {
+            Error::ConfigToml { path: metadata.clone(), source }
+        })?;
         validate(&document).map_err(|error| {
             Error::Project(format!("invalid {}: {error}", metadata.display()))
         })?;
@@ -123,6 +119,20 @@ mod tests {
         let config = Config::load(directory.path()).unwrap();
         assert_eq!(config.root(), directory.path());
         assert_eq!(std::fs::read_to_string(metadata).unwrap(), source);
+    }
+
+    #[test]
+    fn malformed_project_metadata_retains_the_parse_error_source() {
+        let directory = tempfile::tempdir().unwrap();
+        std::fs::write(directory.path().join("pyproject.toml"), "[project\n")
+            .unwrap();
+        let error = match Config::load(directory.path()) {
+            Ok(_) => panic!("malformed metadata was accepted"),
+            Err(error) => error,
+        };
+        assert!(matches!(error, crate::error::Error::ConfigToml { .. }));
+        assert!(std::error::Error::source(&error).is_some());
+        assert!(error.to_string().contains("pyproject.toml"));
     }
 
     #[test]
