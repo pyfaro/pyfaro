@@ -94,10 +94,12 @@ supplies `default-groups` and legacy `dev-dependencies` independently of uv
 configuration discovery. An adjacent `uv.toml`, `UV_NO_CONFIG`, and
 `UV_CONFIG_FILE` do not remove this project metadata. Doctor rejects `conflicts`, `workspace`, `sources`,
 `dev-dependencies`, `default-groups`, `dependency-groups`, `managed`, `package`,
-`build-backend`, `environments`, `required-environments`,
-`build-constraint-dependencies`, `constraint-dependencies`,
-`exclude-dependencies`, and `override-dependencies` in any `uv.toml`
+`build-backend`, `environments`, and `required-environments` in any `uv.toml`
 with a blocking finding that identifies the file and the pyproject destination.
+Standalone `uv.toml` files may contain build constraints, constraints,
+exclusions, and overrides. Doctor checks each selected file's schema and the
+effective merged uv configuration separately, so an overridden
+`required-version` does not cause a false blocking finding.
 `UV_CONFIG_FILE` selects an explicit standalone uv configuration file instead
 of discovery; relative paths are resolved from the selected project directory,
 as they are for uv commands run by Pyfaro. `UV_NO_CONFIG` disables discovery
@@ -141,8 +143,10 @@ version constraints, optional extras, or lockfile freshness. Use
 `pyfaro sync --locked` when a fresh, reproducible installation check is needed.
 
 Doctor does not invoke a shell, access a package index, install packages, or
-create a project environment. Its Python queries use isolated mode (`-I`),
-disable bytecode writes (`-B`), and run from a temporary directory. Probe
+create a project environment. Its dependency queries use Python isolated mode
+(`-I`), disable bytecode writes (`-B`), and run from a temporary directory.
+Python and other tool version probes run `--version` without those isolation
+flags or a temporary working directory. Probe
 stdout and stderr are captured in temporary files. Temporary files follow the
 system temporary directory setting, which may point inside the project.
 Starting Python or another tool for a version probe can also trigger that

@@ -66,12 +66,12 @@ fn workspace_member_reports_unsupported_layout() {
     install(&bin, "python");
     fs::write(
         workspace.join("pyproject.toml"),
-        "[project]\nname = 'workspace'\n[tool.uv.workspace]\nmembers = ['member']\n",
+        "[project]\nname = 'workspace'\nversion = '0.1.0'\n[tool.uv.workspace]\nmembers = ['member']\n",
     )
     .unwrap();
     fs::write(
         member.join("pyproject.toml"),
-        "[project]\nname = 'member'\n[dependency-groups]\ndev = []\n",
+        "[project]\nname = 'member'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\n",
     )
     .unwrap();
 
@@ -107,7 +107,7 @@ fn workspace_root_reports_unsupported_layout() {
     install(&bin, "python");
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'workspace'\n[tool.uv.workspace]\nmembers = []\n",
+        "[project]\nname = 'workspace'\nversion = '0.1.0'\n[tool.uv.workspace]\nmembers = []\n",
     )
     .unwrap();
 
@@ -125,8 +125,11 @@ fn invalid_uv_workspace_and_managed_types_are_blocking() {
     fs::create_dir_all(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'member'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'member'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
 
     fs::write(
         workspace.join("pyproject.toml"),
@@ -147,7 +150,7 @@ fn invalid_uv_workspace_and_managed_types_are_blocking() {
     fs::remove_file(workspace.join("pyproject.toml")).unwrap();
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'member'\n[tool.uv]\nmanaged = 'false'\n",
+        "[project]\nname = 'member'\nversion = '0.1.0'\n[tool.uv]\nmanaged = 'false'\n",
     )
     .unwrap();
     let invalid_managed = doctor(&project, &bin, &uv);
@@ -164,8 +167,11 @@ fn standalone_tool_configuration_paths_must_be_files() {
     fs::create_dir(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
 
     for name in [
         "ruff.toml",
@@ -194,8 +200,11 @@ fn named_pipe_configuration_paths_are_blocking() {
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
     fs::create_dir(&project).unwrap();
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
     for name in [
@@ -224,8 +233,11 @@ fn dangling_configuration_symlinks_are_blocking() {
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
     fs::create_dir(&project).unwrap();
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
     for name in [
@@ -253,8 +265,11 @@ fn named_pipe_ancestor_metadata_is_blocking() {
     let project = sandbox.path().join("parent/project");
     let bin = sandbox.path().join("bin");
     fs::create_dir_all(&project).unwrap();
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
     let ancestor = sandbox.path().join("parent/pyproject.toml");
     assert!(Command::new("mkfifo").arg(&ancestor).status().unwrap().success());
     let uv = install(&bin, "uv");
@@ -273,8 +288,11 @@ fn dangling_ancestor_metadata_is_blocking() {
     let project = sandbox.path().join("parent/project");
     let bin = sandbox.path().join("bin");
     fs::create_dir_all(&project).unwrap();
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
     symlink("missing", sandbox.path().join("parent/pyproject.toml")).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
@@ -297,8 +315,11 @@ fn python_pin_must_be_a_readable_regular_file() {
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
     fs::create_dir(&project).unwrap();
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
     let pin = project.join(".python-version");
@@ -321,7 +342,7 @@ fn project_managed_setting_survives_configuration_overrides() {
     fs::create_dir(&project).unwrap();
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'sample'\n[tool.uv]\nmanaged = false\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.uv]\nmanaged = false\n",
     )
     .unwrap();
     let uv = install(&bin, "uv");
@@ -358,8 +379,11 @@ fn malformed_pin_is_reported_without_a_python_executable() {
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
     fs::create_dir(&project).unwrap();
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
     fs::create_dir(project.join(".python-version")).unwrap();
     let uv = install(&bin, "uv");
     let output = doctor(&project, &bin, &uv);
@@ -381,8 +405,11 @@ fn dangling_layout_symlinks_are_blocking() {
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
     fs::create_dir(&project).unwrap();
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
     for name in ["src", "tests", ".venv"] {
@@ -411,13 +438,64 @@ fn invalid_project_name_is_blocking() {
 }
 
 #[test]
+fn missing_project_metadata_and_invalid_package_are_blocking() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    let metadata = project.join("pyproject.toml");
+
+    fs::write(&metadata, "[project]\nversion = '0.1.0'\n").unwrap();
+    let missing_name = doctor(&project, &bin, &uv);
+    assert_eq!(missing_name.status.code(), Some(1), "{missing_name:?}");
+    assert!(
+        text(&missing_name)
+            .contains("[project].name must be a nonempty string")
+    );
+
+    fs::write(&metadata, "[project]\nname = 'sample'\n").unwrap();
+    let missing_version = doctor(&project, &bin, &uv);
+    assert_eq!(missing_version.status.code(), Some(1), "{missing_version:?}");
+    assert!(text(&missing_version).contains("[project].version is required"));
+
+    fs::write(&metadata, "[project]\nname = 'sample'\ndynamic = ['version']\n")
+        .unwrap();
+    let dynamic_version = doctor(&project, &bin, &uv);
+    assert_eq!(dynamic_version.status.code(), Some(0), "{dynamic_version:?}");
+
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.uv]\npackage = 'invalid'\n").unwrap();
+    fs::write(project.join("uv.toml"), "offline = true\n").unwrap();
+    for no_config in [false, true] {
+        let mut command = doctor_command(&project, &bin, &uv);
+        if no_config {
+            command.env("UV_NO_CONFIG", "1");
+        }
+        let invalid_package = command.output().unwrap();
+        assert_eq!(
+            invalid_package.status.code(),
+            Some(1),
+            "{invalid_package:?}"
+        );
+        assert!(
+            text(&invalid_package)
+                .contains("[tool.uv] package must be a boolean")
+        );
+    }
+}
+
+#[test]
 fn real_uv_rejects_unknown_standalone_settings() {
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
     fs::create_dir(&project).unwrap();
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
     fs::write(project.join("uv.toml"), "nonsense = true\n").unwrap();
     install(&bin, "python");
     let uv = which::which("uv").unwrap();
@@ -442,7 +520,7 @@ fn real_uv_rejects_unknown_standalone_settings() {
     fs::remove_file(project.join("uv.toml")).unwrap();
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'sample'\n[tool.uv]\ndefualt-groups = ['dev']\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.uv]\ndefualt-groups = ['dev']\n",
     )
     .unwrap();
     let invalid_project_settings = doctor(&project, &bin, &uv);
@@ -460,7 +538,7 @@ fn real_uv_rejects_unknown_standalone_settings() {
         "{invalid_project_settings:?}"
     );
 
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\n[tool.uv]\ndefault-groups = ['dev']\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\n[tool.uv]\ndefault-groups = ['dev']\n").unwrap();
     let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
     fs::create_dir_all(user_file.parent().unwrap()).unwrap();
     fs::write(&user_file, "nonsense = true\n").unwrap();
@@ -496,7 +574,7 @@ fn workspace_ancestor_only_blocks_matching_nonexcluded_members() {
     fs::create_dir_all(workspace.join("other")).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(workspace.join("pyproject.toml"), "[project]\nname = 'workspace'\n[tool.uv.workspace]\nmembers = ['packages/*']\nexclude = ['packages/ex*']\n").unwrap();
+    fs::write(workspace.join("pyproject.toml"), "[project]\nname = 'workspace'\nversion = '0.1.0'\n[tool.uv.workspace]\nmembers = ['packages/*']\nexclude = ['packages/ex*']\n").unwrap();
     for relative in [
         "packages/member",
         "packages/member/standalone",
@@ -506,7 +584,7 @@ fn workspace_ancestor_only_blocks_matching_nonexcluded_members() {
         let project = workspace.join(relative);
         fs::write(
             project.join("pyproject.toml"),
-            "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\n",
+            "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\n",
         )
         .unwrap();
         let output = doctor(&project, &bin, &uv);
@@ -531,8 +609,11 @@ fn workspace_globs_normalize_dot_and_match_parent_directories() {
     fs::create_dir_all(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'member'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'member'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
     fs::write(
         workspace.join("pyproject.toml"),
         "[tool.uv.workspace]\nmembers = ['./packages/*/member']\n",
@@ -563,11 +644,17 @@ fn nearest_project_or_nonmatching_workspace_stops_workspace_discovery() {
         "[tool.uv.workspace]\nmembers = ['**']\n",
     )
     .unwrap();
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'member'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'member'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
 
-    fs::write(middle.join("pyproject.toml"), "[project]\nname = 'middle'\n")
-        .unwrap();
+    fs::write(
+        middle.join("pyproject.toml"),
+        "[project]\nname = 'middle'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
     let intervening = doctor(&project, &bin, &uv);
     assert_eq!(intervening.status.code(), Some(0), "{intervening:?}");
     assert!(!text(&intervening).contains("uv workspace"));
@@ -591,8 +678,11 @@ fn invalid_workspace_glob_is_blocking() {
     fs::create_dir_all(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'member'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'member'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
     fs::write(
         workspace.join("pyproject.toml"),
         "[tool.uv.workspace]\nmembers = ['[']\n",
@@ -638,7 +728,7 @@ fn unmanaged_project_does_not_inherit_an_ancestor_workspace() {
     .unwrap();
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'member'\n[tool.uv]\nmanaged = false\n",
+        "[project]\nname = 'member'\nversion = '0.1.0'\n[tool.uv]\nmanaged = false\n",
     )
     .unwrap();
 
@@ -662,8 +752,11 @@ fn non_utf8_workspace_path_cannot_be_classified_silently() {
     fs::create_dir_all(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'member'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'member'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
     fs::write(
         workspace.join("pyproject.toml"),
         "[tool.uv.workspace]\nmembers = ['member-*']\n",
@@ -683,7 +776,7 @@ fn user_uv_configuration_accepts_valid_settings_and_reports_invalid_fields() {
     fs::create_dir(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
     let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
     fs::create_dir_all(user_file.parent().unwrap()).unwrap();
     fs::write(&user_file, "offline = true\n").unwrap();
@@ -720,7 +813,7 @@ fn user_uv_configuration_defaults_to_home_config_directory() {
     fs::create_dir(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
     let home = sandbox.path().join("home");
     let user_file = home.join(".config/uv/uv.toml");
     fs::create_dir_all(user_file.parent().unwrap()).unwrap();
@@ -747,7 +840,7 @@ fn project_only_uv_fields_are_rejected_in_all_configuration_locations() {
     install(&bin, "python");
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\n",
     )
     .unwrap();
     let project_file = project.join("uv.toml");
@@ -766,10 +859,6 @@ fn project_only_uv_fields_are_rejected_in_all_configuration_locations() {
         "build-backend",
         "environments",
         "required-environments",
-        "build-constraint-dependencies",
-        "constraint-dependencies",
-        "exclude-dependencies",
-        "override-dependencies",
     ] {
         fs::write(&project_file, format!("{field} = true\n")).unwrap();
         let output = doctor(&project, &bin, &uv);
@@ -837,7 +926,7 @@ fn project_pyproject_defaults_are_unaffected_by_valid_user_settings() {
     install(&bin, "python");
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'sample'\n[dependency-groups]\nqa = []\ndev = []\n[tool.uv]\ndefault-groups = ['qa']\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\nqa = []\ndev = []\n[tool.uv]\ndefault-groups = ['qa']\n",
     )
     .unwrap();
     let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
@@ -861,7 +950,7 @@ fn malformed_user_configuration_blocks_even_with_project_settings() {
     install(&bin, "python");
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\n",
     )
     .unwrap();
     fs::write(project.join("uv.toml"), "offline = true\n").unwrap();
@@ -900,7 +989,7 @@ fn malformed_and_unreadable_system_configuration_are_blocking() {
     install(&bin, "python");
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\n",
     )
     .unwrap();
     let system_file = sandbox.path().join(".doctor-system-config/uv/uv.toml");
@@ -939,7 +1028,7 @@ fn first_discovered_system_configuration_wins() {
     fs::create_dir(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
     let first = sandbox.path().join("first/uv/uv.toml");
     let second = sandbox.path().join("second/uv/uv.toml");
     fs::create_dir_all(first.parent().unwrap()).unwrap();
@@ -990,7 +1079,7 @@ fn project_only_uv_settings_in_uv_toml_are_blocking() {
     install(&bin, "python");
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\n",
     )
     .unwrap();
     let path = project.join("uv.toml");
@@ -1015,7 +1104,8 @@ fn healthy_fixture_reports_all_versions_without_writing_project() {
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
     fs::create_dir(&project).unwrap();
-    let metadata = "[project]\nname = 'sample'\ndependencies = []\n";
+    let metadata =
+        "[project]\nname = 'sample'\nversion = '0.1.0'\ndependencies = []\n";
     fs::write(project.join("pyproject.toml"), metadata).unwrap();
     let uv = install(&bin, "uv");
     for name in ["python", "ruff", "ty", "pytest"] {
@@ -1049,8 +1139,11 @@ fn missing_optional_tools_warn_but_missing_uv_or_python_block() {
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
     fs::create_dir_all(&project).unwrap();
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
     let python = install(&bin, "python");
     let uv = install(&bin, "uv");
     let optional = doctor(&project, &bin, &uv);
@@ -1103,7 +1196,7 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
     let metadata = project.join("pyproject.toml");
     fs::write(
         &metadata,
-        "[project]\nname = 'sample'\n[tool.pyfaro]\nschema-version = 2\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.pyfaro]\nschema-version = 2\n",
     )
     .unwrap();
     fs::write(project.join("src"), "wrong kind").unwrap();
@@ -1114,7 +1207,7 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
 
     fs::write(
         &metadata,
-        "[project]\nname = 'sample'\n[tool.ruff]\nline-length = 88\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.ruff]\nline-length = 88\n",
     )
     .unwrap();
     fs::write(project.join("ruff.toml"), "line-length = 90\n").unwrap();
@@ -1130,7 +1223,7 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
     fs::remove_file(project.join("src")).unwrap();
     fs::write(
         &metadata,
-        "[project]\nname = 'sample'\nrequires-python = '>=3.13'\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\nrequires-python = '>=3.13'\n",
     )
     .unwrap();
     let incompatible = doctor(&project, &bin, &uv);
@@ -1141,7 +1234,7 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
         fs::write(
             &metadata,
             format!(
-                "[project]\nname = 'sample'\ndependencies = {dependencies}\n"
+                "[project]\nname = 'sample'\nversion = '0.1.0'\ndependencies = {dependencies}\n"
             ),
         )
         .unwrap();
@@ -1157,7 +1250,7 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
 
     fs::write(
         &metadata,
-        "[project]\nname = 'sample'\ndynamic = ['dependencies']\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\ndynamic = ['dependencies']\n",
     )
     .unwrap();
     let dynamic = doctor(&project, &bin, &uv);
@@ -1170,7 +1263,7 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
 
     fs::write(
         &metadata,
-        "[project]\nname = 'sample'\ndependencies = []\ndynamic = ['dependencies']\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\ndependencies = []\ndynamic = ['dependencies']\n",
     )
     .unwrap();
     let conflicting_dynamic = doctor(&project, &bin, &uv);
@@ -1187,7 +1280,7 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
 
     fs::write(
         &metadata,
-        "[project]\nname = 'sample'\n[tool]\nuv = 'invalid'\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool]\nuv = 'invalid'\n",
     )
     .unwrap();
     let malformed_uv = doctor(&project, &bin, &uv);
@@ -1214,7 +1307,8 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
     assert_eq!(no_config.status.code(), Some(1), "{no_config:?}");
     assert!(text(&no_config).contains("must be a table"));
 
-    fs::write(&metadata, "[project]\nname = 'sample'\n").unwrap();
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '0.1.0'\n")
+        .unwrap();
     fs::write(project.join(".python-version"), "3.11\n").unwrap();
     let pinned = doctor(&project, &bin, &uv);
     assert_eq!(pinned.status.code(), Some(1), "{pinned:?}");
@@ -1235,7 +1329,7 @@ fn non_executable_project_python_is_blocking_without_dependencies() {
     fs::create_dir_all(project.join(".venv/bin")).unwrap();
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'sample'\ndependencies = []\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\ndependencies = []\n",
     )
     .unwrap();
     fs::write(project.join(".venv/bin/python"), "not executable").unwrap();
@@ -1262,12 +1356,64 @@ fn group_names_are_normalized_for_defaults_and_includes() {
     let uv = install(&bin, "uv");
     install(&bin, "python");
     let metadata = project.join("pyproject.toml");
-    fs::write(&metadata, "[project]\nname = 'sample'\n[dependency-groups]\nQA__Test = [{include-group = 'other..test'}]\nOther-Test = []\n[tool.uv]\ndefault-groups = ['qa.test']\n").unwrap();
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\nQA__Test = [{include-group = 'other..test'}]\nOther-Test = []\n[tool.uv]\ndefault-groups = ['qa.test']\n").unwrap();
     let output = doctor(&project, &bin, &uv);
     assert_eq!(output.status.code(), Some(0), "{output:?}");
     let report = text(&output);
     assert!(!report.contains("is not checked"), "{report}");
     assert!(report.contains("no blocking issues"), "{report}");
+}
+
+#[test]
+fn real_uv_accepts_standalone_dependency_policy_fields() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
+    install(&bin, "python");
+    let uv = which::which("uv").unwrap();
+    for field in [
+        "build-constraint-dependencies",
+        "constraint-dependencies",
+        "exclude-dependencies",
+        "override-dependencies",
+    ] {
+        fs::write(project.join("uv.toml"), format!("{field} = []\n")).unwrap();
+        let output = doctor(&project, &bin, &uv);
+        assert_eq!(output.status.code(), Some(0), "{field}: {output:?}");
+    }
+}
+
+#[test]
+fn real_uv_checks_only_effective_required_version() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
+    install(&bin, "python");
+    let uv = which::which("uv").unwrap();
+    let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
+    fs::create_dir_all(user_file.parent().unwrap()).unwrap();
+    fs::write(&user_file, "required-version = '<0.9'\n").unwrap();
+    fs::write(project.join("uv.toml"), "required-version = '>=0.9.26'\n")
+        .unwrap();
+
+    let overridden = doctor(&project, &bin, &uv);
+    assert_eq!(overridden.status.code(), Some(0), "{overridden:?}");
+    fs::remove_file(project.join("uv.toml")).unwrap();
+    let effective = doctor(&project, &bin, &uv);
+    assert_eq!(effective.status.code(), Some(1), "{effective:?}");
+    assert!(text(&effective).contains("uv rejected effective configuration"));
 }
 
 #[test]
@@ -1278,7 +1424,7 @@ fn project_uv_toml_preserves_project_dependency_metadata() {
     fs::create_dir(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\ndev-dependencies = []\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\ndev-dependencies = []\n").unwrap();
     fs::write(project.join("uv.toml"), "offline = true\n").unwrap();
 
     let output = doctor(&project, &bin, &uv);
@@ -1287,7 +1433,7 @@ fn project_uv_toml_preserves_project_dependency_metadata() {
     assert!(!report.contains("ERROR: configuration:"), "{report}");
     assert!(report.contains("group \"dev\" is not checked"), "{report}");
     assert!(!report.contains("group \"quality\" is not checked"), "{report}");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\ndev-dependencies = [42]\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\ndev-dependencies = [42]\n").unwrap();
     let invalid_legacy = doctor(&project, &bin, &uv);
     assert_eq!(invalid_legacy.status.code(), Some(1), "{invalid_legacy:?}");
     assert!(
@@ -1306,7 +1452,7 @@ fn explicit_and_no_config_override_discovery_but_not_project_metadata() {
     fs::create_dir(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\n").unwrap();
     fs::write(project.join("uv.toml"), "offline = true\n").unwrap();
     fs::write(project.join("override.toml"), "offline = false\n").unwrap();
     let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
@@ -1362,7 +1508,7 @@ fn explicit_uv_configuration_errors_identify_the_file_and_action() {
     install(&bin, "python");
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'sample'\ndependencies = []\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\ndependencies = []\n",
     )
     .unwrap();
 
@@ -1415,7 +1561,7 @@ fn pytest_conflicts_require_pytest_sections_in_shared_ini_files() {
     fs::create_dir(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
     fs::write(project.join("tox.ini"), "[tox]\nenv_list = py\n").unwrap();
     fs::write(project.join("setup.cfg"), "[metadata]\nname = sample\n")
         .unwrap();
@@ -1461,14 +1607,14 @@ fn pytest_conflicts_require_pytest_sections_in_shared_ini_files() {
 
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'sample'\n[tool.pytest.other]\nvalue = 1\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.pytest.other]\nvalue = 1\n",
     )
     .unwrap();
     let nested = doctor(&project, &bin, &uv);
     assert_eq!(nested.status.code(), Some(1), "{nested:?}");
     assert!(text(&nested).contains("[tool.pytest] and .pytest.ini"));
 
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[tool.pytest.other]\nvalue = 1\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.pytest.other]\nvalue = 1\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
     let mixed_nested = doctor(&project, &bin, &uv);
     assert_eq!(mixed_nested.status.code(), Some(1), "{mixed_nested:?}");
     assert!(
@@ -1478,7 +1624,7 @@ fn pytest_conflicts_require_pytest_sections_in_shared_ini_files() {
 
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'sample'\n[tool.pytest]\naddopts = ['-q']\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.pytest]\naddopts = ['-q']\n",
     )
     .unwrap();
     let native_toml = doctor(&project, &bin, &uv);
@@ -1486,7 +1632,7 @@ fn pytest_conflicts_require_pytest_sections_in_shared_ini_files() {
     assert!(text(&native_toml).contains("[tool.pytest] and .pytest.ini"));
     fs::remove_file(project.join(".pytest.ini")).unwrap();
 
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[tool.pytest]\naddopts = ['-q']\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.pytest]\naddopts = ['-q']\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
     let mixed_formats = doctor(&project, &bin, &uv);
     assert_eq!(mixed_formats.status.code(), Some(1), "{mixed_formats:?}");
     assert!(
@@ -1494,7 +1640,7 @@ fn pytest_conflicts_require_pytest_sections_in_shared_ini_files() {
             .contains("[tool.pytest] and [tool.pytest.ini_options]")
     );
 
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
     fs::write(project.join("pytest.toml"), "").unwrap();
     let pytest_toml = doctor(&project, &bin, &uv);
     assert_eq!(pytest_toml.status.code(), Some(1), "{pytest_toml:?}");
@@ -1506,8 +1652,11 @@ fn pytest_conflicts_require_pytest_sections_in_shared_ini_files() {
     assert!(text(&hidden_toml).contains("[tool.pytest] and .pytest.toml"));
     fs::remove_file(project.join(".pytest.toml")).unwrap();
 
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
-        .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
     fs::write(project.join("setup.cfg"), "[tool:pytest]\naddopts = -q\n")
         .unwrap();
     fs::write(project.join("tox.ini"), "[pytest]\naddopts = -q\n").unwrap();
@@ -1532,9 +1681,9 @@ fn pytest_nine_only_configuration_requires_pytest_nine() {
         fs::write(
             project.join("pyproject.toml"),
             if config == "native" {
-                "[project]\nname = 'sample'\n[tool.pytest]\naddopts = ['-q']\n"
+                "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.pytest]\naddopts = ['-q']\n"
             } else {
-                "[project]\nname = 'sample'\n"
+                "[project]\nname = 'sample'\nversion = '0.1.0'\n"
             },
         )
         .unwrap();
@@ -1571,7 +1720,7 @@ fn pytest_ini_configuration_remains_compatible_with_pytest_eight() {
     let uv = install(&bin, "uv");
     install(&bin, "python");
     install(&bin, "pytest");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
     let output = doctor(&project, &bin, &uv);
     assert_eq!(output.status.code(), Some(0), "{output:?}");
 }
@@ -1585,7 +1734,7 @@ fn ancestor_uv_configuration_does_not_override_project_default_groups() {
     fs::create_dir_all(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
     fs::write(
         parent.join("pyproject.toml"),
         "[tool.uv]\ndefault-groups = ['dev']\n",
@@ -1611,7 +1760,7 @@ fn ancestor_uv_configuration_does_not_override_project_default_groups() {
     assert!(report.contains("group \"quality\" is not checked"), "{report}");
     assert!(!report.contains("group \"dev\" is not checked"), "{report}");
 
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['dev']\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['dev']\n").unwrap();
     let nearer = doctor(&project, &bin, &uv);
     let report = text(&nearer);
     assert_eq!(nearer.status.code(), Some(0), "{nearer:?}");
@@ -1630,7 +1779,7 @@ fn unselected_legacy_dev_dependencies_are_validated_at_their_source() {
     let metadata = project.join("pyproject.toml");
     fs::write(
         &metadata,
-        "[project]\nname = 'sample'\n[dependency-groups]\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\ndev-dependencies = [42]\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n[dependency-groups]\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\ndev-dependencies = [42]\n",
     )
     .unwrap();
 
@@ -1699,8 +1848,11 @@ fn invalid_and_unselected_groups_are_blocking_without_distribution_checks() {
         ),
     ];
     for (groups, expected) in cases {
-        fs::write(&metadata, format!("[project]\nname = 'sample'\n{groups}"))
-            .unwrap();
+        fs::write(
+            &metadata,
+            format!("[project]\nname = 'sample'\nversion = '0.1.0'\n{groups}"),
+        )
+        .unwrap();
         let output = doctor(&project, &bin, &uv);
         let report = text(&output);
         assert_eq!(output.status.code(), Some(1), "{output:?}");
@@ -1709,7 +1861,7 @@ fn invalid_and_unselected_groups_are_blocking_without_distribution_checks() {
     }
     fs::write(
         &metadata,
-        "[project]\nname = 'sample'\n[tool.uv]\ndefault-groups = ['missing']\n",
+        "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.uv]\ndefault-groups = ['missing']\n",
     )
     .unwrap();
     let ignored_defaults = isolated_command(&project)
@@ -2088,9 +2240,9 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\nqa = [{include-group = 'dev'}]\ndev = []\n[tool.uv]\ndefault-groups = ['qa']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
     let included_legacy =
         doctor_command(&project, Path::new(&path), &uv).output().unwrap();
-    assert_eq!(included_legacy.status.code(), Some(1), "{included_legacy:?}");
+    assert_eq!(included_legacy.status.code(), Some(0), "{included_legacy:?}");
     assert!(
-        text(&included_legacy)
+        !text(&included_legacy)
             .contains("missing-doctor-legacy-package is missing from .venv")
     );
     for (name, value) in [("UV_NO_DEV", "1"), ("UV_NO_GROUP", "dev")] {
@@ -2101,11 +2253,11 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
                 .unwrap();
         assert_eq!(
             included_with_exclusion.status.code(),
-            Some(1),
+            Some(0),
             "{included_with_exclusion:?}"
         );
         assert!(
-            text(&included_with_exclusion).contains(
+            !text(&included_with_exclusion).contains(
                 "missing-doctor-legacy-package is missing from .venv"
             )
         );
@@ -2213,7 +2365,7 @@ fn system_prefix_python3_is_used_for_layout_and_dependencies() {
     let uv = install(&bin, "uv");
     symlink(which::which("python3").unwrap(), prefix.join("bin/python3"))
         .unwrap();
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\ndependencies = ['missing-doctor-fixture-package==1.0']\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '0.1.0'\ndependencies = ['missing-doctor-fixture-package==1.0']\n").unwrap();
     let output = doctor_command(&project, &bin, &uv)
         .env("UV_PROJECT_ENVIRONMENT", &prefix)
         .output()

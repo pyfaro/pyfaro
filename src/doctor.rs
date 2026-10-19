@@ -95,13 +95,7 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
                     "pyproject.toml: valid Pyfaro configuration",
                 )?;
                 inspect_configuration(root, &document, &mut report)?;
-                if let Some(name) = document
-                    .get("project")
-                    .and_then(|project| project.get("name"))
-                    && name.as_str().is_none_or(|name| name.trim().is_empty())
-                {
-                    report.line(Severity::Error, "configuration: [project].name must be a nonempty string; correct pyproject.toml")?;
-                }
+                inspect_project_metadata(&document, &mut report)?;
                 pytest_9_only = uses_pytest_9_configuration(root, &document);
                 if !inspect_workspace(root, &document, &mut report)? {
                     dependencies = declared_dependencies(
@@ -399,6 +393,45 @@ fn missing_tool_configuration(
     Ok(false)
 }
 
+fn inspect_project_metadata(
+    document: &DocumentMut,
+    report: &mut Report,
+) -> Result<()> {
+    let Some(project) = document.get("project") else {
+        return Ok(());
+    };
+    if project
+        .get("name")
+        .and_then(|name| name.as_str())
+        .is_none_or(|name| name.trim().is_empty())
+    {
+        report.line(Severity::Error, "configuration: [project].name must be a nonempty string; correct pyproject.toml")?;
+    }
+    let dynamic_version = project
+        .get("dynamic")
+        .and_then(|dynamic| dynamic.as_array())
+        .is_some_and(|dynamic| {
+            dynamic.iter().any(|entry| entry.as_str() == Some("version"))
+        });
+    match project.get("version") {
+        Some(version)
+            if version
+                .as_str()
+                .is_none_or(|value| value.parse::<Version>().is_err()) =>
+        {
+            report.line(Severity::Error, "configuration: [project].version must be a valid version string; correct pyproject.toml")?;
+        }
+        Some(_) if dynamic_version => {
+            report.line(Severity::Error, "configuration: [project].version cannot also be dynamic; correct pyproject.toml")?;
+        }
+        None if !dynamic_version => {
+            report.line(Severity::Error, "configuration: [project].version is required unless listed in dynamic; correct pyproject.toml")?;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
 fn inspect_workspace(
     root: &Path,
     document: &DocumentMut,
@@ -413,6 +446,15 @@ fn inspect_workspace(
             Severity::Error,
             "configuration: [tool.uv] in pyproject.toml must be a table",
         )?;
+        return Ok(true);
+    }
+    if document
+        .get("tool")
+        .and_then(|tool| tool.get("uv"))
+        .and_then(|uv| uv.get("package"))
+        .is_some_and(|package| package.as_bool().is_none())
+    {
+        report.line(Severity::Error, "configuration: [tool.uv] package must be a boolean; correct pyproject.toml")?;
         return Ok(true);
     }
     if let Some(managed) = document
@@ -966,7 +1008,6 @@ fn declared_dependencies(
         .collect();
     let no_default_groups = uv_env_enabled("UV_NO_DEFAULT_GROUPS");
     let mut unselected_requirements = Vec::new();
-    let mut included_dev = false;
     if let Some(groups) = document.get("dependency-groups") {
         let groups = groups.as_table().cloned().or_else(|| {
             groups.as_inline_table().map(|inline| inline.clone().into_table())
@@ -1024,7 +1065,6 @@ fn declared_dependencies(
                     report,
                 )?;
             }
-            included_dev = collector.selected.iter().any(|name| name == "dev");
             for (name, _) in groups.iter() {
                 let normalized = normalize_group_name(name);
                 if !collector.checked.iter().any(|entry| entry == &normalized) {
@@ -1062,11 +1102,11 @@ fn declared_dependencies(
             continue;
         };
         let label = config.label("dev-dependencies");
-        let selected = included_dev
-            || (selected_groups.as_ref().is_none_or(|selected| {
-                selected.iter().any(|name| name == "dev")
-            }) && !no_default_groups
-                && !disabled_groups.iter().any(|name| name == "dev"));
+        let selected = selected_groups
+            .as_ref()
+            .is_none_or(|selected| selected.iter().any(|name| name == "dev"))
+            && !no_default_groups
+            && !disabled_groups.iter().any(|name| name == "dev");
         if let Some(legacy) = legacy.as_array() {
             for entry in legacy.iter() {
                 if let Some(requirement) = entry.as_str() {

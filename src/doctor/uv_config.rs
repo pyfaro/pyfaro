@@ -56,7 +56,16 @@ pub(super) fn uv_configuration(
         return match read_uv_configuration_file(
             &path, uv_binary, cancelled, report, true,
         )? {
-            UvDiscovery::Config(config) => Ok(Some(vec![*config])),
+            UvDiscovery::Config(config) => {
+                if let Some(binary) = uv_binary
+                    && !probe_effective_uv_configuration(
+                        binary, root, cancelled, report,
+                    )?
+                {
+                    return Ok(None);
+                }
+                Ok(Some(vec![*config]))
+            }
             UvDiscovery::Missing | UvDiscovery::Invalid => Ok(None),
         };
     }
@@ -178,9 +187,15 @@ pub(super) fn uv_configuration(
             binary,
             &project_config.path,
             project_config.document.get("tool").and_then(|tool| tool.get("uv")),
+            None,
             cancelled,
             report,
         )?
+    {
+        return Ok(None);
+    }
+    if let Some(binary) = uv_binary
+        && !probe_effective_uv_configuration(binary, root, cancelled, report)?
     {
         return Ok(None);
     }
@@ -295,10 +310,6 @@ fn read_uv_configuration_file(
         "build-backend",
         "environments",
         "required-environments",
-        "build-constraint-dependencies",
-        "constraint-dependencies",
-        "exclude-dependencies",
-        "override-dependencies",
     ] {
         if document.get(field).is_some() {
             let destination = if field == "dependency-groups" {
@@ -325,7 +336,14 @@ fn read_uv_configuration_file(
         return Ok(UvDiscovery::Invalid);
     }
     if let Some(binary) = uv_binary
-        && !probe_uv_configuration(binary, path, None, cancelled, report)?
+        && !probe_uv_configuration(
+            binary,
+            path,
+            None,
+            Some(&document),
+            cancelled,
+            report,
+        )?
     {
         return Ok(UvDiscovery::Invalid);
     }
@@ -340,6 +358,7 @@ fn probe_uv_configuration(
     binary: &Path,
     path: &Path,
     project_uv: Option<&Item>,
+    standalone: Option<&DocumentMut>,
     cancelled: &AtomicBool,
     report: &mut Report,
 ) -> Result<bool> {
@@ -362,6 +381,22 @@ fn probe_uv_configuration(
     } else {
         None
     };
+    let isolated_standalone = if let Some(standalone) = standalone
+        && standalone.get("required-version").is_some()
+    {
+        let directory = tempfile::tempdir().map_err(|error| {
+            Error::io("create uv configuration probe", path, error)
+        })?;
+        let mut document = standalone.clone();
+        document.as_table_mut().remove("required-version");
+        let config = directory.path().join("uv.toml");
+        fs::write(&config, document.to_string()).map_err(|error| {
+            Error::io("write uv configuration probe", &config, error)
+        })?;
+        Some((directory, config))
+    } else {
+        None
+    };
     let mut command = Command::new(binary);
     command.arg("--no-cache");
     if let Some(directory) = isolated_project.as_ref() {
@@ -373,7 +408,11 @@ fn probe_uv_configuration(
             .env("APPDATA", directory.path())
             .env("PROGRAMDATA", directory.path());
     } else {
-        command.arg("--config-file").arg(path);
+        command.arg("--config-file").arg(
+            isolated_standalone
+                .as_ref()
+                .map_or(path, |(_, config)| config.as_path()),
+        );
     }
     command
         .arg("--offline")
@@ -403,4 +442,39 @@ fn probe_uv_configuration(
         return Ok(false);
     }
     Ok(true)
+}
+
+fn probe_effective_uv_configuration(
+    binary: &Path,
+    root: &Path,
+    cancelled: &AtomicBool,
+    report: &mut Report,
+) -> Result<bool> {
+    let stderr = tempfile::NamedTempFile::new().map_err(|error| {
+        Error::io("create uv configuration output", root, error)
+    })?;
+    let mut command = Command::new(binary);
+    command
+        .arg("--no-cache")
+        .arg("--directory")
+        .arg(root)
+        .arg("--offline")
+        .arg("python")
+        .arg("list")
+        .arg("--only-installed")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .env_remove("UV_WORKING_DIR")
+        .env_remove("UV_PROJECT")
+        .stderr(
+            stderr
+                .reopen()
+                .map_err(|error| Error::io("open", stderr.path(), error))?,
+        );
+    if process::run(command, cancelled)?.success() {
+        return Ok(true);
+    }
+    let diagnostic = process::read_diagnostic(stderr.path())?;
+    report.line(Severity::Error, format!("dependencies: uv rejected effective configuration for {}: {diagnostic}; correct the uv configuration", root.display()))?;
+    Ok(false)
 }
