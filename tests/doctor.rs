@@ -15,7 +15,7 @@ fn install(directory: &Path, name: &str) -> PathBuf {
 }
 
 fn doctor_command(project: &Path, path: &Path, uv: &Path) -> Command {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_pyfaro"));
+    let mut command = isolated_command(project);
     command
         .arg("doctor")
         .arg("--project")
@@ -34,6 +34,205 @@ fn doctor_command(project: &Path, path: &Path, uv: &Path) -> Command {
         command.env_remove(name);
     }
     command
+}
+
+fn isolated_command(project: &Path) -> Command {
+    let config_root = project.parent().unwrap_or(project);
+    let user_config = config_root.join(".doctor-user-config");
+    let system_config = config_root.join(".doctor-system-config");
+    fs::create_dir_all(system_config.join("uv")).unwrap();
+    let system_file = system_config.join("uv/uv.toml");
+    if !system_file.exists() {
+        fs::write(&system_file, "").unwrap();
+    }
+    let mut command = Command::new(env!("CARGO_BIN_EXE_pyfaro"));
+    command
+        .env("XDG_CONFIG_HOME", &user_config)
+        .env("XDG_CONFIG_DIRS", &system_config)
+        .env("APPDATA", &user_config)
+        .env("PROGRAMDATA", &system_config);
+    command
+}
+
+#[test]
+fn user_uv_configuration_falls_back_and_reports_its_source() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
+    let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
+    fs::create_dir_all(user_file.parent().unwrap()).unwrap();
+    fs::write(&user_file, "default-groups = ['quality']\n").unwrap();
+
+    let output = doctor(&project, &bin, &uv);
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    assert!(report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+
+    fs::write(&user_file, "dev-dependencies = [42]\n").unwrap();
+    let malformed = doctor(&project, &bin, &uv);
+    let report = text(&malformed);
+    assert_eq!(malformed.status.code(), Some(1), "{malformed:?}");
+    assert!(report.contains(&user_file.display().to_string()), "{report}");
+    assert!(
+        report
+            .contains("dev-dependencies must contain only requirement strings"),
+        "{report}"
+    );
+}
+
+#[cfg(not(windows))]
+#[test]
+fn user_uv_configuration_defaults_to_home_config_directory() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
+    let home = sandbox.path().join("home");
+    let user_file = home.join(".config/uv/uv.toml");
+    fs::create_dir_all(user_file.parent().unwrap()).unwrap();
+    fs::write(&user_file, "default-groups = ['quality']\n").unwrap();
+
+    let output = doctor_command(&project, &bin, &uv)
+        .env_remove("XDG_CONFIG_HOME")
+        .env("HOME", &home)
+        .output()
+        .unwrap();
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    assert!(report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+}
+
+#[test]
+fn uv_configuration_arrays_merge_across_project_user_and_system() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\nproject = []\nuser = []\nsystem = []\n").unwrap();
+    fs::write(
+        project.join("uv.toml"),
+        "default-groups = ['project']\ndev-dependencies = []\n",
+    )
+    .unwrap();
+    let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
+    fs::create_dir_all(user_file.parent().unwrap()).unwrap();
+    fs::write(&user_file, "default-groups = ['user']\ndev-dependencies = []\n")
+        .unwrap();
+    let system_file = sandbox.path().join(".doctor-system-config/uv/uv.toml");
+    fs::create_dir_all(system_file.parent().unwrap()).unwrap();
+    fs::write(
+        &system_file,
+        "default-groups = ['system']\ndev-dependencies = []\n",
+    )
+    .unwrap();
+
+    let valid = doctor(&project, &bin, &uv);
+    let report = text(&valid);
+    assert_eq!(valid.status.code(), Some(0), "{valid:?}");
+    for group in ["project", "user", "system"] {
+        assert!(
+            !report.contains(&format!("group \"{group}\" is not checked")),
+            "{report}"
+        );
+    }
+
+    fs::write(
+        &system_file,
+        "default-groups = ['system']\ndev-dependencies = [42]\n",
+    )
+    .unwrap();
+
+    let output = doctor(&project, &bin, &uv);
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    for group in ["project", "user", "system"] {
+        assert!(
+            !report.contains(&format!("group \"{group}\" is not checked")),
+            "{report}"
+        );
+    }
+    assert!(report.contains(&system_file.display().to_string()), "{report}");
+    assert!(
+        report
+            .contains("dev-dependencies must contain only requirement strings"),
+        "{report}"
+    );
+}
+
+#[test]
+fn malformed_user_configuration_blocks_even_with_project_settings() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\n",
+    )
+    .unwrap();
+    fs::write(project.join("uv.toml"), "default-groups = ['dev']\n").unwrap();
+    let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
+    fs::create_dir_all(user_file.parent().unwrap()).unwrap();
+    fs::write(&user_file, "default-groups = [\n").unwrap();
+
+    let malformed = doctor(&project, &bin, &uv);
+    let report = text(&malformed);
+    assert_eq!(malformed.status.code(), Some(1), "{malformed:?}");
+    assert!(report.contains(&user_file.display().to_string()), "{report}");
+    assert!(!report.contains("OK: dependencies:"), "{report}");
+
+    fs::remove_file(&user_file).unwrap();
+    fs::create_dir(&user_file).unwrap();
+    let unreadable = doctor(&project, &bin, &uv);
+    let report = text(&unreadable);
+    assert_eq!(unreadable.status.code(), Some(1), "{unreadable:?}");
+    assert!(report.contains(&user_file.display().to_string()), "{report}");
+    assert!(report.contains("cannot read"), "{report}");
+}
+
+#[cfg(not(windows))]
+#[test]
+fn first_discovered_system_configuration_wins() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
+    let first = sandbox.path().join("first/uv/uv.toml");
+    let second = sandbox.path().join("second/uv/uv.toml");
+    fs::create_dir_all(first.parent().unwrap()).unwrap();
+    fs::create_dir_all(second.parent().unwrap()).unwrap();
+    fs::write(&first, "default-groups = ['quality']\n").unwrap();
+    fs::write(&second, "default-groups = ['dev']\n").unwrap();
+    let paths = std::env::join_paths([
+        first.parent().unwrap().parent().unwrap(),
+        second.parent().unwrap().parent().unwrap(),
+    ])
+    .unwrap();
+
+    let output = doctor_command(&project, &bin, &uv)
+        .env("XDG_CONFIG_DIRS", paths)
+        .output()
+        .unwrap();
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    assert!(report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
 }
 
 fn doctor(project: &Path, path: &Path, uv: &Path) -> Output {
@@ -113,7 +312,7 @@ fn missing_project_is_a_blocking_finding() {
     let bin = sandbox.path().join("bin");
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let output = isolated_command(&sandbox.path().join("missing-project"))
         .arg("doctor")
         .current_dir(sandbox.path())
         .arg("--uv")
@@ -329,6 +528,9 @@ fn uv_environment_configuration_controls_default_groups() {
         .unwrap();
     fs::write(project.join("override.toml"), "default-groups = ['dev']\n")
         .unwrap();
+    let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
+    fs::create_dir_all(user_file.parent().unwrap()).unwrap();
+    fs::write(&user_file, "default-groups = [\n").unwrap();
 
     let override_output = doctor_command(&project, &bin, &uv)
         .current_dir(sandbox.path())
@@ -634,7 +836,7 @@ fn invalid_and_unselected_groups_are_blocking_without_distribution_checks() {
         "[project]\nname = 'sample'\n[tool.uv]\ndefault-groups = ['missing']\n",
     )
     .unwrap();
-    let ignored_defaults = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let ignored_defaults = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -656,7 +858,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     fs::create_dir(&project).unwrap();
     let metadata = project.join("pyproject.toml");
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\nrequires-python = '>=3.10'\ndependencies = []\n").unwrap();
-    let sync = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let sync = isolated_command(&project)
         .arg("sync")
         .arg("--offline")
         .arg("--project")
@@ -684,7 +886,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         .take(2)
         .collect::<Vec<_>>()
         .join(".");
-    let healthy = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let healthy = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -695,7 +897,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert_eq!(healthy.status.code(), Some(0), "{healthy:?}");
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\nrequires-python = '>=3.10'\ndependencies = ['missing-doctor-fixture-package==1.0']\n").unwrap();
     let before = fs::read(project.join("uv.lock")).unwrap();
-    let missing = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let missing = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -714,7 +916,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert!(!project.join("pyfaro.lock").exists());
 
     fs::write(&metadata, format!("[project]\nname = 'sample'\nversion = '1.0.0'\nrequires-python = '>=3.10'\ndependencies = ['missing-doctor-fixture-package==1.0; python_version == \"{major_minor}\"', 'ignored-doctor-fixture-package; python_version < \"0\"']\n")).unwrap();
-    let marked = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let marked = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -735,7 +937,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert_eq!(fs::read(project.join("uv.lock")).unwrap(), before);
 
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\ndependencies = ['missing-doctor-valid-package==1.0', 'broken =>1']\n").unwrap();
-    let malformed = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let malformed = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -748,7 +950,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert!(!text(&malformed).contains("OK: dependencies:"));
 
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = []\nother = ['broken =>1']\n").unwrap();
-    let malformed_unselected = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let malformed_unselected = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -765,7 +967,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert!(!text(&malformed_unselected).contains("OK: dependencies:"));
 
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = ['missing-doctor-dev-package==1.0']\nquality = ['missing-doctor-quality-package==1.0']\n").unwrap();
-    let grouped = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let grouped = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -786,7 +988,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     );
 
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = ['missing-doctor-dev-package==1.0']\nquality = ['missing-doctor-quality-package==1.0']\n[tool.uv]\ndefault-groups = ['quality']\n").unwrap();
-    let selected = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let selected = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -807,7 +1009,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
 
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = ['missing-doctor-dev-package==1.0']\nquality = ['missing-doctor-quality-package==1.0']\n").unwrap();
     let with_uv_env = |name: &str, value: &str| {
-        Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        isolated_command(&project)
             .arg("doctor")
             .arg("--project")
             .arg(&project)
@@ -861,7 +1063,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert!(text(&invalid_excluded).contains("invalid requirement"));
 
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = [{include-group = 'quality'}]\nquality = ['missing-doctor-quality-package==1.0']\n").unwrap();
-    let included = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let included = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -899,7 +1101,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert!(!report.contains("group \"c\" is not checked"), "{report}");
 
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\nQA__Test = [{include-group = 'other..test'}]\nOther-Test = ['missing-doctor-normalized-package==1.0']\n[tool.uv]\ndefault-groups = ['qa.test']\n").unwrap();
-    let normalized = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let normalized = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -918,7 +1120,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert!(!report.contains("is not checked"), "{report}");
 
     fs::write(&metadata, "dependency-groups = { dev = ['missing-doctor-inline-package==1.0'] }\n[project]\nname = 'sample'\nversion = '1.0.0'\n").unwrap();
-    let inline = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let inline = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -936,7 +1138,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = ['missing-doctor-dev-package==1.0']\nquality = ['missing-doctor-uvtoml-package==1.0']\n").unwrap();
     fs::write(project.join("uv.toml"), "default-groups = ['quality']\n")
         .unwrap();
-    let configured = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let configured = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -961,7 +1163,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         "default-groups = ['quality']\ndev-dependencies = ['broken =>1']\n",
     )
     .unwrap();
-    let malformed_legacy = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let malformed_legacy = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -982,7 +1184,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert!(!report.contains("correct pyproject.toml"), "{report}");
 
     fs::write(project.join("uv.toml"), "default-groups = ['quality']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
-    let unselected_legacy = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let unselected_legacy = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -1001,7 +1203,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     );
 
     fs::write(project.join("uv.toml"), "default-groups = ['dev']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
-    let selected_legacy = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let selected_legacy = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)
@@ -1028,7 +1230,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     fs::write(project.join("uv.toml"), "default-groups = ['dev']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n")
         .unwrap();
-    let legacy_only = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+    let legacy_only = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
         .arg(&project)

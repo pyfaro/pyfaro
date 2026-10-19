@@ -3,7 +3,7 @@ use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::AtomicBool;
 
@@ -577,19 +577,27 @@ fn uv_configuration(
     root: &Path,
     project_document: &DocumentMut,
     report: &mut Report,
-) -> Result<UvDiscovery> {
+) -> Result<Option<Vec<UvConfiguration>>> {
     if let Some(path) = env::var_os("UV_CONFIG_FILE") {
         let path = root.join(path);
-        return read_uv_configuration_file(&path, report, true);
+        return match read_uv_configuration_file(&path, report, true)? {
+            UvDiscovery::Config(config) => Ok(Some(vec![*config])),
+            UvDiscovery::Missing | UvDiscovery::Invalid => Ok(None),
+        };
     }
     if uv_env_enabled("UV_NO_CONFIG") {
-        return Ok(UvDiscovery::Missing);
+        return Ok(Some(Vec::new()));
     }
+    let mut configurations = Vec::new();
     for directory in root.ancestors() {
         let uv_path = directory.join("uv.toml");
         match read_uv_configuration_file(&uv_path, report, false)? {
             UvDiscovery::Missing => {}
-            result => return Ok(result),
+            UvDiscovery::Config(config) => {
+                configurations.push(*config);
+                break;
+            }
+            UvDiscovery::Invalid => return Ok(None),
         }
         let metadata = directory.join("pyproject.toml");
         let document = if directory == root {
@@ -602,7 +610,7 @@ fn uv_configuration(
                 }
                 Err(error) => {
                     report.line(Severity::Error, format!("dependencies: cannot read {}: {error}; repair the uv configuration", metadata.display()))?;
-                    return Ok(UvDiscovery::Invalid);
+                    return Ok(None);
                 }
             };
             match contents.parse::<DocumentMut>() {
@@ -616,7 +624,7 @@ fn uv_configuration(
                             metadata.display()
                         ),
                     )?;
-                    return Ok(UvDiscovery::Invalid);
+                    return Ok(None);
                 }
             }
         };
@@ -632,17 +640,71 @@ fn uv_configuration(
                     metadata.display()
                 ),
             )?;
-            return Ok(UvDiscovery::Invalid);
+            return Ok(None);
         }
         if document.get("tool").and_then(|tool| tool.get("uv")).is_some() {
-            return Ok(UvDiscovery::Config(Box::new(UvConfiguration {
+            configurations.push(UvConfiguration {
                 document,
                 path: metadata,
                 standalone: false,
-            })));
+            });
+            break;
         }
     }
-    Ok(UvDiscovery::Missing)
+    if let Some(path) = user_uv_configuration_path() {
+        match read_uv_configuration_file(&path, report, false)? {
+            UvDiscovery::Config(config) => configurations.push(*config),
+            UvDiscovery::Invalid => return Ok(None),
+            UvDiscovery::Missing => {}
+        }
+    }
+    for path in system_uv_configuration_paths() {
+        match read_uv_configuration_file(&path, report, false)? {
+            UvDiscovery::Config(config) => {
+                configurations.push(*config);
+                break;
+            }
+            UvDiscovery::Invalid => return Ok(None),
+            UvDiscovery::Missing => {}
+        }
+    }
+    Ok(Some(configurations))
+}
+
+#[cfg(not(windows))]
+fn user_uv_configuration_path() -> Option<PathBuf> {
+    env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .or_else(|| {
+            env::var_os("HOME").map(|home| PathBuf::from(home).join(".config"))
+        })
+        .map(|directory| directory.join("uv/uv.toml"))
+}
+
+#[cfg(windows)]
+fn user_uv_configuration_path() -> Option<PathBuf> {
+    env::var_os("APPDATA")
+        .map(|directory| PathBuf::from(directory).join("uv/uv.toml"))
+}
+
+#[cfg(not(windows))]
+fn system_uv_configuration_paths() -> Vec<PathBuf> {
+    let directories = env::var_os("XDG_CONFIG_DIRS")
+        .map(|paths| env::split_paths(&paths).collect::<Vec<_>>())
+        .filter(|paths| !paths.is_empty())
+        .unwrap_or_else(|| vec![PathBuf::from("/etc/xdg")]);
+    directories
+        .into_iter()
+        .map(|directory| directory.join("uv/uv.toml"))
+        .chain([PathBuf::from("/etc/uv/uv.toml")])
+        .collect()
+}
+
+#[cfg(windows)]
+fn system_uv_configuration_paths() -> Vec<PathBuf> {
+    env::var_os("PROGRAMDATA")
+        .map(|directory| vec![PathBuf::from(directory).join("uv/uv.toml")])
+        .unwrap_or_default()
 }
 
 fn read_uv_configuration_file(
@@ -742,43 +804,58 @@ fn declared_dependencies(
             .line(Severity::Error, "dependencies: [tool.uv] must be a table")?;
         return Ok(None);
     }
-    let uv_configuration = match uv_configuration(root, document, report)? {
-        UvDiscovery::Config(config) => Some(config),
-        UvDiscovery::Missing => None,
-        UvDiscovery::Invalid => return Ok(None),
+    let Some(uv_configuration) = uv_configuration(root, document, report)?
+    else {
+        return Ok(None);
     };
-    let default_groups = uv_configuration
-        .as_ref()
-        .and_then(|config| config.setting("default-groups"));
-    let default_groups_label = uv_configuration
-        .as_ref()
-        .map(|config| config.label("default-groups"))
-        .unwrap_or_else(|| "[tool.uv].default-groups".to_owned());
-    let explicit_defaults = default_groups.is_some();
+    let default_settings: Vec<_> = uv_configuration
+        .iter()
+        .filter_map(|config| {
+            config.setting("default-groups").map(|value| (config, value))
+        })
+        .collect();
+    let explicit_defaults = !default_settings.is_empty();
     let has_legacy_dev = uv_configuration
-        .as_ref()
-        .and_then(|config| config.setting("dev-dependencies"))
-        .is_some();
-    let selected_groups = match default_groups {
+        .iter()
+        .any(|config| config.setting("dev-dependencies").is_some());
+    let selected_groups = match default_settings.first() {
         None => Some(vec!["dev".to_owned()]),
-        Some(value) if value.as_str() == Some("all") => None,
-        Some(value) => {
-            if let Some(entries) = value.as_array() {
-                let mut names = Vec::new();
-                for entry in entries.iter() {
-                    if let Some(name) = entry.as_str() {
-                        names.push(normalize_group_name(name));
-                    } else {
-                        report.line(Severity::Error, format!("dependencies: {default_groups_label} must contain only group names"))?;
-                        invalid = true;
+        Some((_, value)) if value.as_str() == Some("all") => None,
+        Some((_, value)) if value.as_array().is_some() => {
+            let mut names = Vec::new();
+            for (config, value) in default_settings {
+                let label = config.label("default-groups");
+                if let Some(entries) = value.as_array() {
+                    for entry in entries.iter() {
+                        if let Some(name) = entry.as_str() {
+                            names.push(normalize_group_name(name));
+                        } else {
+                            report.line(Severity::Error, format!("dependencies: {label} must contain only group names"))?;
+                            invalid = true;
+                        }
                     }
+                } else {
+                    report.line(
+                        Severity::Error,
+                        format!(
+                            "dependencies: {label} must be a list or 'all'"
+                        ),
+                    )?;
+                    invalid = true;
                 }
-                Some(names)
-            } else {
-                report.line(Severity::Error, format!("dependencies: {default_groups_label} must be a list or 'all'"))?;
-                invalid = true;
-                Some(Vec::new())
             }
+            Some(names)
+        }
+        Some((config, _)) => {
+            report.line(
+                Severity::Error,
+                format!(
+                    "dependencies: {} must be a list or 'all'",
+                    config.label("default-groups")
+                ),
+            )?;
+            invalid = true;
+            Some(Vec::new())
         }
     };
     let disabled_groups: Vec<String> = env::var("UV_NO_GROUP")
@@ -881,9 +958,10 @@ fn declared_dependencies(
             invalid = true;
         }
     }
-    if let Some(config) = uv_configuration.as_ref()
-        && let Some(legacy) = config.setting("dev-dependencies")
-    {
+    for config in &uv_configuration {
+        let Some(legacy) = config.setting("dev-dependencies") else {
+            continue;
+        };
         let label = config.label("dev-dependencies");
         let selected = selected_groups
             .as_ref()
