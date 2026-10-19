@@ -6,31 +6,29 @@ quality checks, tests, and development workflows into one cohesive CLI.
 
 ## Status
 
-**Experimental alpha — [`0.1.0-alpha.1`](https://crates.io/crates/pyfaro/0.1.0-alpha.1),
-published on 2026-10-19.** The published alpha implements `init`, `--help`,
-and `--version`. Interfaces may change between alpha versions.
-The repository prepares `0.1.0-alpha.2` as an unpublished release candidate.
-It adds `sync`, `run`, and `tools`; build from source to try them before
-publication. The installation command below still installs the published
-`alpha.1`. Completing the Foundation backlog milestone does not publish a
-stable `0.1.0`, and this candidate remains experimental.
+**Experimental alpha — [`0.1.0-alpha.2`](https://crates.io/crates/pyfaro/0.1.0-alpha.2),
+published on 2026-10-19.** The published crate implements `init`, `sync`,
+`run`, `tools`, `--help`, and `--version`. Interfaces may change between alpha
+versions. The repository now develops unpublished `0.1.0-alpha.3`.
+Completing the Foundation backlog milestone did not publish stable `0.1.0`.
 
-The first alpha targets **Linux** for `init --apply`. macOS and Windows
+The alpha series targets **Linux** for `init --apply`. macOS and Windows
 retain builds, help/version, and non-writing previews; applying initialization
 there is explicitly unavailable until lifecycle guarantees are implemented.
-The development `sync` and `run` commands operate on all three CI platforms.
+The published `sync` and `run` commands operate on all three CI platforms.
 
 ## Install the alpha
 
 With Rust 1.90 or newer and Cargo installed:
 
 ```sh
-cargo install pyfaro --version 0.1.0-alpha.1 --locked
+cargo install pyfaro --version 0.1.0-alpha.2 --locked
 pyfaro --version
 ```
 
-The expected output is `pyfaro 0.1.0-alpha.1`. uv and Python are separate
-runtime requirements for applying initialization on Linux.
+The expected output is `pyfaro 0.1.0-alpha.2`. uv and Python are separate
+runtime requirements for applying initialization on Linux and using `sync`
+or `run` on supported platforms.
 
 ## Try the initialization workflow
 
@@ -63,7 +61,7 @@ executable. See the [init guide](docs/init.md) for exact behavior, error
 handling, and alpha limitations, and the [release instructions](docs/releasing.md)
 for the publication approval gate.
 
-In the `alpha.2` candidate, `pyfaro sync [PATH]` creates or updates the
+In the published `alpha.2`, `pyfaro sync [PATH]` creates or updates the
 project's `.venv` and `uv.lock` through uv. Use `--locked` to reject stale
 locks or `--frozen` to install from an existing lock without checking it.
 From a nested directory, Pyfaro selects the nearest `pyproject.toml`;
@@ -96,8 +94,8 @@ tools are found in the selected project's `.venv`, then `VIRTUAL_ENV`, then
 
 Remaining planned commands: `create`, `add`, `remove`, `dev`,
 `lint`, `fmt`, `type`, `check`, `test`, `build`, and `doctor`.
-These commands are roadmap items, not working functionality. The `alpha.2`
-candidate includes `init`, `sync`, `run`, and `tools`.
+These commands are roadmap items, not working functionality. The published
+`alpha.2` includes `init`, `sync`, `run`, and `tools`.
 
 ## Integration over reimplementation
 

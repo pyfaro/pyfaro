@@ -1,6 +1,6 @@
 # Inspect external tools
 
-`pyfaro tools` is available in the unpublished `0.1.0-alpha.2` candidate. It
+`pyfaro tools` is available in published `0.1.0-alpha.2` and later versions. It
 prints one line each for uv, Ruff, ty, and pytest, with the resolved executable
 path and reported version. Unavailable or incompatible tools appear as
 `unavailable` with a reason. The list is informational and exits successfully.

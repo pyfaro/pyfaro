@@ -6,7 +6,7 @@ It is experimental; the configuration and CLI are not stable contracts yet.
 
 ## Requirements
 
-- **Linux for `--apply` in this first alpha.** macOS/Windows support builds,
+- **Linux for `--apply` in this alpha series.** macOS/Windows support builds,
   help/version, and non-writing previews, but applying returns an explicit
   unsupported-platform error before invoking uv or modifying project files.
   Broader platform support remains on the existing roadmap.
@@ -64,10 +64,10 @@ Reapplying to an unchanged project is idempotent. uv rechecks its lockfile
 without `--upgrade`; external metadata or index changes may still require
 uv to update a stale lockfile. Commit `pyproject.toml` and `uv.lock` together.
 
-After initialization, the unpublished `alpha.2` candidate can synchronize the
-environment with `pyfaro sync --locked` and execute through it with
-`pyfaro run --locked -- python --version`. In the published `alpha.1`, use uv
-directly for workflows not yet implemented there:
+After initialization, published `alpha.2` can synchronize the environment
+with `pyfaro sync --locked` and execute through it with
+`pyfaro run --locked -- python --version`. Users remaining on `alpha.1` must
+use uv directly for these workflows:
 
 ```sh
 cd my-project
@@ -115,8 +115,7 @@ another metadata/lockfile writer concurrently with initialization.
 - Dynamic/source dependencies that require a build to determine metadata
   may fail with `--no-build`; the previous project files are then restored.
 - There is no preset selection or automatic quality-tool dependency setup.
-  The published `alpha.1` has no `sync` or `run`; both are in the unpublished
-  `alpha.2` candidate.
+  `sync` and `run` require `alpha.2` or later.
 
 ## Verification
 
@@ -129,4 +128,4 @@ process-tree cancellation and confirm that descendant PIDs have been reaped.
 Linux additionally tests actual SIGINT delivery through the CLI. CI runs the
 full `init --apply` workflow suite on Linux and checks compilation, previews,
 and the unsupported-apply contract on macOS and Windows. Real `sync` and
-`run` smoke tests execute on all three platforms in the development build.
+`run` smoke tests execute on all three platforms.

@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased — 0.1.0-alpha.2 release candidate
+## Unreleased — 0.1.0-alpha.3 development
+
+No changes yet. This version has not been published.
+
+## 0.1.0-alpha.2 — 2026-10-19
+
+Published on [crates.io](https://crates.io/crates/pyfaro/0.1.0-alpha.2).
+This experimental release adds the following workflows to `alpha.1`:
 
 - Load and validate typed Pyfaro configuration from the selected project's
   `pyproject.toml`, with a non-writing schema default and path-aware errors.
