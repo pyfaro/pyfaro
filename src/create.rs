@@ -214,10 +214,16 @@ fn validate_package(package: &str) -> Result<()> {
         && bytes
             .iter()
             .all(|byte| byte.is_ascii_alphanumeric() || *byte == b'_');
-    if !valid || PYTHON_KEYWORDS.contains(&package) || package == "__pycache__"
+    let stdlib = include_str!("python_stdlib_modules.txt")
+        .split_whitespace()
+        .any(|name| name == package);
+    if !valid
+        || PYTHON_KEYWORDS.contains(&package)
+        || package == "__pycache__"
+        || stdlib
     {
         return Err(Error::Project(format!(
-            "invalid Python package name: {package}; use an ASCII identifier that is not a keyword"
+            "invalid Python package name: {package}; use an ASCII identifier that is not a keyword, standard-library module, or reserved build directory"
         )));
     }
     Ok(())

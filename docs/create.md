@@ -33,7 +33,10 @@ pyfaro create cli acme-tools --package acme_console --command acme-do \
 ```
 
 `--package` selects the Python import package; by default it is derived from
-the distribution name as above. It must be a Python identifier. `--command`
+the distribution name as above. It must be a Python identifier, not a Python
+standard-library module, keyword, or reserved `__pycache__` directory. This
+also applies to the derived default; choose another distribution name if it
+would collide. `--command`
 selects the installed executable name; by default it is the distribution
 name with dots changed to hyphens. It accepts ASCII letters, digits, hyphens,
 and underscores. These names

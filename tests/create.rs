@@ -114,8 +114,8 @@ fn cli_uses_separate_distribution_package_and_command_names() {
         &["python", "-m", "unittest", "discover", "-s", "tests"],
     ));
     assert_eq!(
-        assert_success(run_project(&project, &cache, &["acme-do"])),
-        "Hello from acme-tools!\n"
+        assert_success(run_project(&project, &cache, &["acme-do"])).trim_end(),
+        "Hello from acme-tools!"
     );
     assert_success(uv(&project, &cache, &["build"]));
     assert!(project.join("dist/acme_tools-0.1.0-py3-none-any.whl").is_file());
@@ -129,6 +129,8 @@ fn invalid_inputs_do_not_create_a_project() {
         (vec!["lib", "hello", "--python", "3.12.1"], "Python version"),
         (vec!["cli", "hello", "--package", "for"], "package name"),
         (vec!["cli", "hello", "--package", "__pycache__"], "package name"),
+        (vec!["cli", "hello", "--package", "unittest"], "package name"),
+        (vec!["lib", "unittest"], "package name"),
         (vec!["cli", "hello", "--command", "bad/name"], "command name"),
     ] {
         let target = sandbox.path().join("new-project");
@@ -215,8 +217,9 @@ fn dotted_distribution_gets_a_valid_default_command() {
     assert!(metadata.contains("acme-tools = \"acme_tools.cli:main\""));
     assert_success(sync(&project, &cache));
     assert_eq!(
-        assert_success(run_project(&project, &cache, &["acme-tools"])),
-        "Hello from acme.tools!\n"
+        assert_success(run_project(&project, &cache, &["acme-tools"]))
+            .trim_end(),
+        "Hello from acme.tools!"
     );
     assert_success(uv(&project, &cache, &["build"]));
 }
