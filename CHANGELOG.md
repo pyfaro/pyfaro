@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 0.1.0-alpha.3 development
+## Unreleased — 0.2.0-alpha.1 development
 
 This version has not been published.
 
@@ -14,6 +14,8 @@ This version has not been published.
   permits interpreter downloads; pinning follows uv's project constraints.
 - Add a read-only `pyfaro doctor` report for project configuration, Python and
   tool versions, layout conflicts, and missing runtime distributions.
+- Complete the v0.2.0 project-management backlog without publishing a new
+  crate, tag, or GitHub Release.
 
 ## 0.1.0-alpha.2 — 2026-10-19
 

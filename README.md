@@ -6,18 +6,18 @@ quality checks, tests, and development workflows into one cohesive CLI.
 
 ## Status
 
-**Experimental alpha — [`0.1.0-alpha.2`](https://crates.io/crates/pyfaro/0.1.0-alpha.2),
-published on 2026-10-19.** The published crate implements `init`, `sync`,
-`run`, `tools`, `--help`, and `--version`. Interfaces may change between alpha
-versions. The repository now develops unpublished `0.1.0-alpha.3`.
-Completing the Foundation backlog milestone did not publish stable `0.1.0`.
+**Latest published alpha: [`0.1.0-alpha.2`](https://crates.io/crates/pyfaro/0.1.0-alpha.2),
+published on 2026-10-19.** It implements `init`, `sync`, `run`, and `tools`.
+The repository develops **unpublished `0.2.0-alpha.1`** with the v0.2.0
+project-management workflows. Interfaces may change between alpha versions.
+Completing a backlog milestone does not publish a stable or prerelease crate.
 The [GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.1.0-alpha.2)
 tags the published source; it does not include standalone binaries.
 
-The alpha series targets **Linux** for `init --apply`. macOS and Windows
+The current alpha series targets **Linux** for `init --apply`. macOS and Windows
 retain builds, help/version, and non-writing previews; applying initialization
 there is explicitly unavailable until lifecycle guarantees are implemented.
-The published `sync` and `run` commands operate on all three CI platforms.
+The other implemented workflows are tested on all three CI platforms.
 
 ## Install the alpha
 
@@ -36,7 +36,8 @@ or `run` on supported platforms.
 
 Install uv separately and have a suitable Python interpreter available.
 The tested uv version is **0.9.26**; older versions are rejected. Pyfaro never
-installs uv or downloads Python automatically.
+installs uv or downloads Python automatically. The development-only
+`pyfaro python install` explicitly allows uv to download an interpreter.
 
 Preview initialization of a new or existing standalone project, then
 explicitly apply it:
@@ -119,8 +120,8 @@ side effects. Blocking findings return a non-zero exit code. See the
 - Combine non-destructive quality checks with clear diagnostics.
 - Build Python distributions through uv; later add workspaces and task graphs.
 
-Remaining planned commands: `dev`,
-`lint`, `fmt`, `type`, `check`, `test`, and `build`.
+Remaining planned commands: `dev`, `lint`, `fmt`, `type`, `check`, `test`, and
+`build`.
 These commands are roadmap items, not working functionality. The published
 `alpha.2` includes `init`, `sync`, `run`, and `tools`; the development version
 also includes `create`, `add`, `remove`, `python`, and `doctor`.
@@ -156,8 +157,8 @@ cargo run --locked -- --version
 ```
 
 Python, uv, Ruff, ty, and pytest are not needed to compile the Rust binary.
-Running `init --apply`, `sync`, `run`, and their integration tests requires uv and
-Python.
+Running `init --apply`, `sync`, `run`, dependency, Python-version, and doctor
+integration tests requires uv and Python. Local template creation does not.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for checks and development conventions.
 
 ## Roadmap
@@ -167,7 +168,7 @@ Milestones are planning targets, not release announcements or dates.
 | Milestone | Focus |
 | --- | --- |
 | v0.1.0 — Foundation | Architecture, CLI, configuration, process runner, CI |
-| v0.2.0 — Project Management | Creation, environments, dependencies, run |
+| v0.2.0 — Project Management | Creation, environments, dependencies, Python versions, run, doctor |
 | v0.3.0 — Code Quality | Ruff, ty, pytest; first useful MVP |
 | v0.4.0 — Developer Experience | Development mode, presets, simple tasks |
 | v0.5.0 — Public Beta | Packaging, installers, public distribution |

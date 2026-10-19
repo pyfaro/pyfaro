@@ -3,14 +3,16 @@
 The latest published version is [`0.1.0-alpha.2`](https://crates.io/crates/pyfaro/0.1.0-alpha.2).
 It adds `sync`, `run`, and `tools` to the experimental `init` workflow.
 `init --apply` remains Linux-only; `sync` and `run` are tested on Linux,
-macOS, and Windows. The repository now develops unpublished `0.1.0-alpha.3`.
+macOS, and Windows. The repository now develops unpublished `0.2.0-alpha.1`,
+which adds project creation, dependency editing, Python-version commands,
+and doctor. Its version number is not a publication approval.
 
-Completing the `v0.1.0 — Foundation` backlog milestone means its source-work
-criteria are met, not that a stable `0.1.0` crate has shipped. CI package
-and publish dry-runs do not upload a crate. Before any future publication,
-the maintainer must explicitly approve the exact version and merged commit
-after reviewing the archive and CI evidence. Approval of a preparation PR
-alone is not publication approval.
+Completing the `v0.1.0 — Foundation` or `v0.2.0 — Project Management` backlog
+milestones means their source-work criteria are met, not that a stable crate
+has shipped. CI package and publish dry-runs do not upload a crate. Before any
+future publication, the maintainer must explicitly approve the exact version
+and merged commit after reviewing the archive and CI evidence. A preparation
+PR alone is not publication approval.
 
 ## Published release: 0.1.0-alpha.2
 
@@ -29,7 +31,7 @@ alone is not publication approval.
   smoke checks with uv 0.9.26. Reapplying preserved `pyproject.toml` and
   `uv.lock` byte-for-byte.
 - The annotated [`v0.1.0-alpha.2` tag](https://github.com/pyfaro/pyfaro/tree/v0.1.0-alpha.2)
-  resolves to the source commit above, not the later `alpha.3` development
+  resolves to the source commit above, not a later development
   commit. The [GitHub Release](https://github.com/pyfaro/pyfaro/releases/tag/v0.1.0-alpha.2)
   was published as a prerelease at `2026-10-19T06:19:32Z` after separate
   maintainer authorization. It has no attached standalone binaries or
@@ -95,7 +97,7 @@ not be committed to this repository.
 ## Pre-publication verification for a future release
 
 First agree on the next release version and prepare it in a reviewed PR.
-Do not publish the repository's `0.1.0-alpha.3` development version merely
+Do not publish the repository's `0.2.0-alpha.1` development version merely
 because it is present in `Cargo.toml`. Use a clean checkout of the merged
 preparation commit, not the PR branch, and the pinned Rust toolchain. Install
 uv 0.9.26 separately and provide Python 3.10+ (CI uses 3.12). Repeat these
@@ -120,7 +122,7 @@ cargo publish --dry-run --locked
 
 Review the package inventory: Rust sources, test fixtures, Cargo manifests
 and lockfile, license, changelog, README, contributor/security documents,
-and initialization/release/architecture docs are explicitly included.
+and all command/release/architecture docs are explicitly included.
 Development graph/cache state, GitHub/backlog automation, and build outputs
 must not enter the archive. Cargo also adds its normalized/original manifests
 and VCS information. Inspect `target/package/pyfaro-<approved-version>.crate`
@@ -155,6 +157,8 @@ cargo run --locked -- sync --project "$smoke_project" --offline
 cargo run --locked -- run --project "$smoke_project" --locked --offline -- python --version
 cargo run --locked -- tools uv
 cargo run --locked -- tools --project "$smoke_project"
+cargo run --locked -- python list --only-installed --offline
+cargo run --locked -- doctor --project "$smoke_project"
 ```
 
 On Windows, run the equivalent commands in PowerShell with an exit-status
@@ -171,6 +175,8 @@ Invoke-Checked { cargo run --locked -- sync --project $smokeProject --offline }
 Invoke-Checked { cargo run --locked -- run --project $smokeProject --locked --offline -- python --version }
 Invoke-Checked { cargo run --locked -- tools uv }
 Invoke-Checked { cargo run --locked -- tools --project $smokeProject }
+Invoke-Checked { cargo run --locked -- python list --only-installed --offline }
+Invoke-Checked { cargo run --locked -- doctor --project $smokeProject }
 ```
 
 Each block uses a fresh temporary project path. Remove its directory after
@@ -178,8 +184,11 @@ recording the evidence; keep it temporarily if a check fails for diagnosis.
 
 The commands should exit successfully. `sync` creates `.venv` and `uv.lock`,
 `run` prints the interpreter version, and `tools uv` reports the selected uv
-path and version. The all-tool listing may mark optional Ruff, ty, or pytest
-as unavailable without failing or installing them.
+path and version. The all-tool listing and doctor may mark optional Ruff, ty,
+or pytest as unavailable without failing or installing them. Creation,
+dependency editing, Python pinning, and doctor failure paths are covered by
+the all-target integration suite; test a generated library and CLI manually
+before a future v0.2 publication approval.
 
 Also run `cargo test --locked --all-targets` from the unpacked package to
 verify the shipped tests and fixtures are self-contained. Check the
@@ -204,9 +213,10 @@ until the merged archive and checksum have been verified.
    in a disposable location, substituting concrete paths and version.
 
 4. Confirm the resulting binary's version and smoke-test `init`, `sync`,
-   `run`, and `tools` with the external uv/Python requirements. Record the
-   actual publication date and registry checksum in a follow-up reviewed PR;
-   update the changelog, release record, README, and development package version.
+   `run`, `tools`, `create`, `add`, `remove`, `python`, and `doctor` with the
+   external uv/Python requirements. Record the actual publication date and
+   registry checksum in a follow-up reviewed PR. Update the changelog,
+   release record, README, and development package version.
 5. Create/push a release tag and, if requested, a manual GitHub Release only
    after publication is verified and each action is separately authorized.
    Point the tag to the exact published source commit, not a later development
