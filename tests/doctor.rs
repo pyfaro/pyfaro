@@ -205,6 +205,37 @@ fn named_pipe_configuration_paths_are_blocking() {
 
 #[cfg(unix)]
 #[test]
+fn dangling_configuration_symlinks_are_blocking() {
+    use std::os::unix::fs::symlink;
+
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
+        .unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    for name in [
+        "ruff.toml",
+        "ty.toml",
+        "pytest.ini",
+        "tox.ini",
+        "setup.cfg",
+        "uv.toml",
+    ] {
+        let path = project.join(name);
+        symlink("missing", &path).unwrap();
+        let output = doctor(&project, &bin, &uv);
+        assert_eq!(output.status.code(), Some(1), "{output:?}");
+        assert!(text(&output).contains("cannot read"), "{output:?}");
+        assert!(text(&output).contains(name), "{output:?}");
+        fs::remove_file(path).unwrap();
+    }
+}
+
+#[cfg(unix)]
+#[test]
 fn named_pipe_ancestor_metadata_is_blocking() {
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("parent/project");
@@ -287,6 +318,27 @@ fn real_uv_rejects_unknown_standalone_settings() {
         .unwrap();
     assert_eq!(valid.status.code(), Some(0), "{valid:?}");
     assert!(!cache.exists());
+
+    fs::remove_file(project.join("uv.toml")).unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\n[tool.uv]\ndefualt-groups = ['dev']\n",
+    )
+    .unwrap();
+    let invalid_project_settings = doctor(&project, &bin, &uv);
+    assert_eq!(
+        invalid_project_settings.status.code(),
+        Some(1),
+        "{invalid_project_settings:?}"
+    );
+    assert!(
+        text(&invalid_project_settings).contains("uv rejected"),
+        "{invalid_project_settings:?}"
+    );
+    assert!(
+        text(&invalid_project_settings).contains("defualt-groups"),
+        "{invalid_project_settings:?}"
+    );
 }
 
 #[test]
@@ -1126,6 +1178,7 @@ fn explicit_and_no_config_override_discovery_without_project_only_settings() {
     assert_eq!(override_output.status.code(), Some(0), "{override_output:?}");
     assert!(report.contains("group \"quality\" is not checked"), "{report}");
     assert!(!report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(!report.contains("uv.toml takes precedence"), "{report}");
 
     let no_config = doctor_command(&project, &bin, &uv)
         .env("UV_NO_CONFIG", "1")
@@ -1135,6 +1188,7 @@ fn explicit_and_no_config_override_discovery_without_project_only_settings() {
     assert_eq!(no_config.status.code(), Some(0), "{no_config:?}");
     assert!(report.contains("group \"quality\" is not checked"), "{report}");
     assert!(!report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(!report.contains("uv.toml takes precedence"), "{report}");
 
     let both = doctor_command(&project, &bin, &uv)
         .current_dir(sandbox.path())

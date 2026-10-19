@@ -21,7 +21,7 @@ fn main() {
     let args: Vec<_> = env::args().skip(1).collect();
     if args.len() == 7
         && args[0] == "--no-cache"
-        && args[1] == "--config-file"
+        && (args[1] == "--config-file" || args[1] == "--directory")
         && args[3..] == ["--offline", "python", "list", "--only-installed"]
     {
         return;

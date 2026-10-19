@@ -302,7 +302,7 @@ fn inspect_configuration(
                         Err(error)
                             if error.kind() == std::io::ErrorKind::NotFound =>
                         {
-                            false
+                            missing_tool_configuration(&path, report)?
                         }
                         Err(error) => {
                             report.line(Severity::Error, format!("configuration: cannot read {}: {error}; check the file and its permissions", path.display()))?;
@@ -325,7 +325,7 @@ fn inspect_configuration(
                     Err(error)
                         if error.kind() == std::io::ErrorKind::NotFound =>
                     {
-                        false
+                        missing_tool_configuration(&path, report)?
                     }
                     Err(error) => {
                         report.line(Severity::Error, format!("configuration: cannot inspect {}: {error}; check the file and its permissions", path.display()))?;
@@ -370,7 +370,9 @@ fn inspect_configuration(
         }
     }
     if document.get("tool").and_then(|tool| tool.get("uv")).is_some()
-        && root.join("uv.toml").exists()
+        && env::var_os("UV_CONFIG_FILE").is_none()
+        && !uv_env_enabled("UV_NO_CONFIG")
+        && fs::symlink_metadata(root.join("uv.toml")).is_ok()
     {
         report.line(
             Severity::Warn,
@@ -378,6 +380,16 @@ fn inspect_configuration(
         )?;
     }
     Ok(())
+}
+
+fn missing_tool_configuration(
+    path: &Path,
+    report: &mut Report,
+) -> Result<bool> {
+    if path.is_symlink() {
+        report.line(Severity::Error, format!("configuration: cannot read {}: dangling symlink; repair or remove it", path.display()))?;
+    }
+    Ok(false)
 }
 
 fn inspect_workspace(

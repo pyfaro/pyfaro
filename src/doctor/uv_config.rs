@@ -134,6 +134,17 @@ pub(super) fn uv_configuration(
             return Ok(None);
         }
         if document.get("tool").and_then(|tool| tool.get("uv")).is_some() {
+            if let Some(binary) = uv_binary
+                && !probe_uv_configuration(
+                    binary,
+                    &metadata,
+                    Some(root),
+                    cancelled,
+                    report,
+                )?
+            {
+                return Ok(None);
+            }
             configurations.push(UvConfiguration {
                 document,
                 path: metadata,
@@ -225,7 +236,9 @@ fn read_uv_configuration_file(
     let contents = match contents {
         Ok(contents) => contents,
         Err(error)
-            if !explicit && error.kind() == std::io::ErrorKind::NotFound =>
+            if !explicit
+                && error.kind() == std::io::ErrorKind::NotFound
+                && !path.is_symlink() =>
         {
             return Ok(UvDiscovery::Missing);
         }
@@ -301,39 +314,61 @@ fn read_uv_configuration_file(
     if invalid {
         return Ok(UvDiscovery::Invalid);
     }
-    if let Some(binary) = uv_binary {
-        let stderr = tempfile::NamedTempFile::new().map_err(|error| {
-            Error::io("create uv configuration output", path, error)
-        })?;
-        let mut command = Command::new(binary);
-        command
-            .arg("--no-cache")
-            .arg("--config-file")
-            .arg(path)
-            .arg("--offline")
-            .arg("python")
-            .arg("list")
-            .arg("--only-installed")
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .env_remove("UV_WORKING_DIR")
-            .env_remove("UV_PROJECT")
-            .env_remove("UV_CONFIG_FILE")
-            .env_remove("UV_NO_CONFIG")
-            .stderr(
-                stderr
-                    .reopen()
-                    .map_err(|error| Error::io("open", stderr.path(), error))?,
-            );
-        let status = process::run(command, cancelled)?;
-        if !status.success() {
-            report.line(Severity::Error, format!("dependencies: uv rejected {}: {}; correct the uv configuration", path.display(), process::read_diagnostic(stderr.path())?))?;
-            return Ok(UvDiscovery::Invalid);
-        }
+    if let Some(binary) = uv_binary
+        && !probe_uv_configuration(binary, path, None, cancelled, report)?
+    {
+        return Ok(UvDiscovery::Invalid);
     }
     Ok(UvDiscovery::Config(Box::new(UvConfiguration {
         document,
         path: path.to_path_buf(),
         standalone: true,
     })))
+}
+
+fn probe_uv_configuration(
+    binary: &Path,
+    path: &Path,
+    project_root: Option<&Path>,
+    cancelled: &AtomicBool,
+    report: &mut Report,
+) -> Result<bool> {
+    let stderr = tempfile::NamedTempFile::new().map_err(|error| {
+        Error::io("create uv configuration output", path, error)
+    })?;
+    let mut command = Command::new(binary);
+    command.arg("--no-cache");
+    if let Some(project_root) = project_root {
+        command.arg("--directory").arg(project_root);
+    } else {
+        command.arg("--config-file").arg(path);
+    }
+    command
+        .arg("--offline")
+        .arg("python")
+        .arg("list")
+        .arg("--only-installed")
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .env_remove("UV_WORKING_DIR")
+        .env_remove("UV_PROJECT")
+        .env_remove("UV_CONFIG_FILE")
+        .env_remove("UV_NO_CONFIG")
+        .stderr(
+            stderr
+                .reopen()
+                .map_err(|error| Error::io("open", stderr.path(), error))?,
+        );
+    let status = process::run(command, cancelled)?;
+    let diagnostic = process::read_diagnostic(stderr.path())?;
+    if !status.success()
+        || (project_root.is_some()
+            && diagnostic.contains(
+                "Failed to parse `pyproject.toml` during settings discovery",
+            ))
+    {
+        report.line(Severity::Error, format!("dependencies: uv rejected {}: {diagnostic}; correct the uv configuration", path.display()))?;
+        return Ok(false);
+    }
+    Ok(true)
 }

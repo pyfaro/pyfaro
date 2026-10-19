@@ -66,7 +66,9 @@ project management is disabled; doctor does not scan ancestor workspaces for it.
 
 For uv, a project `uv.toml` takes precedence over `[tool.uv]` in
 `pyproject.toml`; doctor reports their
-coexistence as a warning. A non-table `[tool.uv]` value is an error only when
+coexistence as a warning when the project file is selected. `UV_CONFIG_FILE`
+and `UV_NO_CONFIG` suppress that warning because they override discovery.
+A non-table `[tool.uv]` value is an error only when
 that pyproject configuration is selected.
 
 Doctor parses `[project].dependencies` and uv's default dependency groups
@@ -96,9 +98,11 @@ of discovery; relative paths are resolved from the selected project directory,
 as they are for uv commands run by Pyfaro. `UV_NO_CONFIG` disables discovery
 unless `UV_CONFIG_FILE` is also set. Missing explicit files and unreadable or
 malformed discovered files are blocking findings that identify the file to fix.
-Doctor asks the selected uv executable to validate each selected standalone
-configuration file using a no-cache, offline, installed-interpreter-only command. This
-also catches unknown or mistyped uv settings without duplicating uv's schema.
+Doctor asks the selected uv executable to validate selected standalone files
+and `[tool.uv]` settings using a no-cache, offline,
+installed-interpreter-only command. This catches unknown or mistyped uv
+settings without duplicating uv's schema. Missing targets of configuration
+symlinks are blocking rather than silently treated as absent.
 Both table and inline-table group declarations are accepted. Group names in
 defaults and includes match according to PEP 735: case is ignored and runs of
 `-`, `_`, or `.` are equivalent.
