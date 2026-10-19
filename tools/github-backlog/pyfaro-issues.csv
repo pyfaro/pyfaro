@@ -34,7 +34,7 @@ P02,v0.2.0 — Project Management,[templates] Implement `pyfaro create` for libr
 - Generated project can sync, test and build","P01,F03"
 P03,v0.2.0 — Project Management,[templates] Implement `pyfaro create` for CLIs,"type:feature,area:templates,priority:P1",Generate an installable Python command-line project.,"- Produces valid console_scripts entry point
 - Supports package and command naming
-- Template passes Pyfaro checks",P02
+- Template syncs, runs smoke tests, and builds with the current Pyfaro workflows; aggregate quality checks are covered by Q07",P02
 P04,v0.2.0 — Project Management,[config] Implement `pyfaro init` for existing projects,"type:feature,area:config,priority:P0",Opt in existing pyproject.toml projects without destructive changes.,"- Shows proposed modifications before applying
 - Preserves third-party tool configuration and dependencies
 - A second run is idempotent","F03,P01"

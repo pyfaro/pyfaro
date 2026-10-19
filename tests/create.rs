@@ -128,6 +128,7 @@ fn invalid_inputs_do_not_create_a_project() {
         (vec!["lib", "../escape"], "project name"),
         (vec!["lib", "hello", "--python", "3.12.1"], "Python version"),
         (vec!["cli", "hello", "--package", "for"], "package name"),
+        (vec!["cli", "hello", "--package", "__pycache__"], "package name"),
         (vec!["cli", "hello", "--command", "bad/name"], "command name"),
     ] {
         let target = sandbox.path().join("new-project");
@@ -183,5 +184,39 @@ fn numeric_distribution_gets_an_importable_package() {
         &cache,
         &["python", "-m", "unittest", "discover", "-s", "tests"],
     ));
+    assert_success(uv(&project, &cache, &["build"]));
+}
+
+#[test]
+fn repeated_separators_normalize_to_a_buildable_package() {
+    assert_pinned_uv();
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("normalized");
+    let cache = sandbox.path().join("uv-cache");
+    assert_success(pyfaro(&["lib", "foo--bar"], &project));
+    assert!(project.join("src/foo_bar/__init__.py").is_file());
+    assert_success(sync(&project, &cache));
+    assert_success(run_project(
+        &project,
+        &cache,
+        &["python", "-m", "unittest", "discover", "-s", "tests"],
+    ));
+    assert_success(uv(&project, &cache, &["build"]));
+}
+
+#[test]
+fn dotted_distribution_gets_a_valid_default_command() {
+    assert_pinned_uv();
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("dotted");
+    let cache = sandbox.path().join("uv-cache");
+    assert_success(pyfaro(&["cli", "acme.tools"], &project));
+    let metadata = fs::read_to_string(project.join("pyproject.toml")).unwrap();
+    assert!(metadata.contains("acme-tools = \"acme_tools.cli:main\""));
+    assert_success(sync(&project, &cache));
+    assert_eq!(
+        assert_success(run_project(&project, &cache, &["acme-tools"])),
+        "Hello from acme.tools!\n"
+    );
     assert_success(uv(&project, &cache, &["build"]));
 }

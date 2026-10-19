@@ -15,8 +15,9 @@ pub(crate) fn run(args: CreateArgs) -> Result<()> {
     let (project, package, kind) = match args.kind {
         CreateKind::Lib(project) => (project, None, TemplateKind::Library),
         CreateKind::Cli(args) => {
-            let command =
-                args.command.unwrap_or_else(|| args.project.name.clone());
+            let command = args
+                .command
+                .unwrap_or_else(|| args.project.name.replace('.', "-"));
             (args.project, args.package, TemplateKind::Cli(command))
         }
     };
@@ -30,8 +31,7 @@ fn create(
 ) -> Result<()> {
     validate_distribution(&project.name)?;
     validate_python(&project.python)?;
-    let mut default_package =
-        project.name.replace(['-', '.'], "_").to_ascii_lowercase();
+    let mut default_package = normalized_package(&project.name);
     if default_package.as_bytes()[0].is_ascii_digit() {
         default_package.insert(0, '_');
     }
@@ -117,7 +117,7 @@ fn write_project(
     metadata.push_str(
         "\n[build-system]\nrequires = [\"uv_build>=0.9.26,<0.10.0\"]\nbuild-backend = \"uv_build\"\n",
     );
-    if package != name.replace(['-', '.'], "_").to_ascii_lowercase() {
+    if package != normalized_package(name) {
         metadata.push_str(&format!(
             "\n[tool.uv.build-backend]\nmodule-name = \"{package}\"\n"
         ));
@@ -177,6 +177,20 @@ fn write(path: &Path, contents: &str) -> Result<()> {
     fs::write(path, contents).map_err(|error| Error::io("write", path, error))
 }
 
+fn normalized_package(name: &str) -> String {
+    let mut package = String::new();
+    for character in name.chars() {
+        if matches!(character, '-' | '_' | '.') {
+            if !package.ends_with('_') {
+                package.push('_');
+            }
+        } else {
+            package.push(character.to_ascii_lowercase());
+        }
+    }
+    package
+}
+
 fn validate_distribution(name: &str) -> Result<()> {
     let bytes = name.as_bytes();
     if bytes.is_empty()
@@ -200,7 +214,8 @@ fn validate_package(package: &str) -> Result<()> {
         && bytes
             .iter()
             .all(|byte| byte.is_ascii_alphanumeric() || *byte == b'_');
-    if !valid || PYTHON_KEYWORDS.contains(&package) {
+    if !valid || PYTHON_KEYWORDS.contains(&package) || package == "__pycache__"
+    {
         return Err(Error::Project(format!(
             "invalid Python package name: {package}; use an ASCII identifier that is not a keyword"
         )));
