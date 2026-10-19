@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use toml_edit::{DocumentMut, Item, Table, value};
+use toml_edit::{DocumentMut, InlineTable, Item, Table, Value, value};
 
 use crate::error::{Error, Result};
 
@@ -53,11 +53,17 @@ pub(crate) fn prepare(original: &str) -> Result<String> {
         tool.set_implicit(true);
         document["tool"] = Item::Table(tool);
     }
+    let inline_tool = document["tool"].is_inline_table();
     let tool = document["tool"]
         .as_table_like_mut()
         .ok_or_else(|| Error::Project("tool must be a TOML table".into()))?;
     if tool.get("pyfaro").is_none() {
-        tool.insert("pyfaro", Item::Table(Table::new()));
+        let settings = if inline_tool {
+            Item::Value(Value::InlineTable(InlineTable::new()))
+        } else {
+            Item::Table(Table::new())
+        };
+        tool.insert("pyfaro", settings);
     }
     let settings =
         tool.get_mut("pyfaro").and_then(Item::as_table_like_mut).ok_or_else(
@@ -143,6 +149,16 @@ mod tests {
         ] {
             assert_eq!(prepare(source).unwrap(), source);
         }
+    }
+
+    #[test]
+    fn init_adds_settings_to_inline_tool_without_losing_other_tools() {
+        let source = "tool = { ruff = { line-length = 100 }, ty = {} }\n[project]\nname = 'example'\n";
+        let prepared = prepare(source).unwrap();
+        assert!(prepared.contains("ruff = { line-length = 100 }"));
+        assert!(prepared.contains("ty = {}"));
+        assert!(prepared.contains("pyfaro = { schema-version = 1 }"));
+        assert_eq!(prepare(&prepared).unwrap(), prepared);
     }
 
     #[test]
