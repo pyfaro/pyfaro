@@ -17,11 +17,12 @@ pub(crate) fn cancellation() -> Result<Arc<AtomicBool>> {
 }
 
 pub(crate) fn run(
-    mut command: Command,
+    command: Command,
     cancelled: &AtomicBool,
 ) -> Result<ExitStatus> {
     #[cfg(target_os = "linux")]
     {
+        let mut command = command;
         linux::run(&mut command, cancelled)
     }
     #[cfg(any(target_os = "macos", target_os = "windows"))]
