@@ -83,6 +83,18 @@ fn workspace_member_reports_unsupported_layout() {
         "{report}"
     );
     assert!(!report.contains("OK: dependencies:"), "{report}");
+
+    fs::write(member.join("uv.toml"), "offline = true\n").unwrap();
+    let with_child_config = doctor(&member, &bin, &uv);
+    assert_eq!(
+        with_child_config.status.code(),
+        Some(1),
+        "{with_child_config:?}"
+    );
+    assert!(
+        text(&with_child_config).contains("uv workspace"),
+        "{with_child_config:?}"
+    );
 }
 
 #[test]
@@ -302,7 +314,7 @@ fn python_pin_must_be_a_readable_regular_file() {
 }
 
 #[test]
-fn selected_uv_toml_masks_project_managed_setting() {
+fn project_managed_setting_survives_configuration_overrides() {
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
@@ -318,17 +330,17 @@ fn selected_uv_toml_masks_project_managed_setting() {
     assert_eq!(blocked.status.code(), Some(1), "{blocked:?}");
     assert!(text(&blocked).contains("managed = false"), "{blocked:?}");
     fs::write(project.join("uv.toml"), "offline = true\n").unwrap();
-    let masked = doctor(&project, &bin, &uv);
-    assert_eq!(masked.status.code(), Some(0), "{masked:?}");
-    assert!(!text(&masked).contains("managed = false"), "{masked:?}");
+    let adjacent = doctor(&project, &bin, &uv);
+    assert_eq!(adjacent.status.code(), Some(1), "{adjacent:?}");
+    assert!(text(&adjacent).contains("managed = false"), "{adjacent:?}");
 
     fs::remove_file(project.join("uv.toml")).unwrap();
     let no_config = doctor_command(&project, &bin, &uv)
         .env("UV_NO_CONFIG", "1")
         .output()
         .unwrap();
-    assert_eq!(no_config.status.code(), Some(0), "{no_config:?}");
-    assert!(!text(&no_config).contains("managed = false"), "{no_config:?}");
+    assert_eq!(no_config.status.code(), Some(1), "{no_config:?}");
+    assert!(text(&no_config).contains("managed = false"), "{no_config:?}");
 
     let override_file = project.join("override.toml");
     fs::write(&override_file, "offline = true\n").unwrap();
@@ -336,8 +348,8 @@ fn selected_uv_toml_masks_project_managed_setting() {
         .env("UV_CONFIG_FILE", &override_file)
         .output()
         .unwrap();
-    assert_eq!(explicit.status.code(), Some(0), "{explicit:?}");
-    assert!(!text(&explicit).contains("managed = false"), "{explicit:?}");
+    assert_eq!(explicit.status.code(), Some(1), "{explicit:?}");
+    assert!(text(&explicit).contains("managed = false"), "{explicit:?}");
 }
 
 #[test]

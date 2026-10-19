@@ -377,7 +377,7 @@ fn inspect_configuration(
     {
         report.line(
             Severity::Warn,
-            "configuration: uv.toml takes precedence over [tool.uv] in pyproject.toml",
+            "configuration: uv.toml takes precedence over [tool.uv] configuration settings; project metadata remains active",
         )?;
     }
     Ok(())
@@ -387,12 +387,6 @@ fn project_uv_toml_selected(root: &Path) -> bool {
     env::var_os("UV_CONFIG_FILE").is_none()
         && !uv_env_enabled("UV_NO_CONFIG")
         && fs::symlink_metadata(root.join("uv.toml")).is_ok()
-}
-
-fn project_uv_settings_selected(root: &Path) -> bool {
-    env::var_os("UV_CONFIG_FILE").is_none()
-        && !uv_env_enabled("UV_NO_CONFIG")
-        && fs::symlink_metadata(root.join("uv.toml")).is_err()
 }
 
 fn missing_tool_configuration(
@@ -410,10 +404,9 @@ fn inspect_workspace(
     document: &DocumentMut,
     report: &mut Report,
 ) -> Result<bool> {
-    let project_uv_masked = !project_uv_settings_selected(root);
-    if let Some(managed) = (!project_uv_masked)
-        .then(|| document.get("tool").and_then(|tool| tool.get("uv")))
-        .flatten()
+    if let Some(managed) = document
+        .get("tool")
+        .and_then(|tool| tool.get("uv"))
         .and_then(|uv| uv.get("managed"))
     {
         match managed.as_bool() {
@@ -473,9 +466,9 @@ fn inspect_workspace(
                 }
             }
         };
-        let workspace = (directory != root || !project_uv_masked)
-            .then(|| candidate.get("tool").and_then(|tool| tool.get("uv")))
-            .flatten()
+        let workspace = candidate
+            .get("tool")
+            .and_then(|tool| tool.get("uv"))
             .and_then(|uv| uv.get("workspace"));
         let Some(workspace) = workspace else {
             if directory == root {

@@ -64,12 +64,12 @@ are blocking findings. Dangling ancestor `pyproject.toml` symlinks are blocking
 rather than treated as absent.
 The selected project's `[tool.uv] managed = false` is also blocking because uv
 project management is disabled; doctor does not scan ancestor workspaces for it.
-An adjacent selected `uv.toml`, `UV_NO_CONFIG`, or `UV_CONFIG_FILE` masks this
-project setting.
+This project metadata still applies when `uv.toml`, `UV_NO_CONFIG`, or
+`UV_CONFIG_FILE` overrides uv configuration settings.
 `managed` must be a boolean, and `workspace` must be a table when present.
 
-For uv, a project `uv.toml` takes precedence over `[tool.uv]` in
-`pyproject.toml`; doctor reports their
+For uv, a project `uv.toml` takes precedence over overlapping `[tool.uv]`
+configuration settings in `pyproject.toml`, not project metadata; doctor reports their
 coexistence as a warning when the project file is selected. `UV_CONFIG_FILE`
 and `UV_NO_CONFIG` suppress that warning because they override discovery.
 A non-table `[tool.uv]` value is an error only when
