@@ -55,7 +55,37 @@ fn isolated_command(project: &Path) -> Command {
 }
 
 #[test]
-fn user_uv_configuration_falls_back_and_reports_its_source() {
+fn workspace_member_reports_unsupported_layout() {
+    let sandbox = tempdir().unwrap();
+    let workspace = sandbox.path().join("workspace");
+    let member = workspace.join("member");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(&member).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(
+        workspace.join("pyproject.toml"),
+        "[project]\nname = 'workspace'\n[tool.uv.workspace]\nmembers = ['member']\n",
+    )
+    .unwrap();
+    fs::write(
+        member.join("pyproject.toml"),
+        "[project]\nname = 'member'\n[dependency-groups]\ndev = []\n",
+    )
+    .unwrap();
+
+    let output = doctor(&member, &bin, &uv);
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(
+        report.contains("uv workspace") && report.contains("not supported"),
+        "{report}"
+    );
+    assert!(!report.contains("OK: dependencies:"), "{report}");
+}
+
+#[test]
+fn user_uv_configuration_accepts_valid_settings_and_reports_invalid_fields() {
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
@@ -65,13 +95,13 @@ fn user_uv_configuration_falls_back_and_reports_its_source() {
     fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
     let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
     fs::create_dir_all(user_file.parent().unwrap()).unwrap();
-    fs::write(&user_file, "default-groups = ['quality']\n").unwrap();
+    fs::write(&user_file, "offline = true\n").unwrap();
 
     let output = doctor(&project, &bin, &uv);
     let report = text(&output);
     assert_eq!(output.status.code(), Some(0), "{output:?}");
-    assert!(report.contains("group \"dev\" is not checked"), "{report}");
-    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(!report.contains("group \"dev\" is not checked"), "{report}");
 
     fs::write(&user_file, "dev-dependencies = [42]\n").unwrap();
     let malformed = doctor(&project, &bin, &uv);
@@ -82,10 +112,12 @@ fn user_uv_configuration_falls_back_and_reports_its_source() {
         "{report}"
     );
     assert!(
-        report
-            .contains("dev-dependencies must contain only requirement strings"),
+        report.contains(
+            "dev-dependencies is only allowed in [tool.uv] in pyproject.toml"
+        ),
         "{report}"
     );
+    assert!(!report.contains("OK: dependencies:"), "{report}");
 }
 
 #[cfg(not(windows))]
@@ -101,7 +133,7 @@ fn user_uv_configuration_defaults_to_home_config_directory() {
     let home = sandbox.path().join("home");
     let user_file = home.join(".config/uv/uv.toml");
     fs::create_dir_all(user_file.parent().unwrap()).unwrap();
-    fs::write(&user_file, "default-groups = ['quality']\n").unwrap();
+    fs::write(&user_file, "offline = true\n").unwrap();
 
     let output = doctor_command(&project, &bin, &uv)
         .env_remove("XDG_CONFIG_HOME")
@@ -110,74 +142,12 @@ fn user_uv_configuration_defaults_to_home_config_directory() {
         .unwrap();
     let report = text(&output);
     assert_eq!(output.status.code(), Some(0), "{output:?}");
-    assert!(report.contains("group \"dev\" is not checked"), "{report}");
-    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(!report.contains("group \"dev\" is not checked"), "{report}");
 }
 
 #[test]
-fn uv_configuration_arrays_merge_across_project_user_and_system() {
-    let sandbox = tempdir().unwrap();
-    let project = sandbox.path().join("project");
-    let bin = sandbox.path().join("bin");
-    fs::create_dir(&project).unwrap();
-    let uv = install(&bin, "uv");
-    install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\nproject = []\nuser = []\nsystem = []\n").unwrap();
-    fs::write(
-        project.join("uv.toml"),
-        "default-groups = ['project']\ndev-dependencies = []\n",
-    )
-    .unwrap();
-    let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
-    fs::create_dir_all(user_file.parent().unwrap()).unwrap();
-    fs::write(&user_file, "default-groups = ['user']\ndev-dependencies = []\n")
-        .unwrap();
-    let system_file = sandbox.path().join(".doctor-system-config/uv/uv.toml");
-    fs::create_dir_all(system_file.parent().unwrap()).unwrap();
-    fs::write(
-        &system_file,
-        "default-groups = ['system']\ndev-dependencies = []\n",
-    )
-    .unwrap();
-
-    let valid = doctor(&project, &bin, &uv);
-    let report = text(&valid);
-    assert_eq!(valid.status.code(), Some(0), "{valid:?}");
-    for group in ["project", "user", "system"] {
-        assert!(
-            !report.contains(&format!("group \"{group}\" is not checked")),
-            "{report}"
-        );
-    }
-
-    fs::write(
-        &system_file,
-        "default-groups = ['system']\ndev-dependencies = [42]\n",
-    )
-    .unwrap();
-
-    let output = doctor(&project, &bin, &uv);
-    let report = text(&output);
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
-    for group in ["project", "user", "system"] {
-        assert!(
-            !report.contains(&format!("group \"{group}\" is not checked")),
-            "{report}"
-        );
-    }
-    assert!(
-        report.contains(".doctor-system-config") && report.contains("uv.toml"),
-        "{report}"
-    );
-    assert!(
-        report
-            .contains("dev-dependencies must contain only requirement strings"),
-        "{report}"
-    );
-}
-
-#[test]
-fn project_default_groups_override_lower_priority_all() {
+fn project_only_uv_fields_are_rejected_in_all_configuration_locations() {
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
@@ -186,13 +156,98 @@ fn project_default_groups_override_lower_priority_all() {
     install(&bin, "python");
     fs::write(
         project.join("pyproject.toml"),
-        "[project]\nname = 'sample'\n[dependency-groups]\nqa = []\ndev = []\n",
+        "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\n",
     )
     .unwrap();
-    fs::write(project.join("uv.toml"), "default-groups = ['qa']\n").unwrap();
+    let project_file = project.join("uv.toml");
     let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
     fs::create_dir_all(user_file.parent().unwrap()).unwrap();
-    fs::write(&user_file, "default-groups = 'all'\n").unwrap();
+    let system_file = sandbox.path().join(".doctor-system-config/uv/uv.toml");
+    for field in [
+        "conflicts",
+        "workspace",
+        "sources",
+        "dev-dependencies",
+        "default-groups",
+        "dependency-groups",
+        "managed",
+        "package",
+        "build-backend",
+        "environments",
+        "required-environments",
+    ] {
+        fs::write(&project_file, format!("{field} = true\n")).unwrap();
+        let output = doctor(&project, &bin, &uv);
+        let report = text(&output);
+        assert_eq!(output.status.code(), Some(1), "{output:?}");
+        assert!(
+            report.contains(&format!("{field} is only allowed")),
+            "{report}"
+        );
+        if field == "dependency-groups" {
+            assert!(report.contains("[tool.uv.dependency-groups]"), "{report}");
+        }
+        assert!(
+            report.contains("project") && report.contains("uv.toml"),
+            "{report}"
+        );
+        assert!(!report.contains("OK: dependencies:"), "{report}");
+    }
+    fs::remove_file(&project_file).unwrap();
+
+    for (path, field) in
+        [(&user_file, "default-groups"), (&system_file, "dependency-groups")]
+    {
+        fs::write(path, format!("{field} = true\n")).unwrap();
+        let output = doctor(&project, &bin, &uv);
+        let report = text(&output);
+        assert_eq!(output.status.code(), Some(1), "{output:?}");
+        assert!(
+            report.contains(&format!("{field} is only allowed")),
+            "{report}"
+        );
+        let configuration_scope = if field == "default-groups" {
+            ".doctor-user-config"
+        } else {
+            ".doctor-system-config"
+        };
+        assert!(
+            report.contains(configuration_scope) && report.contains("uv.toml"),
+            "{report}"
+        );
+        assert!(!report.contains("OK: dependencies:"), "{report}");
+        fs::remove_file(path).unwrap();
+    }
+
+    let explicit = project.join("override.toml");
+    fs::write(&explicit, "dev-dependencies = []\n").unwrap();
+    let output = doctor_command(&project, &bin, &uv)
+        .env("UV_CONFIG_FILE", &explicit)
+        .output()
+        .unwrap();
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(report.contains("dev-dependencies is only allowed"), "{report}");
+    assert!(report.contains(&explicit.display().to_string()), "{report}");
+    assert!(report.contains("unset UV_CONFIG_FILE"), "{report}");
+}
+
+#[test]
+fn project_pyproject_defaults_are_unaffected_by_valid_user_settings() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\n[dependency-groups]\nqa = []\ndev = []\n[tool.uv]\ndefault-groups = ['qa']\n",
+    )
+    .unwrap();
+    let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
+    fs::create_dir_all(user_file.parent().unwrap()).unwrap();
+    fs::write(&user_file, "offline = true\n").unwrap();
 
     let output = doctor(&project, &bin, &uv);
     let report = text(&output);
@@ -214,10 +269,10 @@ fn malformed_user_configuration_blocks_even_with_project_settings() {
         "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\n",
     )
     .unwrap();
-    fs::write(project.join("uv.toml"), "default-groups = ['dev']\n").unwrap();
+    fs::write(project.join("uv.toml"), "offline = true\n").unwrap();
     let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
     fs::create_dir_all(user_file.parent().unwrap()).unwrap();
-    fs::write(&user_file, "default-groups = [\n").unwrap();
+    fs::write(&user_file, "offline = [\n").unwrap();
 
     let malformed = doctor(&project, &bin, &uv);
     let report = text(&malformed);
@@ -240,6 +295,46 @@ fn malformed_user_configuration_blocks_even_with_project_settings() {
     assert!(report.contains("cannot read"), "{report}");
 }
 
+#[test]
+fn malformed_and_unreadable_system_configuration_are_blocking() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\n",
+    )
+    .unwrap();
+    let system_file = sandbox.path().join(".doctor-system-config/uv/uv.toml");
+    fs::create_dir_all(system_file.parent().unwrap()).unwrap();
+    fs::write(&system_file, "offline = [\n").unwrap();
+
+    let malformed = doctor(&project, &bin, &uv);
+    let report = text(&malformed);
+    assert_eq!(malformed.status.code(), Some(1), "{malformed:?}");
+    assert!(
+        report.contains(".doctor-system-config") && report.contains("uv.toml"),
+        "{report}"
+    );
+    assert!(report.contains("invalid"), "{report}");
+    assert!(!report.contains("OK: dependencies:"), "{report}");
+
+    fs::remove_file(&system_file).unwrap();
+    fs::create_dir(&system_file).unwrap();
+    let unreadable = doctor(&project, &bin, &uv);
+    let report = text(&unreadable);
+    assert_eq!(unreadable.status.code(), Some(1), "{unreadable:?}");
+    assert!(
+        report.contains(".doctor-system-config") && report.contains("uv.toml"),
+        "{report}"
+    );
+    assert!(report.contains("cannot read"), "{report}");
+    assert!(!report.contains("OK: dependencies:"), "{report}");
+}
+
 #[cfg(not(windows))]
 #[test]
 fn first_discovered_system_configuration_wins() {
@@ -254,8 +349,8 @@ fn first_discovered_system_configuration_wins() {
     let second = sandbox.path().join("second/uv/uv.toml");
     fs::create_dir_all(first.parent().unwrap()).unwrap();
     fs::create_dir_all(second.parent().unwrap()).unwrap();
-    fs::write(&first, "default-groups = ['quality']\n").unwrap();
-    fs::write(&second, "default-groups = ['dev']\n").unwrap();
+    fs::write(&first, "offline = true\n").unwrap();
+    fs::write(&second, "default-groups = ['quality']\n").unwrap();
     let paths = std::env::join_paths([
         first.parent().unwrap().parent().unwrap(),
         second.parent().unwrap().parent().unwrap(),
@@ -263,13 +358,23 @@ fn first_discovered_system_configuration_wins() {
     .unwrap();
 
     let output = doctor_command(&project, &bin, &uv)
-        .env("XDG_CONFIG_DIRS", paths)
+        .env("XDG_CONFIG_DIRS", &paths)
         .output()
         .unwrap();
     let report = text(&output);
     assert_eq!(output.status.code(), Some(0), "{output:?}");
-    assert!(report.contains("group \"dev\" is not checked"), "{report}");
-    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(!report.contains("group \"dev\" is not checked"), "{report}");
+
+    fs::write(&first, "default-groups = ['quality']\n").unwrap();
+    let invalid = doctor_command(&project, &bin, &uv)
+        .env("XDG_CONFIG_DIRS", &paths)
+        .output()
+        .unwrap();
+    let report = text(&invalid);
+    assert_eq!(invalid.status.code(), Some(1), "{invalid:?}");
+    assert!(report.contains(&first.display().to_string()), "{report}");
+    assert!(!report.contains(&second.display().to_string()), "{report}");
 }
 
 fn doctor(project: &Path, path: &Path, uv: &Path) -> Output {
@@ -278,6 +383,35 @@ fn doctor(project: &Path, path: &Path, uv: &Path) -> Output {
 
 fn text(output: &Output) -> String {
     String::from_utf8(output.stdout.clone()).unwrap()
+}
+
+#[test]
+fn project_only_uv_settings_in_uv_toml_are_blocking() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\n",
+    )
+    .unwrap();
+    let path = project.join("uv.toml");
+    fs::write(&path, "default-groups = ['dev']\n").unwrap();
+
+    let output = doctor(&project, &bin, &uv);
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(
+        report.contains(
+            "default-groups is only allowed in [tool.uv] in pyproject.toml"
+        ),
+        "{report}"
+    );
+    assert!(report.contains("uv.toml"), "{report}");
+    assert!(!report.contains("OK: dependencies:"), "{report}");
 }
 
 #[test]
@@ -469,7 +603,7 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
         "{malformed_uv:?}"
     );
     assert!(!text(&malformed_uv).contains("OK: dependencies:"));
-    fs::write(project.join("uv.toml"), "default-groups = []\n").unwrap();
+    fs::write(project.join("uv.toml"), "offline = true\n").unwrap();
     let malformed_ignored_uv = doctor(&project, &bin, &uv);
     assert_eq!(
         malformed_ignored_uv.status.code(),
@@ -543,41 +677,43 @@ fn group_names_are_normalized_for_defaults_and_includes() {
 }
 
 #[test]
-fn project_uv_toml_takes_precedence_without_a_configuration_conflict() {
+fn project_uv_toml_masks_pyproject_settings() {
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
     fs::create_dir(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['dev']\n").unwrap();
-    fs::write(project.join("uv.toml"), "default-groups = ['quality']\n")
-        .unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\ndev-dependencies = ['missing-doctor-masked-package==1.0']\n").unwrap();
+    fs::write(project.join("uv.toml"), "offline = true\n").unwrap();
 
     let output = doctor(&project, &bin, &uv);
     let report = text(&output);
     assert_eq!(output.status.code(), Some(0), "{output:?}");
     assert!(!report.contains("ERROR: configuration:"), "{report}");
-    assert!(report.contains("group \"dev\" is not checked"), "{report}");
-    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(!report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(!report.contains("missing-doctor-masked-package"), "{report}");
 }
 
 #[test]
-fn uv_environment_configuration_controls_default_groups() {
+fn explicit_and_no_config_override_discovery_without_project_only_settings() {
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
     fs::create_dir(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
-    fs::write(project.join("uv.toml"), "default-groups = ['quality']\n")
-        .unwrap();
-    fs::write(project.join("override.toml"), "default-groups = ['dev']\n")
-        .unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\n").unwrap();
+    fs::write(project.join("uv.toml"), "offline = true\n").unwrap();
+    fs::write(project.join("override.toml"), "offline = false\n").unwrap();
     let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
     fs::create_dir_all(user_file.parent().unwrap()).unwrap();
-    fs::write(&user_file, "default-groups = [\n").unwrap();
+    fs::write(&user_file, "offline = [\n").unwrap();
+
+    let discovered = doctor(&project, &bin, &uv);
+    assert_eq!(discovered.status.code(), Some(1), "{discovered:?}");
+    assert!(text(&discovered).contains(&user_file.display().to_string()));
 
     let override_output = doctor_command(&project, &bin, &uv)
         .current_dir(sandbox.path())
@@ -738,6 +874,14 @@ fn pytest_conflicts_require_pytest_sections_in_shared_ini_files() {
     assert!(text(&native_toml).contains("[tool.pytest] and .pytest.ini"));
     fs::remove_file(project.join(".pytest.ini")).unwrap();
 
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[tool.pytest]\naddopts = ['-q']\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
+    let mixed_formats = doctor(&project, &bin, &uv);
+    assert_eq!(mixed_formats.status.code(), Some(1), "{mixed_formats:?}");
+    assert!(
+        text(&mixed_formats)
+            .contains("[tool.pytest] and [tool.pytest.ini_options]")
+    );
+
     fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
     fs::write(project.join("pytest.toml"), "").unwrap();
     let pytest_toml = doctor(&project, &bin, &uv);
@@ -777,14 +921,13 @@ fn nearest_parent_uv_configuration_selects_default_groups() {
         "[tool.uv]\ndefault-groups = ['dev']\n",
     )
     .unwrap();
-    fs::write(parent.join("uv.toml"), "default-groups = ['quality']\n")
-        .unwrap();
+    fs::write(parent.join("uv.toml"), "offline = true\n").unwrap();
 
     let output = doctor(&project, &bin, &uv);
     let report = text(&output);
     assert_eq!(output.status.code(), Some(0), "{output:?}");
-    assert!(report.contains("group \"dev\" is not checked"), "{report}");
-    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(!report.contains("group \"dev\" is not checked"), "{report}");
 
     fs::remove_file(parent.join("uv.toml")).unwrap();
     fs::write(
@@ -814,14 +957,10 @@ fn unselected_legacy_dev_dependencies_are_validated_at_their_source() {
     fs::create_dir(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
+    let metadata = project.join("pyproject.toml");
     fs::write(
-        project.join("pyproject.toml"),
-        "[project]\nname = 'sample'\n[dependency-groups]\nquality = []\n",
-    )
-    .unwrap();
-    fs::write(
-        project.join("uv.toml"),
-        "default-groups = ['quality']\ndev-dependencies = [42]\n",
+        &metadata,
+        "[project]\nname = 'sample'\n[dependency-groups]\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\ndev-dependencies = [42]\n",
     )
     .unwrap();
 
@@ -829,12 +968,11 @@ fn unselected_legacy_dev_dependencies_are_validated_at_their_source() {
     let report = text(&output);
     assert_eq!(output.status.code(), Some(1), "{output:?}");
     assert!(
-        report.contains(
-            "uv.toml dev-dependencies must contain only requirement strings"
-        ),
+        report.contains("[tool.uv].dev-dependencies")
+            && report.contains("must contain only requirement strings"),
         "{report}"
     );
-    assert!(!report.contains("correct pyproject.toml"), "{report}");
+    assert!(report.contains("pyproject.toml"), "{report}");
 
     fs::write(project.join("uv.toml"), "default-groups = [\n").unwrap();
     let invalid_config = doctor(&project, &bin, &uv);
@@ -1203,9 +1341,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         "{inline:?}"
     );
 
-    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = ['missing-doctor-dev-package==1.0']\nquality = ['missing-doctor-uvtoml-package==1.0']\n").unwrap();
-    fs::write(project.join("uv.toml"), "default-groups = ['quality']\n")
-        .unwrap();
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = ['missing-doctor-dev-package==1.0']\nquality = ['missing-doctor-quality-package==1.0']\n[tool.uv]\ndefault-groups = ['quality']\n").unwrap();
     let configured = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
@@ -1217,7 +1353,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert_eq!(configured.status.code(), Some(1), "{configured:?}");
     let report = text(&configured);
     assert!(
-        report.contains("missing-doctor-uvtoml-package is missing from .venv"),
+        report.contains("missing-doctor-quality-package is missing from .venv"),
         "{report}"
     );
     assert!(
@@ -1225,12 +1361,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         "{report}"
     );
 
-    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
-    fs::write(
-        project.join("uv.toml"),
-        "default-groups = ['quality']\ndev-dependencies = ['broken =>1']\n",
-    )
-    .unwrap();
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\ndev-dependencies = ['broken =>1']\n").unwrap();
     let malformed_legacy = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
@@ -1245,13 +1376,12 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert!(
         report.contains(&format!(
             "correct {}",
-            fs::canonicalize(project.join("uv.toml")).unwrap().display()
+            fs::canonicalize(&metadata).unwrap().display()
         )),
         "{report}"
     );
-    assert!(!report.contains("correct pyproject.toml"), "{report}");
 
-    fs::write(project.join("uv.toml"), "default-groups = ['quality']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
     let unselected_legacy = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
@@ -1270,7 +1400,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
             .contains("missing-doctor-legacy-package is missing")
     );
 
-    fs::write(project.join("uv.toml"), "default-groups = ['dev']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['dev']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
     let selected_legacy = isolated_command(&project)
         .arg("doctor")
         .arg("--project")
@@ -1285,8 +1415,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
             .contains("missing-doctor-legacy-package is missing from .venv")
     );
 
-    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\nqa = [{include-group = 'dev'}]\ndev = []\n").unwrap();
-    fs::write(project.join("uv.toml"), "default-groups = ['qa']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\nqa = [{include-group = 'dev'}]\ndev = []\n[tool.uv]\ndefault-groups = ['qa']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
     let included_legacy =
         doctor_command(&project, Path::new(&path), &uv).output().unwrap();
     assert_eq!(included_legacy.status.code(), Some(1), "{included_legacy:?}");
@@ -1295,8 +1424,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
             .contains("missing-doctor-legacy-package is missing from .venv")
     );
 
-    fs::write(project.join("uv.toml"), "default-groups = ['dev']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
-    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n")
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[tool.uv]\ndefault-groups = ['dev']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n")
         .unwrap();
     let legacy_only = isolated_command(&project)
         .arg("doctor")

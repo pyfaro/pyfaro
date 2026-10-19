@@ -41,7 +41,10 @@ Python is available on `PATH` and the project has no dependencies. For pytest,
 are supported by pytest 9. `tox.ini` counts only when it has `[pytest]`, and
 `setup.cfg` counts only when it has `[tool:pytest]`. Unrelated nested
 `[tool.pytest]` tables do not count as pytest configuration. Multiple pytest
-configuration files also conflict. For uv, a project `uv.toml`
+configuration files also conflict. Native `[tool.pytest]` settings cannot be
+combined with nonempty `[tool.pytest.ini_options]` in the same file. Doctor
+reports uv workspace members and roots as unsupported instead of claiming a
+standalone dependency check covers the entire workspace. For uv, a project `uv.toml`
 takes precedence over `[tool.uv]` in `pyproject.toml`; doctor reports their
 coexistence as a warning. A non-table `[tool.uv]` value is an error only when
 that pyproject configuration is selected.
@@ -59,11 +62,13 @@ configuration from `$XDG_CONFIG_HOME/uv/uv.toml` (defaulting to
 `~/.config/uv/uv.toml`) on Unix or `%APPDATA%\uv\uv.toml` on Windows, and
 system configuration from the first available `$XDG_CONFIG_DIRS/uv/uv.toml`
 (defaulting to `/etc/xdg/uv/uv.toml`) or `/etc/uv/uv.toml` on Unix, or
-`%PROGRAMDATA%\uv\uv.toml` on Windows. Project settings take precedence over
-user settings, which take precedence over system settings; array settings,
-including `default-groups` and `dev-dependencies`, concatenate in that order
-when both layers provide arrays. For a scalar/array mismatch, the
-higher-priority setting wins.
+`%PROGRAMDATA%\uv\uv.toml` on Windows. The selected `[tool.uv]` in a
+`pyproject.toml` supplies `default-groups` and legacy `dev-dependencies`.
+A selected `uv.toml` cannot supply these project-only settings, so the `dev`
+group remains the default. Doctor rejects `conflicts`, `workspace`, `sources`,
+`dev-dependencies`, `default-groups`, `dependency-groups`, `managed`, `package`,
+`build-backend`, `environments`, and `required-environments` in any `uv.toml`
+with a blocking finding that identifies the file and the pyproject destination.
 `UV_CONFIG_FILE` selects an explicit standalone uv configuration file instead
 of discovery; relative paths are resolved from the selected project directory,
 as they are for uv commands run by Pyfaro. `UV_NO_CONFIG` disables discovery
@@ -78,7 +83,7 @@ followed. Legacy uv `dev-dependencies` are validated even when `dev` is not
 selected. Their installed distributions are checked only when `dev` is
 selected, including when `dev` is explicitly listed in `default-groups` and
 legacy `dev-dependencies` are its only definition. Malformed requirements
-identify the uv configuration file to correct. Non-default groups not included
+identify the selected pyproject file to correct. Non-default groups not included
 by a selected group are reported as unchecked warnings. Doctor still validates
 every group's requirement strings, entry structure, and inclusion cycles
 without checking whether their distributions are installed. Invalid group

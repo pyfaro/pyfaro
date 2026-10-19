@@ -85,8 +85,10 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
                     "pyproject.toml: valid Pyfaro configuration",
                 )?;
                 inspect_configuration(root, &document, &mut report)?;
-                dependencies =
-                    declared_dependencies(root, &document, &mut report)?;
+                if !inspect_workspace(root, &document, &mut report)? {
+                    dependencies =
+                        declared_dependencies(root, &document, &mut report)?;
+                }
                 requires_python = document
                     .get("project")
                     .and_then(|project| project.get("requires-python"))
@@ -272,6 +274,20 @@ fn inspect_configuration(
             )?;
         }
     }
+    if let Some(pytest) = document
+        .get("tool")
+        .and_then(|tool| tool.get("pytest"))
+        .and_then(|pytest| pytest.as_table_like())
+    {
+        let native = pytest.iter().any(|(name, _)| name != "ini_options");
+        let ini_options = pytest
+            .get("ini_options")
+            .and_then(|options| options.as_table_like())
+            .is_some_and(|options| options.iter().next().is_some());
+        if native && ini_options {
+            report.line(Severity::Error, "configuration: [tool.pytest] and [tool.pytest.ini_options] both configure pytest; keep one format")?;
+        }
+    }
     if document.get("tool").and_then(|tool| tool.get("uv")).is_some()
         && root.join("uv.toml").exists()
     {
@@ -281,6 +297,44 @@ fn inspect_configuration(
         )?;
     }
     Ok(())
+}
+
+fn inspect_workspace(
+    root: &Path,
+    document: &DocumentMut,
+    report: &mut Report,
+) -> Result<bool> {
+    for directory in root.ancestors() {
+        let metadata = directory.join("pyproject.toml");
+        let candidate = if directory == root {
+            document.clone()
+        } else {
+            let source = match fs::read_to_string(&metadata) {
+                Ok(source) => source,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    continue;
+                }
+                Err(error) => {
+                    report.line(Severity::Error, format!("configuration: cannot read {}: {error}; check workspace metadata", metadata.display()))?;
+                    return Ok(true);
+                }
+            };
+            match source.parse::<DocumentMut>() {
+                Ok(candidate) => candidate,
+                Err(_) => continue,
+            }
+        };
+        if candidate
+            .get("tool")
+            .and_then(|tool| tool.get("uv"))
+            .and_then(|uv| uv.get("workspace"))
+            .is_some()
+        {
+            report.line(Severity::Error, format!("configuration: uv workspace at {} is not supported by pyfaro doctor; use a standalone project", metadata.display()))?;
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn inspect_layout(root: &Path, report: &mut Report) -> Result<()> {
@@ -766,6 +820,44 @@ fn read_uv_configuration_file(
             return Ok(UvDiscovery::Invalid);
         }
     };
+    let mut invalid = false;
+    for field in [
+        "conflicts",
+        "workspace",
+        "sources",
+        "dev-dependencies",
+        "default-groups",
+        "dependency-groups",
+        "managed",
+        "package",
+        "build-backend",
+        "environments",
+        "required-environments",
+    ] {
+        if document.get(field).is_some() {
+            let destination = if field == "dependency-groups" {
+                "[tool.uv.dependency-groups] (or [dependency-groups] for group declarations)"
+            } else {
+                "[tool.uv]"
+            };
+            let explicit_action = if explicit {
+                "; unset UV_CONFIG_FILE to use project settings"
+            } else {
+                ""
+            };
+            report.line(
+                Severity::Error,
+                format!(
+                    "dependencies: {field} is only allowed in {destination} in pyproject.toml, not {}; move it there and remove it from this file{explicit_action}",
+                    path.display()
+                ),
+            )?;
+            invalid = true;
+        }
+    }
+    if invalid {
+        return Ok(UvDiscovery::Invalid);
+    }
     Ok(UvDiscovery::Config(Box::new(UvConfiguration {
         document,
         path: path.to_path_buf(),
@@ -816,37 +908,28 @@ fn declared_dependencies(
     else {
         return Ok(None);
     };
-    let default_settings: Vec<_> = uv_configuration
-        .iter()
-        .filter_map(|config| {
-            config.setting("default-groups").map(|value| (config, value))
-        })
-        .collect();
-    let explicit_defaults = !default_settings.is_empty();
-    let has_legacy_dev = uv_configuration
-        .iter()
-        .any(|config| config.setting("dev-dependencies").is_some());
-    let selected_groups = match default_settings.first() {
+    let project_settings =
+        uv_configuration.iter().find(|config| !config.standalone);
+    let default_setting = project_settings.and_then(|config| {
+        config.setting("default-groups").map(|value| (config, value))
+    });
+    let explicit_defaults = default_setting.is_some();
+    let has_legacy_dev = project_settings
+        .is_some_and(|config| config.setting("dev-dependencies").is_some());
+    let selected_groups = match default_setting {
         None => Some(vec!["dev".to_owned()]),
         Some((_, value)) if value.as_str() == Some("all") => None,
-        Some((_, value)) if value.as_array().is_some() => {
+        Some((config, value)) if value.as_array().is_some() => {
             let mut names = Vec::new();
-            for (config, value) in default_settings {
-                let label = config.label("default-groups");
-                if let Some(entries) = value.as_array() {
-                    for entry in entries.iter() {
-                        if let Some(name) = entry.as_str() {
-                            names.push(normalize_group_name(name));
-                        } else {
-                            report.line(Severity::Error, format!("dependencies: {label} must contain only group names"))?;
-                            invalid = true;
-                        }
-                    }
-                } else if value.as_str() != Some("all") {
+            for entry in value.as_array().expect("checked above").iter() {
+                if let Some(name) = entry.as_str() {
+                    names.push(normalize_group_name(name));
+                } else {
                     report.line(
                         Severity::Error,
                         format!(
-                            "dependencies: {label} must be a list or 'all'"
+                            "dependencies: {} must contain only group names",
+                            config.label("default-groups")
                         ),
                     )?;
                     invalid = true;
@@ -966,7 +1049,7 @@ fn declared_dependencies(
             invalid = true;
         }
     }
-    for config in &uv_configuration {
+    for config in uv_configuration.iter().filter(|config| !config.standalone) {
         let Some(legacy) = config.setting("dev-dependencies") else {
             continue;
         };
