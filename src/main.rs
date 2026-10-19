@@ -1,5 +1,6 @@
 mod cli;
 mod config;
+mod create;
 mod deps;
 mod error;
 mod init;
@@ -21,6 +22,7 @@ fn main() {
     let cli = cli::Cli::parse();
     let tools_command = matches!(cli.command, cli::Command::Tools(_));
     let result = match cli.command {
+        cli::Command::Create(args) => create::run(args),
         cli::Command::Init(args) => init::run(args),
         cli::Command::Sync(args) => sync::run(args),
         cli::Command::Add(args) => deps::run(deps::Action::Add, args),
