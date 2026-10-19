@@ -107,6 +107,7 @@ On Linux, smoke-test a dependency-free new project and idempotent application
 with uv. `init --apply` is intentionally unsupported on macOS and Windows:
 
 ```sh
+set -e
 cargo run --locked -- init ../pyfaro-alpha2-init-smoke
 cargo run --locked -- init ../pyfaro-alpha2-init-smoke --apply --offline
 before=$(sha256sum ../pyfaro-alpha2-init-smoke/pyproject.toml ../pyfaro-alpha2-init-smoke/uv.lock)
