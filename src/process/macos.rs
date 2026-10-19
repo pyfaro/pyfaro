@@ -109,8 +109,10 @@ fn cleanup(
         }
         if let Some(status) = leader {
             match killpg(group, None) {
-                Err(Errno::ESRCH) if failures.is_empty() => return Ok(status),
-                Err(Errno::ESRCH) => break,
+                Err(Errno::ESRCH | Errno::EPERM) if failures.is_empty() => {
+                    return Ok(status);
+                }
+                Err(Errno::ESRCH | Errno::EPERM) => break,
                 Ok(()) => {}
                 Err(source) => {
                     failures.push(Error::io(
