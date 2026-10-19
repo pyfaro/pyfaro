@@ -202,6 +202,48 @@ fn accepts_pytest_prerelease_versions_without_semver_rules() {
 }
 
 #[test]
+fn rejects_malformed_pytest_version_suffixes() {
+    let sandbox = tempdir().unwrap();
+    let path = sandbox.path().join("bin");
+    install(&path, "pytest");
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["tools", "pytest"])
+        .current_dir(sandbox.path())
+        .env("PATH", &path)
+        .env("PYFARO_FIXTURE_VERSION", "pytest 9.0.0broken")
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("unexpected --version output")
+    );
+}
+
+#[test]
+fn informational_listing_escapes_multiline_probe_errors() {
+    let sandbox = tempdir().unwrap();
+    let path = sandbox.path().join("bin");
+    install(&path, "ruff");
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("tools")
+        .current_dir(sandbox.path())
+        .env("PATH", &path)
+        .env_remove("VIRTUAL_ENV")
+        .env("PYFARO_FIXTURE_VERSION_FAIL", "1")
+        .env("PYFARO_FIXTURE_VERSION_MULTILINE", "1")
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    let listing = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(listing.lines().count(), 4, "{listing}");
+    assert!(
+        listing
+            .contains("fixture interpreter is broken\\nsecond diagnostic line")
+    );
+}
+
+#[test]
 fn uv_probe_failure_is_actionable_without_forwarding_the_probe_status() {
     let sandbox = tempdir().unwrap();
     let uv = install(&sandbox.path().join("bin"), "uv");

@@ -40,7 +40,10 @@ pub(crate) fn read_diagnostic(path: &Path) -> Result<String> {
         .take(4096)
         .read_to_end(&mut captured)
         .map_err(|error| Error::io("read", path, error))?;
-    Ok(String::from_utf8_lossy(&captured).trim().to_owned())
+    Ok(String::from_utf8_lossy(&captured)
+        .trim()
+        .replace('\r', "\\r")
+        .replace('\n', "\\n"))
 }
 
 pub(crate) fn run(

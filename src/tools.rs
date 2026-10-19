@@ -192,7 +192,7 @@ fn probe_version(
         .and_then(|rest| rest.split_whitespace().next());
     let valid = number.is_some_and(|number| {
         if tool == "pytest" {
-            pytest_version(number)
+            number.parse::<pep440_rs::Version>().is_ok()
         } else {
             Version::parse(number).is_ok()
         }
@@ -203,23 +203,4 @@ fn probe_version(
         )));
     }
     Ok(version.to_owned())
-}
-
-fn pytest_version(number: &str) -> bool {
-    let release = number
-        .split(|character: char| {
-            !character.is_ascii_digit() && character != '.'
-        })
-        .next()
-        .unwrap_or_default()
-        .trim_end_matches('.');
-    release.split('.').count() >= 2
-        && release.split('.').all(|component| {
-            !component.is_empty()
-                && component.chars().all(|character| character.is_ascii_digit())
-        })
-        && number.chars().all(|character| {
-            character.is_ascii_alphanumeric()
-                || matches!(character, '.' | '+' | '-' | '_' | '!')
-        })
 }

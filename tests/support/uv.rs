@@ -18,6 +18,9 @@ fn main() {
     {
         if env::var_os("PYFARO_FIXTURE_VERSION_FAIL").is_some() {
             eprintln!("fixture interpreter is broken");
+            if env::var_os("PYFARO_FIXTURE_VERSION_MULTILINE").is_some() {
+                eprintln!("second diagnostic line");
+            }
             process::exit(7);
         }
         let default = match stem.as_ref() {

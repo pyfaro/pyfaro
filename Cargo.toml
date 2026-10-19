@@ -35,6 +35,7 @@ include = [
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
 ctrlc = "3.5"
+pep440_rs = "0.7.3"
 semver = "1.0"
 tempfile = "3.23"
 thiserror = "2.0"
