@@ -16,8 +16,9 @@ Approval of the preparation PR alone is not publication approval.
 ## Candidate: 0.1.0-alpha.2
 
 The source candidate is tracked by [release-preparation issue #77](https://github.com/pyfaro/pyfaro/issues/77).
-The reviewed PR and its merge commit identify the candidate source. Record
-the package checksum and verification evidence with that issue after merge;
+The reviewed PR and its merge commit identify the candidate source. Regenerate
+and verify the package from a clean checkout of that merged commit, then record
+the commit, package checksum, and verification evidence with that issue;
 do not put a candidate checksum in this packaged document, since changing it
 would change the archive. Recheck crates.io immediately before an upload to
 confirm that this version is still unused. A separate approval is required
@@ -76,9 +77,11 @@ not be committed to this repository.
 
 ## Pre-publication verification for alpha.2
 
-Use a clean checkout of the approved preparation commit and the pinned
-Rust toolchain. Install uv 0.9.26 separately and provide Python 3.10+ (CI uses
-3.12). No publishing token is needed for these verification commands:
+Use a clean checkout of the merged preparation commit, not the PR branch,
+and the pinned Rust toolchain. Install uv 0.9.26 separately and provide
+Python 3.10+ (CI uses 3.12). Repeat these commands after merge and record
+the commit and resulting archive checksum in issue #77 before requesting
+publication approval. No publishing token is needed:
 
 ```sh
 cargo fmt --all -- --check
@@ -100,20 +103,37 @@ must not enter the archive. Cargo also adds its normalized/original manifests
 and VCS information. Inspect `target/package/pyfaro-0.1.0-alpha.2.crate`
 and record its SHA-256 checksum outside the package.
 
-Smoke-test a dependency-free new project and an existing project with uv:
+On Linux, smoke-test a dependency-free new project and idempotent application
+with uv. `init --apply` is intentionally unsupported on macOS and Windows:
 
 ```sh
-cargo run --locked -- init ../pyfaro-alpha-smoke
-cargo run --locked -- init ../pyfaro-alpha-smoke --apply --offline
-cargo run --locked -- init ../pyfaro-alpha-smoke --apply --offline
+cargo run --locked -- init ../pyfaro-alpha2-init-smoke
+cargo run --locked -- init ../pyfaro-alpha2-init-smoke --apply --offline
+cargo run --locked -- init ../pyfaro-alpha2-init-smoke --apply --offline
 ```
+
+On every platform, start from a fresh disposable path and smoke-test the
+other commands against a dependency-free project:
+
+```sh
+uv init --bare ../pyfaro-alpha2-workflow-smoke
+cargo run --locked -- sync --project ../pyfaro-alpha2-workflow-smoke --offline
+cargo run --locked -- run --project ../pyfaro-alpha2-workflow-smoke --locked --offline -- python --version
+cargo run --locked -- tools uv
+cargo run --locked -- tools --project ../pyfaro-alpha2-workflow-smoke
+```
+
+The commands should exit successfully. `sync` creates `.venv` and `uv.lock`,
+`run` prints the interpreter version, and `tools uv` reports the selected uv
+path and version. The all-tool listing may mark optional Ruff, ty, or pytest
+as unavailable without failing or installing them.
 
 Also run `cargo test --locked --all-targets` from the unpacked package to
 verify the shipped tests and fixtures are self-contained. Check the
 `--version` output is `pyfaro 0.1.0-alpha.2`. Review the candidate changelog
 and CI evidence on the preparation PR: full Rust checks on Linux, macOS,
-and Windows, plus the RustSec audit. Smoke-test `sync`, `run`, and `tools`
-from the candidate binary before requesting publication approval.
+and Windows, plus the RustSec audit. Do not close the preparation issue until
+the merged archive and checksum have been verified.
 
 ## Only after explicit publication approval
 
@@ -129,7 +149,7 @@ from the candidate binary before requesting publication approval.
 3. Verify the crates.io entry and test installation in a disposable location:
 
    ```sh
-   cargo install pyfaro --version 0.1.0-alpha.2 --locked --root <temporary-prefix>
+   cargo install pyfaro --version 0.1.0-alpha.2 --locked --root ./pyfaro-alpha2-install
    ```
 
 4. Confirm the resulting binary's version and smoke-test `init`, `sync`,
