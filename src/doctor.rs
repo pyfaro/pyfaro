@@ -190,7 +190,6 @@ fn inspect_configuration(
         ("ruff", &["ruff.toml", ".ruff.toml"][..]),
         ("ty", &["ty.toml"][..]),
         ("pytest", &["pytest.ini"][..]),
-        ("uv", &["uv.toml"][..]),
     ] {
         let configured =
             document.get("tool").and_then(|tool| tool.get(section)).is_some();
@@ -216,6 +215,14 @@ fn inspect_configuration(
                 ),
             )?;
         }
+    }
+    if document.get("tool").and_then(|tool| tool.get("uv")).is_some()
+        && root.join("uv.toml").exists()
+    {
+        report.line(
+            Severity::Warn,
+            "configuration: uv.toml takes precedence over [tool.uv] in pyproject.toml",
+        )?;
     }
     Ok(())
 }
@@ -360,6 +367,7 @@ fn valid_group_name(name: &str) -> bool {
 struct GroupCollector<'a> {
     groups: &'a Table,
     names: &'a HashMap<String, String>,
+    source: &'a Path,
     checked: Vec<String>,
     selected: Vec<String>,
     active: Vec<String>,
@@ -369,7 +377,7 @@ impl GroupCollector<'_> {
     fn collect(
         &mut self,
         name: &str,
-        requirements: &mut Vec<String>,
+        requirements: &mut Vec<Requirement>,
         selected_group: bool,
         report: &mut Report,
     ) -> Result<bool> {
@@ -406,7 +414,10 @@ impl GroupCollector<'_> {
         let mut valid = true;
         for entry in group.iter() {
             if let Some(requirement) = entry.as_str() {
-                requirements.push(requirement.to_owned());
+                requirements.push(Requirement {
+                    text: requirement.to_owned(),
+                    source: self.source.to_owned(),
+                });
             } else {
                 let included = entry
                     .as_inline_table()
@@ -439,8 +450,121 @@ impl GroupCollector<'_> {
 }
 
 struct DeclaredDependencies {
-    requirements: Vec<String>,
+    requirements: Vec<Requirement>,
     selected_count: usize,
+}
+
+struct Requirement {
+    text: String,
+    source: std::path::PathBuf,
+}
+
+struct UvConfiguration {
+    document: DocumentMut,
+    path: std::path::PathBuf,
+    standalone: bool,
+}
+
+enum UvDiscovery {
+    Config(Box<UvConfiguration>),
+    Missing,
+    Invalid,
+}
+
+impl UvConfiguration {
+    fn setting(&self, name: &str) -> Option<&toml_edit::Item> {
+        if self.standalone {
+            self.document.get(name)
+        } else {
+            self.document
+                .get("tool")
+                .and_then(|tool| tool.get("uv"))
+                .and_then(|uv| uv.get(name))
+        }
+    }
+
+    fn label(&self, name: &str) -> String {
+        if self.standalone {
+            format!("{} {name}", self.path.display())
+        } else {
+            format!("[tool.uv].{name} in {}", self.path.display())
+        }
+    }
+}
+
+fn uv_configuration(
+    root: &Path,
+    project_document: &DocumentMut,
+    report: &mut Report,
+) -> Result<UvDiscovery> {
+    for directory in root.ancestors() {
+        let uv_path = directory.join("uv.toml");
+        match fs::read_to_string(&uv_path) {
+            Ok(contents) => {
+                let document = match contents.parse::<DocumentMut>() {
+                    Ok(document) => document,
+                    Err(error) => {
+                        report.line(
+                            Severity::Error,
+                            format!(
+                                "dependencies: invalid {}: {error}; correct {}",
+                                uv_path.display(),
+                                uv_path.display()
+                            ),
+                        )?;
+                        return Ok(UvDiscovery::Invalid);
+                    }
+                };
+                return Ok(UvDiscovery::Config(Box::new(UvConfiguration {
+                    document,
+                    path: uv_path,
+                    standalone: true,
+                })));
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => {
+                report.line(Severity::Error, format!("dependencies: cannot read {}: {error}; repair the uv configuration", uv_path.display()))?;
+                return Ok(UvDiscovery::Invalid);
+            }
+        }
+        let metadata = directory.join("pyproject.toml");
+        let document = if directory == root {
+            project_document.clone()
+        } else {
+            let contents = match fs::read_to_string(&metadata) {
+                Ok(contents) => contents,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    continue;
+                }
+                Err(error) => {
+                    report.line(Severity::Error, format!("dependencies: cannot read {}: {error}; repair the uv configuration", metadata.display()))?;
+                    return Ok(UvDiscovery::Invalid);
+                }
+            };
+            match contents.parse::<DocumentMut>() {
+                Ok(document) => document,
+                Err(error) => {
+                    report.line(
+                        Severity::Error,
+                        format!(
+                            "dependencies: invalid {}: {error}; correct {}",
+                            metadata.display(),
+                            metadata.display()
+                        ),
+                    )?;
+                    return Ok(UvDiscovery::Invalid);
+                }
+            }
+        };
+        if document.get("tool").and_then(|tool| tool.get("uv")).is_some() {
+            return Ok(UvDiscovery::Config(Box::new(UvConfiguration {
+                document,
+                path: metadata,
+                standalone: false,
+            })));
+        }
+    }
+    Ok(UvDiscovery::Missing)
 }
 
 fn declared_dependencies(
@@ -450,13 +574,17 @@ fn declared_dependencies(
 ) -> Result<Option<DeclaredDependencies>> {
     let mut requirements = Vec::new();
     let mut invalid = false;
+    let metadata = root.join("pyproject.toml");
     if let Some(dependencies) =
         document.get("project").and_then(|project| project.get("dependencies"))
     {
         if let Some(dependencies) = dependencies.as_array() {
             for dependency in dependencies.iter() {
                 if let Some(requirement) = dependency.as_str() {
-                    requirements.push(requirement.to_owned());
+                    requirements.push(Requirement {
+                        text: requirement.to_owned(),
+                        source: metadata.clone(),
+                    });
                 } else {
                     report.line(Severity::Error, "dependencies: each [project].dependencies entry must be a string")?;
                     invalid = true;
@@ -477,37 +605,18 @@ fn declared_dependencies(
         report.line(Severity::Error, "dependencies: dynamic project dependencies cannot be checked from pyproject.toml; inspect the build backend output and sync the environment")?;
         invalid = true;
     }
-    let uv_path = root.join("uv.toml");
-    let uv_document = match fs::read_to_string(&uv_path) {
-        Ok(contents) => {
-            match contents.parse::<DocumentMut>() {
-                Ok(document) => Some(document),
-                Err(error) => {
-                    report.line(Severity::Error, format!("dependencies: invalid {}: {error}; correct uv.toml", uv_path.display()))?;
-                    return Ok(None);
-                }
-            }
-        }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
-        Err(error) => {
-            report.line(
-                Severity::Error,
-                format!(
-                    "dependencies: cannot read {}: {error}; repair uv.toml",
-                    uv_path.display()
-                ),
-            )?;
-            return Ok(None);
-        }
+    let uv_configuration = match uv_configuration(root, document, report)? {
+        UvDiscovery::Config(config) => Some(config),
+        UvDiscovery::Missing => None,
+        UvDiscovery::Invalid => return Ok(None),
     };
-    let default_groups = if let Some(uv_document) = uv_document.as_ref() {
-        uv_document.get("default-groups")
-    } else {
-        document
-            .get("tool")
-            .and_then(|tool| tool.get("uv"))
-            .and_then(|uv| uv.get("default-groups"))
-    };
+    let default_groups = uv_configuration
+        .as_ref()
+        .and_then(|config| config.setting("default-groups"));
+    let default_groups_label = uv_configuration
+        .as_ref()
+        .map(|config| config.label("default-groups"))
+        .unwrap_or_else(|| "[tool.uv].default-groups".to_owned());
     let explicit_defaults = default_groups.is_some();
     let selected_groups = match default_groups {
         None => Some(vec!["dev".to_owned()]),
@@ -519,13 +628,13 @@ fn declared_dependencies(
                     if let Some(name) = entry.as_str() {
                         names.push(normalize_group_name(name));
                     } else {
-                        report.line(Severity::Error, "dependencies: [tool.uv].default-groups must contain only group names")?;
+                        report.line(Severity::Error, format!("dependencies: {default_groups_label} must contain only group names"))?;
                         invalid = true;
                     }
                 }
                 Some(names)
             } else {
-                report.line(Severity::Error, "dependencies: [tool.uv].default-groups must be a list or 'all'")?;
+                report.line(Severity::Error, format!("dependencies: {default_groups_label} must be a list or 'all'"))?;
                 invalid = true;
                 Some(Vec::new())
             }
@@ -554,6 +663,7 @@ fn declared_dependencies(
             let mut collector = GroupCollector {
                 groups: &groups,
                 names: &group_names,
+                source: &metadata,
                 checked: Vec::new(),
                 selected: Vec::new(),
                 active: Vec::new(),
@@ -607,32 +717,37 @@ fn declared_dependencies(
             invalid = true;
         }
     }
-    let legacy = if let Some(uv_document) = uv_document.as_ref() {
-        uv_document.get("dev-dependencies")
-    } else {
-        document
-            .get("tool")
-            .and_then(|tool| tool.get("uv"))
-            .and_then(|uv| uv.get("dev-dependencies"))
-    };
-    if selected_groups
-        .as_ref()
-        .is_none_or(|selected| selected.iter().any(|name| name == "dev"))
-        && let Some(legacy) = legacy
+    if let Some(config) = uv_configuration.as_ref()
+        && let Some(legacy) = config.setting("dev-dependencies")
     {
+        let label = config.label("dev-dependencies");
+        let selected = selected_groups
+            .as_ref()
+            .is_none_or(|selected| selected.iter().any(|name| name == "dev"));
         if let Some(legacy) = legacy.as_array() {
             for entry in legacy.iter() {
                 if let Some(requirement) = entry.as_str() {
-                    requirements.push(requirement.to_owned());
+                    let target = if selected {
+                        &mut requirements
+                    } else {
+                        &mut unselected_requirements
+                    };
+                    target.push(Requirement {
+                        text: requirement.to_owned(),
+                        source: config.path.clone(),
+                    });
                 } else {
-                    report.line(Severity::Error, "dependencies: [tool.uv].dev-dependencies must contain only requirement strings")?;
+                    report.line(Severity::Error, format!("dependencies: {label} must contain only requirement strings; correct {}", config.path.display()))?;
                     invalid = true;
                 }
             }
         } else {
             report.line(
                 Severity::Error,
-                "dependencies: [tool.uv].dev-dependencies must be an array",
+                format!(
+                    "dependencies: {label} must be an array; correct {}",
+                    config.path.display()
+                ),
             )?;
             invalid = true;
         }
@@ -675,7 +790,7 @@ for index, source in enumerate(sys.argv[1:]):
 
 fn active_dependencies(
     python: &Path,
-    requirements: &[String],
+    requirements: &[Requirement],
     cancelled: &AtomicBool,
     report: &mut Report,
 ) -> Result<Option<Vec<(usize, String)>>> {
@@ -704,7 +819,7 @@ fn active_dependencies(
     command
         .current_dir(scratch.path())
         .args(["-I", "-B", "-c", REQUIREMENT_PROBE])
-        .args(requirements)
+        .args(requirements.iter().map(|requirement| &requirement.text))
         .stdin(Stdio::null())
         .stdout(
             output
@@ -753,7 +868,14 @@ fn active_dependencies(
                 names.push((index, name.to_owned()))
             }
             (Some("E"), None, None) => {
-                report.line(Severity::Error, format!("dependencies: invalid requirement {requirement:?}; correct pyproject.toml"))?;
+                report.line(
+                    Severity::Error,
+                    format!(
+                        "dependencies: invalid requirement {:?}; correct {}",
+                        requirement.text,
+                        requirement.source.display()
+                    ),
+                )?;
                 invalid = true;
             }
             _ => {
@@ -879,7 +1001,7 @@ fn inspect_dependencies(
 
 #[cfg(test)]
 mod tests {
-    use super::{Report, active_dependencies};
+    use super::{Report, Requirement, active_dependencies};
     use std::sync::atomic::AtomicBool;
 
     #[test]
@@ -889,7 +1011,10 @@ mod tests {
         let mut report = Report { blocking: 0 };
         let result = active_dependencies(
             &missing_python,
-            &["example>=1".to_owned()],
+            &[Requirement {
+                text: "example>=1".to_owned(),
+                source: sandbox.path().join("pyproject.toml"),
+            }],
             &AtomicBool::new(false),
             &mut report,
         )

@@ -218,6 +218,111 @@ fn group_names_are_normalized_for_defaults_and_includes() {
 }
 
 #[test]
+fn project_uv_toml_takes_precedence_without_a_configuration_conflict() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['dev']\n").unwrap();
+    fs::write(project.join("uv.toml"), "default-groups = ['quality']\n")
+        .unwrap();
+
+    let output = doctor(&project, &bin, &uv);
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    assert!(!report.contains("ERROR: configuration:"), "{report}");
+    assert!(report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+}
+
+#[test]
+fn nearest_parent_uv_configuration_selects_default_groups() {
+    let sandbox = tempdir().unwrap();
+    let parent = sandbox.path().join("parent");
+    let project = parent.join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
+    fs::write(
+        parent.join("pyproject.toml"),
+        "[tool.uv]\ndefault-groups = ['dev']\n",
+    )
+    .unwrap();
+    fs::write(parent.join("uv.toml"), "default-groups = ['quality']\n")
+        .unwrap();
+
+    let output = doctor(&project, &bin, &uv);
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    assert!(report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+
+    fs::remove_file(parent.join("uv.toml")).unwrap();
+    fs::write(
+        parent.join("pyproject.toml"),
+        "[tool.uv]\ndefault-groups = ['quality']\n",
+    )
+    .unwrap();
+    let inherited = doctor(&project, &bin, &uv);
+    let report = text(&inherited);
+    assert_eq!(inherited.status.code(), Some(0), "{inherited:?}");
+    assert!(report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['dev']\n").unwrap();
+    let nearer = doctor(&project, &bin, &uv);
+    let report = text(&nearer);
+    assert_eq!(nearer.status.code(), Some(0), "{nearer:?}");
+    assert!(report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(!report.contains("group \"dev\" is not checked"), "{report}");
+}
+
+#[test]
+fn unselected_legacy_dev_dependencies_are_validated_at_their_source() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\n[dependency-groups]\nquality = []\n",
+    )
+    .unwrap();
+    fs::write(
+        project.join("uv.toml"),
+        "default-groups = ['quality']\ndev-dependencies = [42]\n",
+    )
+    .unwrap();
+
+    let output = doctor(&project, &bin, &uv);
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(
+        report.contains(
+            "uv.toml dev-dependencies must contain only requirement strings"
+        ),
+        "{report}"
+    );
+    assert!(!report.contains("correct pyproject.toml"), "{report}");
+
+    fs::write(project.join("uv.toml"), "default-groups = [\n").unwrap();
+    let invalid_config = doctor(&project, &bin, &uv);
+    let report = text(&invalid_config);
+    assert_eq!(invalid_config.status.code(), Some(1), "{invalid_config:?}");
+    assert!(
+        report.contains("invalid") && report.contains("uv.toml"),
+        "{report}"
+    );
+    assert!(!report.contains("OK: dependencies:"), "{report}");
+}
+
+#[test]
 fn invalid_and_unselected_groups_are_blocking_without_distribution_checks() {
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("project");
@@ -499,5 +604,65 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert!(
         !report.contains("missing-doctor-dev-package is missing"),
         "{report}"
+    );
+
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
+    fs::write(
+        project.join("uv.toml"),
+        "default-groups = ['quality']\ndev-dependencies = ['broken =>1']\n",
+    )
+    .unwrap();
+    let malformed_legacy = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("doctor")
+        .arg("--project")
+        .arg(&project)
+        .env("PATH", &path)
+        .env_remove("VIRTUAL_ENV")
+        .output()
+        .unwrap();
+    assert_eq!(malformed_legacy.status.code(), Some(1), "{malformed_legacy:?}");
+    let report = text(&malformed_legacy);
+    assert!(report.contains("invalid requirement \"broken =>1\""), "{report}");
+    assert!(
+        report.contains(&format!(
+            "correct {}",
+            project.join("uv.toml").display()
+        )),
+        "{report}"
+    );
+    assert!(!report.contains("correct pyproject.toml"), "{report}");
+
+    fs::write(project.join("uv.toml"), "default-groups = ['quality']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
+    let unselected_legacy = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("doctor")
+        .arg("--project")
+        .arg(&project)
+        .env("PATH", &path)
+        .env_remove("VIRTUAL_ENV")
+        .output()
+        .unwrap();
+    assert_eq!(
+        unselected_legacy.status.code(),
+        Some(0),
+        "{unselected_legacy:?}"
+    );
+    assert!(
+        !text(&unselected_legacy)
+            .contains("missing-doctor-legacy-package is missing")
+    );
+
+    fs::write(project.join("uv.toml"), "default-groups = ['dev']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
+    let selected_legacy = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("doctor")
+        .arg("--project")
+        .arg(&project)
+        .env("PATH", &path)
+        .env_remove("VIRTUAL_ENV")
+        .output()
+        .unwrap();
+    assert_eq!(selected_legacy.status.code(), Some(1), "{selected_legacy:?}");
+    assert!(
+        text(&selected_legacy)
+            .contains("missing-doctor-legacy-package is missing from .venv")
     );
 }
