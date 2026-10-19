@@ -35,7 +35,7 @@ planned. Command flags and limitations are documented in their guides.
 | Command | Pyfaro responsibility | Delegated capability |
 | --- | --- | --- |
 | `create` | Local library and CLI templates with project metadata | None; uv is not invoked |
-| `init` | Safe opt-in configuration of an existing project | uv metadata and locking |
+| `init` | Safe opt-in configuration of a new or existing project | uv metadata and locking |
 | `add`, `remove` | Consistent dependency UX | uv dependency editing |
 | `sync` | Locked/reproducible workflow | uv environment sync |
 | `run` | Context and argument passthrough | uv execution |
