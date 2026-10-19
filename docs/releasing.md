@@ -2,7 +2,7 @@
 
 ## First manual alpha: 0.1.0-alpha.1
 
-The first crates.io publication is being prepared ahead of the public-beta
+The first crates.io alpha was published on **2026-10-19**, ahead of the public-beta
 milestone. It contains the useful but experimental [`init`](init.md) workflow.
 This does not move roadmap milestones or expand B06: automated distribution,
 standalone artifacts, and GitHub Releases still belong to B02/B06 for beta.
@@ -12,12 +12,32 @@ their application workflow is deferred pending process-lifecycle guarantees.
 
 Publication stayed disabled during bootstrap. With the initialization slice
 implemented and tested, the release-preparation PR restricts publication to
-`publish = ["crates-io"]`. This permits verification and an eventual manual
-upload; it does **not** authorize publishing. No workflow uploads this crate.
+`publish = ["crates-io"]`. This permits verification and manual uploads;
+each upload still requires explicit authorization. No workflow uploads this crate.
 
 **Do not run an uploading `cargo publish` until the maintainer explicitly
 approves this exact release and commit.** Merging the preparation PR, passing
 CI, or accepting a dry-run is not that approval.
+
+### Verified publication record
+
+- Version: [`pyfaro 0.1.0-alpha.1`](https://crates.io/crates/pyfaro/0.1.0-alpha.1).
+- Source: merged [PR #68](https://github.com/pyfaro/pyfaro/pull/68), commit
+  [`5ef04f55aa8c91778cc920ab6fe0d6b3c0a2921f`](https://github.com/pyfaro/pyfaro/commit/5ef04f55aa8c91778cc920ab6fe0d6b3c0a2921f).
+- Registry timestamp: `2026-10-19T03:32:12.263591Z`.
+- Verified publisher and current owner: `mhbxyz`.
+- Published archive SHA-256:
+  `9de5d69bdd76afc56661c444f07ab78f99050eb60f26b9730f2bcab00180b8f3`.
+- The downloaded archive matches the registry checksum, records the source
+  commit above, and contains the reviewed package files.
+- `cargo install pyfaro --version 0.1.0-alpha.1 --locked --root <temporary-prefix>`
+  succeeded. The installed binary reported the exact version and passed
+  offline new/existing-project initialization, preview preservation, and
+  idempotence checks with uv 0.9.26 on Linux.
+
+This version already exists and must not be published again. The checklist
+below documents the manual release process; future releases need a new version
+and separate maintainer approval. No release tag or GitHub Release was created.
 
 ### Name and ownership
 
@@ -26,9 +46,10 @@ On 2026-10-15, the official crates.io API returned HTTP 404 with
 
 <https://crates.io/api/v1/crates/pyfaro>
 
-The name was unregistered at that check, not reserved. Recheck before upload.
-Confirm the publishing account/organization and intended owners with the
-maintainer. Credentials and ownership have not been configured by this PR.
+The name was unregistered at that check, not reserved. The first publication
+subsequently registered it under `mhbxyz`. Confirm the publishing account and
+owner permissions before future uploads; credentials remain local and must
+not be committed to this repository.
 
 ### Pre-publication verification
 

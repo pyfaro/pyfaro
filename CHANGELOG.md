@@ -2,9 +2,10 @@
 
 ## Unreleased
 
-## 0.1.0-alpha.1 — Pending publication
+## 0.1.0-alpha.1 — 2026-10-19
 
-This experimental release candidate has not been published. CLI and
+First experimental release, published on
+[crates.io](https://crates.io/crates/pyfaro/0.1.0-alpha.1). CLI and
 configuration interfaces may change during the alpha series.
 
 ### Added
@@ -29,7 +30,7 @@ configuration interfaces may change during the alpha series.
   remains responsible for automated distribution and GitHub Releases for
   the public beta. Existing roadmap milestones have not been moved.
 - Only initialization is implemented; workspaces and other workflow
-  commands remain planned. No Pyfaro release has shipped yet.
+  commands remain planned.
 - This first alpha supports applying initialization on Linux. macOS and
   Windows retain builds and previews but explicitly reject `--apply` until
   their process-lifecycle guarantees are implemented.
