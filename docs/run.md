@@ -13,18 +13,19 @@ pyfaro run --project ./my-project -- python scripts/task.py --verbose
 The first `--` belongs to Pyfaro. Everything after it, including spaces,
 Unicode, leading dashes, and another `--`, is passed as separate OS-native
 arguments to uv and then the program. Pyfaro does not invoke a shell.
-`--project <PATH>` defaults to the current directory. uv discovers that
-project, which must contain `pyproject.toml`, synchronizes its environment by
-default, and runs the program
-inside it. `--locked` refuses a missing or stale `uv.lock`; `--frozen` uses
-an existing lock without checking it. These modes are mutually exclusive.
-`.py` script files in the project, including bare names such as `task.py`,
-run through its Python interpreter,
-including scripts with PEP 723 inline metadata. This avoids uv switching them
-to an isolated script environment. If no project-local file matches a bare
-`.py` name, uv retains normal executable lookup on `PATH`. A same-named local
-file takes precedence, as it does with uv directly. Leading-dash script names
-also work without being parsed as Python options.
+`--project <PATH>` defaults to the current directory, which must contain
+`pyproject.toml`. uv synchronizes that project's environment by default and
+runs the program inside it. `--locked` refuses a missing or stale `uv.lock`;
+`--frozen` uses an existing lock without checking it. These modes are
+mutually exclusive.
+
+An existing `.py` script passed by path, even outside the project, runs
+through the project's Python interpreter. This includes scripts with PEP 723
+inline metadata, but their inline dependencies are not installed; declare
+needed packages in the project instead. A bare `.py` name matching a local
+file chooses that file before `PATH`, as uv does. Otherwise uv resolves the
+executable on `PATH`. Leading-dash script names work without being parsed as
+Python options.
 
 Use `--uv <executable>` to select uv and `--offline` to disable network
 access. Pyfaro accepts stable uv versions >=0.9.26; CI tests 0.9.26. It
@@ -33,5 +34,5 @@ is inherited, and an interactive Unix terminal is relayed to avoid
 background-process-group suspension. A command accessing the terminal device
 directly can be stopped by job control; Pyfaro terminates it with a diagnostic
 rather than hanging. Run uv directly for commands that need stdin to be a TTY.
-A numeric command failure is returned
-unchanged; cancellation stops the delegated process tree and returns 130.
+A numeric command failure is returned unchanged; cancellation stops the
+delegated process tree and returns 130.

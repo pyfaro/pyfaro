@@ -99,6 +99,27 @@ fn run_uses_the_project_environment_for_inline_metadata_scripts() {
         fs::canonicalize(prefix.trim()).unwrap(),
         fs::canonicalize(project.path().join(".venv")).unwrap()
     );
+    let external = tempdir().unwrap();
+    let external_script = external.path().join("outside.py");
+    fs::write(
+        &external_script,
+        "# /// script\n# dependencies = []\n# ///\nimport sys\nprint(sys.prefix)\n",
+    )
+    .unwrap();
+    let outside = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["run", "--locked", "--offline", "--project"])
+        .arg(project.path())
+        .arg("--")
+        .arg(&external_script)
+        .env("UV_CACHE_DIR", project.path().join("uv-cache"))
+        .output()
+        .unwrap();
+    assert!(outside.status.success(), "{outside:?}");
+    let outside_prefix = String::from_utf8(outside.stdout).unwrap();
+    assert_eq!(
+        fs::canonicalize(outside_prefix.trim()).unwrap(),
+        fs::canonicalize(project.path().join(".venv")).unwrap()
+    );
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -212,6 +233,25 @@ fn run_forwards_redirected_input() {
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
 fn run_accepts_input_from_a_foreground_terminal() {
+    let (success, output) =
+        run_in_terminal("print(input().upper())", Some(b"hello\r"));
+    assert!(success, "{output}");
+    assert!(output.contains("HELLO"), "{output}");
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
+fn run_reports_terminal_device_access_instead_of_hanging() {
+    let (success, output) = run_in_terminal(
+        "print('ready', flush=True); open('/dev/tty').readline()",
+        None,
+    );
+    assert!(!success, "{output}");
+    assert!(output.contains("delegated command stopped"), "{output}");
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn run_in_terminal(script: &str, input: Option<&[u8]>) -> (bool, String) {
     use std::io::Read;
     use std::sync::mpsc;
     use std::thread;
@@ -238,7 +278,7 @@ fn run_accepts_input_from_a_foreground_terminal() {
         command.arg(argument);
     }
     command.arg(project.path());
-    for argument in ["--", "python", "-c", "print(input().upper())"] {
+    for argument in ["--", "python", "-c", script] {
         command.arg(argument);
     }
     command.env("UV_CACHE_DIR", project.path().join("uv-cache"));
@@ -256,7 +296,9 @@ fn run_accepts_input_from_a_foreground_terminal() {
         let _ = reader.read_to_end(&mut output);
         let _ = output_sender.send(output);
     });
-    writer.write_all(b"hello\r").unwrap();
+    if let Some(input) = input {
+        writer.write_all(input).unwrap();
+    }
     let status = match status_receiver.recv_timeout(Duration::from_secs(10)) {
         Ok(status) => status.unwrap(),
         Err(error) => {
@@ -264,75 +306,8 @@ fn run_accepts_input_from_a_foreground_terminal() {
             panic!("terminal command did not exit: {error}");
         }
     };
-    assert!(status.success(), "{status:?}");
     drop(writer);
     drop(pair.slave);
     let output = output_receiver.recv_timeout(Duration::from_secs(3)).unwrap();
-    let output = String::from_utf8_lossy(&output);
-    assert!(output.contains("HELLO"), "{output}");
-}
-
-#[cfg(any(target_os = "linux", target_os = "macos"))]
-#[test]
-fn run_reports_terminal_device_access_instead_of_hanging() {
-    use std::io::Read;
-    use std::sync::mpsc;
-    use std::thread;
-    use std::time::Duration;
-
-    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
-
-    let project = tempdir().unwrap();
-    fs::write(
-        project.path().join("pyproject.toml"),
-        "[project]\nname = 'tty-example'\nversion = '1.0.0'\nrequires-python = '>=3.10'\ndependencies = []\n",
-    )
-    .unwrap();
-    let pair = native_pty_system()
-        .openpty(PtySize {
-            rows: 24,
-            cols: 80,
-            pixel_width: 0,
-            pixel_height: 0,
-        })
-        .unwrap();
-    let mut command = CommandBuilder::new(env!("CARGO_BIN_EXE_pyfaro"));
-    for argument in ["run", "--offline", "--project"] {
-        command.arg(argument);
-    }
-    command.arg(project.path());
-    for argument in [
-        "--",
-        "python",
-        "-c",
-        "print('ready', flush=True); open('/dev/tty').readline()",
-    ] {
-        command.arg(argument);
-    }
-    command.env("UV_CACHE_DIR", project.path().join("uv-cache"));
-    let mut child = pair.slave.spawn_command(command).unwrap();
-    let mut killer = child.clone_killer();
-    let mut reader = pair.master.try_clone_reader().unwrap();
-    let (status_sender, status_receiver) = mpsc::channel();
-    thread::spawn(move || {
-        let _ = status_sender.send(child.wait());
-    });
-    let (output_sender, output_receiver) = mpsc::channel();
-    thread::spawn(move || {
-        let mut output = Vec::new();
-        let _ = reader.read_to_end(&mut output);
-        let _ = output_sender.send(output);
-    });
-    let status = match status_receiver.recv_timeout(Duration::from_secs(10)) {
-        Ok(status) => status.unwrap(),
-        Err(error) => {
-            let _ = killer.kill();
-            panic!("terminal command did not exit: {error}");
-        }
-    };
-    assert!(!status.success(), "{status:?}");
-    drop(pair.slave);
-    let output = output_receiver.recv_timeout(Duration::from_secs(3)).unwrap();
-    let output = String::from_utf8_lossy(&output);
-    assert!(output.contains("delegated command stopped"), "{output}");
+    (status.success(), String::from_utf8_lossy(&output).into_owned())
 }
