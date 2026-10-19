@@ -128,9 +128,11 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
         "[project]\nname = 'sample'\n[tool.pyfaro]\nschema-version = 2\n",
     )
     .unwrap();
+    fs::write(project.join("src"), "wrong kind").unwrap();
     let invalid = doctor(&project, &bin, &uv);
     assert_eq!(invalid.status.code(), Some(1), "{invalid:?}");
     assert!(text(&invalid).contains("schema-version"));
+    assert!(text(&invalid).contains("src must be a directory"), "{invalid:?}");
 
     fs::write(
         &metadata,
@@ -156,6 +158,37 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
     let incompatible = doctor(&project, &bin, &uv);
     assert_eq!(incompatible.status.code(), Some(1), "{incompatible:?}");
     assert!(text(&incompatible).contains("does not satisfy requires-python"));
+
+    for dependencies in ["'invalid'", "[42]"] {
+        fs::write(
+            &metadata,
+            format!(
+                "[project]\nname = 'sample'\ndependencies = {dependencies}\n"
+            ),
+        )
+        .unwrap();
+        let invalid_dependencies = doctor(&project, &bin, &uv);
+        assert_eq!(
+            invalid_dependencies.status.code(),
+            Some(1),
+            "{invalid_dependencies:?}"
+        );
+        assert!(text(&invalid_dependencies).contains("ERROR: dependencies:"));
+        assert!(!text(&invalid_dependencies).contains("OK: dependencies:"));
+    }
+
+    fs::write(
+        &metadata,
+        "[project]\nname = 'sample'\ndynamic = ['dependencies']\n",
+    )
+    .unwrap();
+    let dynamic = doctor(&project, &bin, &uv);
+    assert_eq!(dynamic.status.code(), Some(1), "{dynamic:?}");
+    assert!(
+        text(&dynamic)
+            .contains("dynamic project dependencies cannot be checked")
+    );
+    assert!(!text(&dynamic).contains("OK: dependencies:"));
 
     fs::write(&metadata, "[project]\nname = 'sample'\n").unwrap();
     fs::write(project.join(".python-version"), "3.11\n").unwrap();
@@ -263,4 +296,62 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         .unwrap();
     assert_eq!(malformed.status.code(), Some(1), "{malformed:?}");
     assert!(text(&malformed).contains("invalid requirement"), "{malformed:?}");
+
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = ['missing-doctor-dev-package==1.0']\nquality = ['missing-doctor-quality-package==1.0']\n").unwrap();
+    let grouped = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("doctor")
+        .arg("--project")
+        .arg(&project)
+        .env("PATH", &path)
+        .env_remove("VIRTUAL_ENV")
+        .output()
+        .unwrap();
+    assert_eq!(grouped.status.code(), Some(1), "{grouped:?}");
+    let report = text(&grouped);
+    assert!(
+        report.contains("missing-doctor-dev-package is missing from .venv"),
+        "{report}"
+    );
+    assert!(report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(
+        !report.contains("missing-doctor-quality-package is missing"),
+        "{report}"
+    );
+
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = ['missing-doctor-dev-package==1.0']\nquality = ['missing-doctor-quality-package==1.0']\n[tool.uv]\ndefault-groups = ['quality']\n").unwrap();
+    let selected = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("doctor")
+        .arg("--project")
+        .arg(&project)
+        .env("PATH", &path)
+        .env_remove("VIRTUAL_ENV")
+        .output()
+        .unwrap();
+    assert_eq!(selected.status.code(), Some(1), "{selected:?}");
+    let report = text(&selected);
+    assert!(
+        report.contains("missing-doctor-quality-package is missing from .venv"),
+        "{report}"
+    );
+    assert!(
+        !report.contains("missing-doctor-dev-package is missing"),
+        "{report}"
+    );
+
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = [{include-group = 'quality'}]\nquality = ['missing-doctor-quality-package==1.0']\n").unwrap();
+    let included = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("doctor")
+        .arg("--project")
+        .arg(&project)
+        .env("PATH", &path)
+        .env_remove("VIRTUAL_ENV")
+        .output()
+        .unwrap();
+    assert_eq!(included.status.code(), Some(1), "{included:?}");
+    let report = text(&included);
+    assert!(
+        report.contains("missing-doctor-quality-package is missing from .venv"),
+        "{report}"
+    );
+    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
 }

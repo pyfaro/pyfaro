@@ -104,7 +104,8 @@ an explicit `install` may do so unless `--offline` is set. See the
 
 `pyfaro doctor` is also available in the development version. It reports
 project configuration, interpreter and tool versions, layout conflicts, and
-missing runtime distributions without intentionally changing project files.
+missing runtime or default-group distributions without intentionally changing
+project files.
 Its probes use temporary files and may trigger interpreter or tool startup
 side effects. Blocking findings return a non-zero exit code. See the
 [doctor guide](docs/doctor.md) for scope, diagnostics, and fixes.

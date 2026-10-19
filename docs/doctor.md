@@ -11,7 +11,7 @@ pyfaro doctor --project ./my-project --uv /path/to/uv
 
 The report uses `OK`, `WARN`, and `ERROR` lines in a fixed order. It reports
 the project root, Pyfaro configuration, Python, uv, Ruff, ty, pytest, and
-runtime dependencies. Paths and diagnostics escape control characters so each
+selected dependencies. Paths and diagnostics escape control characters so each
 finding stays on one line. Doctor exits 1 if it reports any `ERROR`; warnings
 alone leave exit status 0. Cancellation exits 130. A failed tool version probe
 is a doctor finding, so its child process exit code is not forwarded.
@@ -36,17 +36,23 @@ where `src`, `tests`, or `.venv` directories are expected. A `.venv` directory
 without its Python interpreter is a blocking layout issue. Remove the
 conflicting file or keep one source of configuration as the report directs.
 
-Doctor parses `[project].dependencies` with PyPA's PEP 508 implementation
-available to the selected Python interpreter (including pip's bundled copy or
-the copy in CPython's `ensurepip` wheel). Invalid requirements are blocking
-findings. It evaluates environment markers for that interpreter and checks
-applicable distribution names in the project's existing `.venv` using
-Python's standard `importlib.metadata`. A missing project interpreter or
-distribution is a blocking issue with a `pyfaro sync` action. If the parser is
-unavailable, doctor reports a blocking finding. Doctor checks presence, not
-requirement version constraints, optional dependency groups, or lockfile
-freshness. Use `pyfaro sync --locked` when a fresh, reproducible installation
-check is needed.
+Doctor parses `[project].dependencies` and uv's default dependency groups
+with PyPA's PEP 508 implementation available to the project interpreter
+(including pip's bundled copy or the copy in CPython's `ensurepip` wheel).
+The `dev` group is selected by default, unless `[tool.uv].default-groups`
+changes that selection. Included groups are followed. Legacy
+`[tool.uv].dev-dependencies` are also checked when `dev` is selected.
+Non-default groups not included by a selected group are reported as unchecked
+warnings, since `pyfaro sync` does not install them by default. Invalid group
+entries, inclusion cycles, and dynamic project dependencies are blocking
+findings.
+Doctor evaluates environment markers and checks applicable distribution names
+in the project's existing `.venv` using Python's standard
+`importlib.metadata`. A missing project interpreter or distribution is a
+blocking issue with a `pyfaro sync` action. If the parser is unavailable,
+doctor reports a blocking finding. Doctor checks presence, not requirement
+version constraints, optional extras, or lockfile freshness. Use
+`pyfaro sync --locked` when a fresh, reproducible installation check is needed.
 
 Doctor does not invoke a shell, access a package index, install packages, or
 create a project environment. Its Python queries use isolated mode (`-I`),
