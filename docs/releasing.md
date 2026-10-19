@@ -1,16 +1,28 @@
 # Publishing Pyfaro
 
-`main` now targets the unpublished `0.1.0-alpha.2` development version.
-The record below describes the already published `alpha.1`; a future upload
-requires its own reviewed commit and explicit maintainer approval.
+The repository prepares `0.1.0-alpha.2` as an unpublished release candidate.
+The published version is still `0.1.0-alpha.1`. This candidate adds `sync`,
+`run`, and `tools` to the experimental `init` workflow. `init --apply` remains
+Linux-only; `sync` and `run` are tested on Linux, macOS, and Windows.
 
 Completing the `v0.1.0 — Foundation` backlog milestone means its source-work
 criteria are met, not that a stable `0.1.0` crate has shipped. The current
-package version remains `0.1.0-alpha.2` until a separately approved release
-preparation chooses and verifies the exact artifact. CI package and publish
-dry-runs do not upload the crate. Before any later upload, rerun the checklist
-below against the approved version and commit, inspect that version's archive,
-and update the publication record, README, and changelog afterward.
+package version is already `0.1.0-alpha.2`; this preparation verifies it
+without uploading. CI package and publish dry-runs do not upload the crate.
+Before publication, the maintainer must explicitly approve this exact version
+and the merged commit after reviewing the candidate archive and CI evidence.
+Approval of the preparation PR alone is not publication approval.
+
+## Candidate: 0.1.0-alpha.2
+
+The source candidate is tracked by [release-preparation issue #77](https://github.com/pyfaro/pyfaro/issues/77).
+The reviewed PR and its merge commit identify the candidate source. Regenerate
+and verify the package from a clean checkout of that merged commit, then record
+the commit, package checksum, and verification evidence with that issue;
+do not put a candidate checksum in this packaged document, since changing it
+would change the archive. Recheck crates.io immediately before an upload to
+confirm that this version is still unused. A separate approval is required
+before any upload, tag, or GitHub Release.
 
 ## First manual alpha: 0.1.0-alpha.1
 
@@ -48,8 +60,8 @@ CI, or accepting a dry-run is not that approval.
   idempotence checks with uv 0.9.26 on Linux.
 
 This version already exists and must not be published again. The checklist
-below documents the manual release process; future releases need a new version
-and separate maintainer approval. No release tag or GitHub Release was created.
+below applies to the `alpha.2` candidate. No release tag or GitHub Release was
+created for `alpha.1`.
 
 ### Name and ownership
 
@@ -63,13 +75,18 @@ subsequently registered it under `mhbxyz`. Confirm the publishing account and
 owner permissions before future uploads; credentials remain local and must
 not be committed to this repository.
 
-### Pre-publication verification
+## Pre-publication verification for alpha.2
 
-Use a clean checkout of the approved preparation commit and the pinned
-Rust toolchain. Install uv 0.9.26 separately and provide Python 3.10+ (CI uses
-3.12). No publishing token is needed for these verification commands:
+Use a clean checkout of the merged preparation commit, not the PR branch,
+and the pinned Rust toolchain. Install uv 0.9.26 separately and provide
+Python 3.10+ (CI uses 3.12). Repeat these commands after merge and record
+the commit and resulting archive checksum in issue #77 before requesting
+publication approval. The following Unix shell block stops at the first
+failure. On Windows, run each command separately in PowerShell and stop if
+`$LASTEXITCODE` is nonzero. No publishing token is needed:
 
 ```sh
+set -e
 cargo fmt --all -- --check
 cargo clippy --locked --all-targets --all-features -- -D warnings
 cargo test --locked --all-targets
@@ -86,23 +103,64 @@ and lockfile, license, changelog, README, contributor/security documents,
 and initialization/release/architecture docs are explicitly included.
 Development graph/cache state, GitHub/backlog automation, and build outputs
 must not enter the archive. Cargo also adds its normalized/original manifests
-and VCS information. Inspect `target/package/pyfaro-0.1.0-alpha.1.crate`.
+and VCS information. Inspect `target/package/pyfaro-0.1.0-alpha.2.crate`
+and record its SHA-256 checksum outside the package.
 
-Smoke-test a dependency-free new project and an existing project with uv:
+On Linux, smoke-test a dependency-free new project and idempotent application
+with uv. `init --apply` is intentionally unsupported on macOS and Windows:
 
 ```sh
-cargo run --locked -- init ../pyfaro-alpha-smoke
-cargo run --locked -- init ../pyfaro-alpha-smoke --apply --offline
-cargo run --locked -- init ../pyfaro-alpha-smoke --apply --offline
+set -e
+cargo run --locked -- init ../pyfaro-alpha2-init-smoke
+cargo run --locked -- init ../pyfaro-alpha2-init-smoke --apply --offline
+before=$(sha256sum ../pyfaro-alpha2-init-smoke/pyproject.toml ../pyfaro-alpha2-init-smoke/uv.lock)
+cargo run --locked -- init ../pyfaro-alpha2-init-smoke --apply --offline
+test "$before" = "$(sha256sum ../pyfaro-alpha2-init-smoke/pyproject.toml ../pyfaro-alpha2-init-smoke/uv.lock)"
 ```
+
+The final comparison must succeed: reapplying must leave both project files
+byte-for-byte unchanged.
+
+On Linux or macOS, start from a fresh disposable path and smoke-test the
+other commands against a dependency-free project. Stop at the first failure:
+
+```sh
+set -e
+uv init --bare ../pyfaro-alpha2-workflow-smoke
+cargo run --locked -- sync --project ../pyfaro-alpha2-workflow-smoke --offline
+cargo run --locked -- run --project ../pyfaro-alpha2-workflow-smoke --locked --offline -- python --version
+cargo run --locked -- tools uv
+cargo run --locked -- tools --project ../pyfaro-alpha2-workflow-smoke
+```
+
+On Windows, run the equivalent commands in PowerShell with an exit-status
+check after each external process:
+
+```powershell
+function Invoke-Checked([scriptblock]$Command) {
+    & $Command
+    if ($LASTEXITCODE -ne 0) { throw "Release check failed: $LASTEXITCODE" }
+}
+Invoke-Checked { uv init --bare ../pyfaro-alpha2-workflow-smoke }
+Invoke-Checked { cargo run --locked -- sync --project ../pyfaro-alpha2-workflow-smoke --offline }
+Invoke-Checked { cargo run --locked -- run --project ../pyfaro-alpha2-workflow-smoke --locked --offline -- python --version }
+Invoke-Checked { cargo run --locked -- tools uv }
+Invoke-Checked { cargo run --locked -- tools --project ../pyfaro-alpha2-workflow-smoke }
+```
+
+The commands should exit successfully. `sync` creates `.venv` and `uv.lock`,
+`run` prints the interpreter version, and `tools uv` reports the selected uv
+path and version. The all-tool listing may mark optional Ruff, ty, or pytest
+as unavailable without failing or installing them.
 
 Also run `cargo test --locked --all-targets` from the unpacked package to
 verify the shipped tests and fixtures are self-contained. Check the
-`--version` output is `pyfaro 0.1.0-alpha.1`. Review the pending changelog
-and CI evidence on the preparation PR: full Linux workflow checks plus
-macOS/Windows build, preview, and unsupported-apply checks.
+`--version` output is `pyfaro 0.1.0-alpha.2`. Review the candidate changelog
+and CI evidence on the preparation PR: full Rust checks on Linux, macOS,
+and Windows, plus the RustSec audit. Do not close the preparation issue until
+the merged archive and checksum have been verified.
 
-### Only after explicit publication approval
+## Only after explicit publication approval
 
 1. Confirm the clean commit, name availability, crates.io account, ownership
    plan, successful checks, and version with the maintainer. Authenticate
@@ -116,12 +174,13 @@ macOS/Windows build, preview, and unsupported-apply checks.
 3. Verify the crates.io entry and test installation in a disposable location:
 
    ```sh
-   cargo install pyfaro --version 0.1.0-alpha.1 --locked --root <temporary-prefix>
+   cargo install pyfaro --version 0.1.0-alpha.2 --locked --root ./pyfaro-alpha2-install
    ```
 
-4. Confirm the resulting binary's version and smoke-test `init` with the
-   external uv/Python requirements. Record the actual publication date in
-   the changelog and update the README's pending-publication status.
+4. Confirm the resulting binary's version and smoke-test `init`, `sync`,
+   `run`, and `tools` with the external uv/Python requirements. Record the
+   actual publication date and registry checksum in a follow-up reviewed PR;
+   update the changelog, release record, and README's publication status.
 5. Create/push a release tag only after publication is verified and separately
    authorized. This alpha does not introduce a GitHub Release pipeline.
 

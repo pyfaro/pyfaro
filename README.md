@@ -9,10 +9,11 @@ quality checks, tests, and development workflows into one cohesive CLI.
 **Experimental alpha — [`0.1.0-alpha.1`](https://crates.io/crates/pyfaro/0.1.0-alpha.1),
 published on 2026-10-19.** The published alpha implements `init`, `--help`,
 and `--version`. Interfaces may change between alpha versions.
-The development branch adds `sync`, `run`, and `tools`, and targets an unpublished
-`0.1.0-alpha.2` build. The installation command below installs the published
+The repository prepares `0.1.0-alpha.2` as an unpublished release candidate.
+It adds `sync`, `run`, and `tools`; build from source to try them before
+publication. The installation command below still installs the published
 `alpha.1`. Completing the Foundation backlog milestone does not publish a
-stable `0.1.0`; release preparation and approval are separate.
+stable `0.1.0`, and this candidate remains experimental.
 
 The first alpha targets **Linux** for `init --apply`. macOS and Windows
 retain builds, help/version, and non-writing previews; applying initialization
@@ -62,7 +63,7 @@ executable. See the [init guide](docs/init.md) for exact behavior, error
 handling, and alpha limitations, and the [release instructions](docs/releasing.md)
 for the publication approval gate.
 
-In the development build, `pyfaro sync [PATH]` creates or updates the
+In the `alpha.2` candidate, `pyfaro sync [PATH]` creates or updates the
 project's `.venv` and `uv.lock` through uv. Use `--locked` to reject stale
 locks or `--frozen` to install from an existing lock without checking it.
 From a nested directory, Pyfaro selects the nearest `pyproject.toml`;
@@ -95,8 +96,8 @@ tools are found in the selected project's `.venv`, then `VIRTUAL_ENV`, then
 
 Remaining planned commands: `create`, `add`, `remove`, `dev`,
 `lint`, `fmt`, `type`, `check`, `test`, `build`, and `doctor`.
-These commands are roadmap items, not working functionality. The development
-build currently includes `init`, `sync`, `run`, and `tools`.
+These commands are roadmap items, not working functionality. The `alpha.2`
+candidate includes `init`, `sync`, `run`, and `tools`.
 
 ## Integration over reimplementation
 
