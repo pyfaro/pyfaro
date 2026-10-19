@@ -190,15 +190,42 @@ fn inspect_configuration(
     for (section, files) in [
         ("ruff", &["ruff.toml", ".ruff.toml"][..]),
         ("ty", &["ty.toml"][..]),
-        ("pytest", &["pytest.ini"][..]),
+        ("pytest", &["pytest.ini", "tox.ini", "setup.cfg"][..]),
     ] {
         let configured =
             document.get("tool").and_then(|tool| tool.get(section)).is_some();
-        let present: Vec<_> = files
-            .iter()
-            .filter(|file| root.join(file).exists())
-            .copied()
-            .collect();
+        let mut present = Vec::new();
+        for file in files {
+            let path = root.join(file);
+            let contains_configuration = match *file {
+                "tox.ini" | "setup.cfg" => {
+                    let section = if *file == "tox.ini" {
+                        "[pytest]"
+                    } else {
+                        "[tool:pytest]"
+                    };
+                    match fs::read_to_string(&path) {
+                        Ok(contents) => contents.lines().any(|line| {
+                            line.trim().trim_start_matches('\u{feff}')
+                                == section
+                        }),
+                        Err(error)
+                            if error.kind() == std::io::ErrorKind::NotFound =>
+                        {
+                            false
+                        }
+                        Err(error) => {
+                            report.line(Severity::Error, format!("configuration: cannot read {}: {error}; check the file and its permissions", path.display()))?;
+                            false
+                        }
+                    }
+                }
+                _ => path.exists(),
+            };
+            if contains_configuration {
+                present.push(*file);
+            }
+        }
         if configured && !present.is_empty() {
             report.line(
                 Severity::Error,
@@ -537,35 +564,18 @@ fn uv_configuration(
     project_document: &DocumentMut,
     report: &mut Report,
 ) -> Result<UvDiscovery> {
+    if let Some(path) = env::var_os("UV_CONFIG_FILE") {
+        let path = root.join(path);
+        return read_uv_configuration_file(&path, report, true);
+    }
+    if uv_env_enabled("UV_NO_CONFIG") {
+        return Ok(UvDiscovery::Missing);
+    }
     for directory in root.ancestors() {
         let uv_path = directory.join("uv.toml");
-        match fs::read_to_string(&uv_path) {
-            Ok(contents) => {
-                let document = match contents.parse::<DocumentMut>() {
-                    Ok(document) => document,
-                    Err(error) => {
-                        report.line(
-                            Severity::Error,
-                            format!(
-                                "dependencies: invalid {}: {error}; correct {}",
-                                uv_path.display(),
-                                uv_path.display()
-                            ),
-                        )?;
-                        return Ok(UvDiscovery::Invalid);
-                    }
-                };
-                return Ok(UvDiscovery::Config(Box::new(UvConfiguration {
-                    document,
-                    path: uv_path,
-                    standalone: true,
-                })));
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(error) => {
-                report.line(Severity::Error, format!("dependencies: cannot read {}: {error}; repair the uv configuration", uv_path.display()))?;
-                return Ok(UvDiscovery::Invalid);
-            }
+        match read_uv_configuration_file(&uv_path, report, false)? {
+            UvDiscovery::Missing => {}
+            result => return Ok(result),
         }
         let metadata = directory.join("pyproject.toml");
         let document = if directory == root {
@@ -619,6 +629,55 @@ fn uv_configuration(
         }
     }
     Ok(UvDiscovery::Missing)
+}
+
+fn read_uv_configuration_file(
+    path: &Path,
+    report: &mut Report,
+    explicit: bool,
+) -> Result<UvDiscovery> {
+    let contents = match fs::read_to_string(path) {
+        Ok(contents) => contents,
+        Err(error)
+            if !explicit && error.kind() == std::io::ErrorKind::NotFound =>
+        {
+            return Ok(UvDiscovery::Missing);
+        }
+        Err(error) => {
+            let action = if explicit {
+                "check UV_CONFIG_FILE and its file permissions"
+            } else {
+                "check the file and its permissions"
+            };
+            report.line(
+                Severity::Error,
+                format!(
+                    "dependencies: cannot read {}: {error}; {action}",
+                    path.display()
+                ),
+            )?;
+            return Ok(UvDiscovery::Invalid);
+        }
+    };
+    let document = match contents.parse::<DocumentMut>() {
+        Ok(document) => document,
+        Err(error) => {
+            report.line(
+                Severity::Error,
+                format!(
+                    "dependencies: invalid {}: {error}; correct {}",
+                    path.display(),
+                    path.display()
+                ),
+            )?;
+            return Ok(UvDiscovery::Invalid);
+        }
+    };
+    Ok(UvDiscovery::Config(Box::new(UvConfiguration {
+        document,
+        path: path.to_path_buf(),
+        standalone: true,
+    })))
 }
 
 fn declared_dependencies(

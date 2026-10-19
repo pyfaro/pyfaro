@@ -14,17 +14,30 @@ fn install(directory: &Path, name: &str) -> PathBuf {
     binary
 }
 
-fn doctor(project: &Path, path: &Path, uv: &Path) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+fn doctor_command(project: &Path, path: &Path, uv: &Path) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_pyfaro"));
+    command
         .arg("doctor")
         .arg("--project")
         .arg(project)
         .arg("--uv")
         .arg(uv)
         .env("PATH", path)
-        .env_remove("VIRTUAL_ENV")
-        .output()
-        .unwrap()
+        .env_remove("VIRTUAL_ENV");
+    for name in [
+        "UV_NO_DEV",
+        "UV_NO_DEFAULT_GROUPS",
+        "UV_NO_GROUP",
+        "UV_CONFIG_FILE",
+        "UV_NO_CONFIG",
+    ] {
+        command.env_remove(name);
+    }
+    command
+}
+
+fn doctor(project: &Path, path: &Path, uv: &Path) -> Output {
+    doctor_command(project, path, uv).output().unwrap()
 }
 
 fn text(output: &Output) -> String {
@@ -301,6 +314,158 @@ fn project_uv_toml_takes_precedence_without_a_configuration_conflict() {
     assert!(!report.contains("ERROR: configuration:"), "{report}");
     assert!(report.contains("group \"dev\" is not checked"), "{report}");
     assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+}
+
+#[test]
+fn uv_environment_configuration_controls_default_groups() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n").unwrap();
+    fs::write(project.join("uv.toml"), "default-groups = ['quality']\n")
+        .unwrap();
+    fs::write(project.join("override.toml"), "default-groups = ['dev']\n")
+        .unwrap();
+
+    let override_output = doctor_command(&project, &bin, &uv)
+        .current_dir(sandbox.path())
+        .env("UV_CONFIG_FILE", "override.toml")
+        .output()
+        .unwrap();
+    let report = text(&override_output);
+    assert_eq!(override_output.status.code(), Some(0), "{override_output:?}");
+    assert!(report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(!report.contains("group \"dev\" is not checked"), "{report}");
+
+    let no_config = doctor_command(&project, &bin, &uv)
+        .env("UV_NO_CONFIG", "1")
+        .output()
+        .unwrap();
+    let report = text(&no_config);
+    assert_eq!(no_config.status.code(), Some(0), "{no_config:?}");
+    assert!(report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(!report.contains("group \"dev\" is not checked"), "{report}");
+
+    let both = doctor_command(&project, &bin, &uv)
+        .current_dir(sandbox.path())
+        .env("UV_CONFIG_FILE", "override.toml")
+        .env("UV_NO_CONFIG", "1")
+        .output()
+        .unwrap();
+    assert_eq!(both.status.code(), Some(0), "{both:?}");
+    assert!(
+        text(&both).contains("group \"quality\" is not checked"),
+        "{both:?}"
+    );
+}
+
+#[test]
+fn explicit_uv_configuration_errors_identify_the_file_and_action() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\ndependencies = []\n",
+    )
+    .unwrap();
+
+    let missing = project.join("missing.toml");
+    let missing_output = doctor_command(&project, &bin, &uv)
+        .env("UV_CONFIG_FILE", &missing)
+        .output()
+        .unwrap();
+    let report = text(&missing_output);
+    assert_eq!(missing_output.status.code(), Some(1), "{missing_output:?}");
+    assert!(report.contains(&missing.display().to_string()), "{report}");
+    assert!(report.contains("UV_CONFIG_FILE"), "{report}");
+    assert!(!report.contains("OK: dependencies:"), "{report}");
+
+    let malformed = project.join("malformed.toml");
+    fs::write(&malformed, "default-groups = [\n").unwrap();
+    let malformed_output = doctor_command(&project, &bin, &uv)
+        .env("UV_CONFIG_FILE", &malformed)
+        .output()
+        .unwrap();
+    let report = text(&malformed_output);
+    assert_eq!(malformed_output.status.code(), Some(1), "{malformed_output:?}");
+    assert!(
+        report.contains("invalid")
+            && report.contains(&malformed.display().to_string()),
+        "{report}"
+    );
+    assert!(report.contains("correct"), "{report}");
+
+    let unreadable = project.join("directory.toml");
+    fs::create_dir(&unreadable).unwrap();
+    let unreadable_output = doctor_command(&project, &bin, &uv)
+        .env("UV_CONFIG_FILE", &unreadable)
+        .output()
+        .unwrap();
+    let report = text(&unreadable_output);
+    assert_eq!(
+        unreadable_output.status.code(),
+        Some(1),
+        "{unreadable_output:?}"
+    );
+    assert!(report.contains(&unreadable.display().to_string()), "{report}");
+    assert!(report.contains("UV_CONFIG_FILE"), "{report}");
+}
+
+#[test]
+fn pytest_conflicts_require_pytest_sections_in_shared_ini_files() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
+    fs::write(project.join("tox.ini"), "[tox]\nenv_list = py\n").unwrap();
+    fs::write(project.join("setup.cfg"), "[metadata]\nname = sample\n")
+        .unwrap();
+
+    let unrelated = doctor(&project, &bin, &uv);
+    assert_eq!(unrelated.status.code(), Some(0), "{unrelated:?}");
+    assert!(!text(&unrelated).contains("ERROR: configuration:"));
+
+    fs::write(project.join("setup.cfg"), "[pytest]\naddopts = -q\n").unwrap();
+    let wrong_section = doctor(&project, &bin, &uv);
+    assert_eq!(wrong_section.status.code(), Some(0), "{wrong_section:?}");
+
+    fs::write(
+        project.join("tox.ini"),
+        "[tox]\nenv_list = py\n[pytest]\naddopts = -q\n",
+    )
+    .unwrap();
+    let tox = doctor(&project, &bin, &uv);
+    assert_eq!(tox.status.code(), Some(1), "{tox:?}");
+    assert!(text(&tox).contains("[tool.pytest] and tox.ini"));
+
+    fs::remove_file(project.join("tox.ini")).unwrap();
+    fs::write(
+        project.join("setup.cfg"),
+        "[metadata]\nname = sample\n[tool:pytest]\naddopts = -q\n",
+    )
+    .unwrap();
+    let setup = doctor(&project, &bin, &uv);
+    assert_eq!(setup.status.code(), Some(1), "{setup:?}");
+    assert!(text(&setup).contains("[tool.pytest] and setup.cfg"));
+
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
+        .unwrap();
+    fs::write(project.join("tox.ini"), "[pytest]\naddopts = -q\n").unwrap();
+    let shared = doctor(&project, &bin, &uv);
+    assert_eq!(shared.status.code(), Some(1), "{shared:?}");
+    assert!(
+        text(&shared).contains("tox.ini and setup.cfg both configure pytest")
+    );
 }
 
 #[test]

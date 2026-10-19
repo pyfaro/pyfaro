@@ -35,7 +35,10 @@ Doctor validates `pyproject.toml` with the same Pyfaro config loader used by
 `tests`, or `.venv` directories are expected. A `.venv` directory without its
 Python interpreter is a blocking layout issue. On Unix, an existing
 `.venv/bin/python` without executable permission also blocks, even if another
-Python is available on `PATH` and the project has no dependencies. For uv, a project `uv.toml`
+Python is available on `PATH` and the project has no dependencies. For pytest,
+`pytest.ini` conflicts with `[tool.pytest]`; `tox.ini` counts only when it has
+`[pytest]`, and `setup.cfg` counts only when it has `[tool:pytest]`. Multiple
+pytest configuration files also conflict. For uv, a project `uv.toml`
 takes precedence over `[tool.uv]` in `pyproject.toml`; doctor reports their
 coexistence as a warning. A non-table `[tool.uv]` value is an error.
 
@@ -48,6 +51,11 @@ space-delimited `UV_NO_GROUP` environment variable remove groups from installed
 distribution checks, as they do for uv. Doctor discovers uv configuration from
 the project directory upward: in each directory, `uv.toml` takes precedence
 over `[tool.uv]` in `pyproject.toml`, and the nearest configured directory wins.
+`UV_CONFIG_FILE` selects an explicit standalone uv configuration file instead
+of that search; relative paths are resolved from the selected project directory,
+as they are for uv commands run by Pyfaro. `UV_NO_CONFIG` disables file
+discovery unless `UV_CONFIG_FILE` is also set. Missing, unreadable, or malformed
+selected files are blocking findings that identify the file to fix.
 Both table and inline-table group declarations are accepted. Group names in
 defaults and includes match according to PEP 735: case is ignored and runs of
 `-`, `_`, or `.` are equivalent.
