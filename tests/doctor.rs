@@ -455,6 +455,18 @@ fn missing_project_metadata_and_invalid_package_are_blocking() {
             .contains("[project].name must be a nonempty string")
     );
 
+    fs::write(
+        &metadata,
+        "[project]\nname = 'invalid name'\nversion = '0.1.0'\n",
+    )
+    .unwrap();
+    let invalid_name = doctor(&project, &bin, &uv);
+    assert_eq!(invalid_name.status.code(), Some(1), "{invalid_name:?}");
+    assert!(
+        text(&invalid_name)
+            .contains("[project].name must be a valid package name")
+    );
+
     fs::write(&metadata, "[project]\nname = 'sample'\n").unwrap();
     let missing_version = doctor(&project, &bin, &uv);
     assert_eq!(missing_version.status.code(), Some(1), "{missing_version:?}");

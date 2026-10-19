@@ -121,8 +121,9 @@ selected groups that are missing are blocking findings. Included groups are
 followed. Legacy uv `dev-dependencies` are validated even when `dev` is not
 selected. Their installed distributions are checked only when `dev` is
 selected, including when `dev` is explicitly listed in `default-groups`,
-included by another selected group despite `UV_NO_DEV` or `UV_NO_GROUP=dev`, or
-legacy `dev-dependencies` are its only definition. Malformed requirements
+or legacy `dev-dependencies` are its only definition. Including `dev` from
+another selected group does not select legacy `dev-dependencies`, because uv
+adds them after resolving group includes. Malformed requirements
 identify the selected pyproject file to correct. Non-default groups not included
 by a selected group are reported as unchecked warnings. Doctor still validates
 every group's requirement strings, entry structure, and inclusion cycles

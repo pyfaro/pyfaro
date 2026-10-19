@@ -406,6 +406,12 @@ fn inspect_project_metadata(
         .is_none_or(|name| name.trim().is_empty())
     {
         report.line(Severity::Error, "configuration: [project].name must be a nonempty string; correct pyproject.toml")?;
+    } else if project
+        .get("name")
+        .and_then(|name| name.as_str())
+        .is_some_and(|name| !valid_group_name(name))
+    {
+        report.line(Severity::Error, "configuration: [project].name must be a valid package name; correct pyproject.toml")?;
     }
     let dynamic_version = project
         .get("dynamic")
