@@ -172,7 +172,7 @@ Generate an installable Python command-line project.
 
 - [ ] Produces valid console_scripts entry point
 - [ ] Supports package and command naming
-- [ ] Template passes Pyfaro checks
+- [ ] Template syncs, runs smoke tests, and builds with the current Pyfaro workflows; aggregate quality checks are covered by Q07
 
 ### P04 — [config] Implement `pyfaro init` for existing projects
 

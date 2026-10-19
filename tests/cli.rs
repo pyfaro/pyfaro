@@ -13,6 +13,7 @@ fn help_describes_the_current_development_status() {
     assert!(stdout.contains("Usage: pyfaro"));
     assert!(stdout.contains("Experimental alpha"));
     assert!(stdout.contains("init"));
+    assert!(stdout.contains("create"));
     assert!(stdout.contains("sync"));
     assert!(stdout.contains("add"));
     assert!(stdout.contains("remove"));
@@ -36,9 +37,9 @@ fn version_matches_the_cargo_package() {
 }
 
 #[test]
-fn unimplemented_commands_fail_with_usage_guidance() {
+fn unknown_create_preset_fails_with_usage_guidance() {
     let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
-        .arg("check")
+        .args(["create", "unknown"])
         .output()
         .expect("CLI should start");
 

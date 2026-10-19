@@ -7,6 +7,9 @@ This version has not been published.
 - Add `pyfaro add` and `pyfaro remove` for uv-owned dependency and lockfile
   edits, including development and named dependency groups. Environment
   synchronization remains an explicit `pyfaro sync` step.
+- Add `pyfaro create lib` and `pyfaro create cli` with packaged source layouts,
+  a uv build backend, smoke tests, and independent distribution, package, and
+  command names.
 
 ## 0.1.0-alpha.2 — 2026-10-19
 

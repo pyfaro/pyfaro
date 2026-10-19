@@ -8,7 +8,7 @@ use clap::{Args, Parser, Subcommand};
 #[command(version, about, long_about = None)]
 #[command(arg_required_else_help = true)]
 #[command(
-    after_help = "Experimental alpha: init, sync, run, add, remove, and tools are implemented; other workflow commands are not implemented yet."
+    after_help = "Experimental alpha: create, init, sync, run, add, remove, and tools are implemented; other workflow commands are not implemented yet."
 )]
 pub(crate) struct Cli {
     #[command(subcommand)]
@@ -17,6 +17,8 @@ pub(crate) struct Cli {
 
 #[derive(Subcommand)]
 pub(crate) enum Command {
+    /// Create a packaged Python library or command-line project
+    Create(CreateArgs),
     /// Preview or apply uv-backed project initialization
     Init(InitArgs),
     /// Synchronize the project environment through uv
@@ -56,6 +58,48 @@ pub(crate) struct DependencyArgs {
     /// Disable network access in uv
     #[arg(long)]
     pub offline: bool,
+}
+
+#[derive(Args)]
+pub(crate) struct CreateArgs {
+    #[command(subcommand)]
+    pub kind: CreateKind,
+}
+
+#[derive(Subcommand)]
+pub(crate) enum CreateKind {
+    /// Create a src-layout library
+    Lib(CreateProjectArgs),
+    /// Create an installable command-line application
+    Cli(CreateCliArgs),
+}
+
+#[derive(Args)]
+pub(crate) struct CreateProjectArgs {
+    /// Distribution name (also the default target directory name)
+    pub name: String,
+
+    /// Target directory; its parent must already exist
+    #[arg(long)]
+    pub path: Option<PathBuf>,
+
+    /// Minimum Python version as MAJOR.MINOR
+    #[arg(long, default_value = "3.10")]
+    pub python: String,
+}
+
+#[derive(Args)]
+pub(crate) struct CreateCliArgs {
+    #[command(flatten)]
+    pub project: CreateProjectArgs,
+
+    /// Import package name (defaults to the normalized distribution name)
+    #[arg(long)]
+    pub package: Option<String>,
+
+    /// Installed command name (defaults to the distribution name)
+    #[arg(long)]
+    pub command: Option<String>,
 }
 
 #[derive(Args)]

@@ -91,6 +91,12 @@ tools are found in the selected project's `.venv`, then `VIRTUAL_ENV`, then
 `PATH`; uv uses `PATH` or an explicit `--uv <path>`. See the
 [tools guide](docs/tools.md).
 
+The unpublished development version adds `pyfaro create lib NAME` and
+`pyfaro create cli NAME`. Both generate a packaged `src/` layout with a smoke
+test; the CLI variant also creates a console entry point. Creation itself
+does not invoke uv or download Python. See the [create guide](docs/create.md)
+for naming, interpreter, and build details.
+
 ## Planned experience
 
 - Create and initialize Python projects with opinionated, editable defaults.
@@ -100,11 +106,11 @@ tools are found in the selected project's `.venv`, then `VIRTUAL_ENV`, then
 - Combine non-destructive quality checks with clear diagnostics.
 - Build Python distributions through uv; later add workspaces and task graphs.
 
-Remaining planned commands: `create`, `dev`,
+Remaining planned commands: `dev`,
 `lint`, `fmt`, `type`, `check`, `test`, `build`, and `doctor`.
 These commands are roadmap items, not working functionality. The published
 `alpha.2` includes `init`, `sync`, `run`, and `tools`; the development version
-also includes `add` and `remove`.
+also includes `create`, `add`, and `remove`.
 
 ## Integration over reimplementation
 
