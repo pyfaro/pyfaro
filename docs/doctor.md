@@ -74,6 +74,8 @@ coexistence as a warning when the project file is selected. `UV_CONFIG_FILE`
 and `UV_NO_CONFIG` suppress that warning because they override discovery.
 A non-table `[tool.uv]` value is invalid project metadata and blocks even when
 standalone uv configuration is selected.
+Doctor also checks required `[project]` name and version metadata, including
+the shape of `dynamic`, independently of uv configuration discovery.
 
 Doctor parses `[project].dependencies` and uv's default dependency groups
 with PyPA's PEP 508 implementation available to the project interpreter

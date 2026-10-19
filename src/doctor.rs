@@ -413,12 +413,20 @@ fn inspect_project_metadata(
     {
         report.line(Severity::Error, "configuration: [project].name must be a valid package name; correct pyproject.toml")?;
     }
-    let dynamic_version = project
-        .get("dynamic")
-        .and_then(|dynamic| dynamic.as_array())
-        .is_some_and(|dynamic| {
-            dynamic.iter().any(|entry| entry.as_str() == Some("version"))
-        });
+    let dynamic_version = match project.get("dynamic") {
+        Some(dynamic) => match dynamic.as_array() {
+            Some(entries)
+                if entries.iter().all(|entry| entry.as_str().is_some()) =>
+            {
+                entries.iter().any(|entry| entry.as_str() == Some("version"))
+            }
+            _ => {
+                report.line(Severity::Error, "configuration: [project].dynamic must be an array of strings; correct pyproject.toml")?;
+                false
+            }
+        },
+        None => false,
+    };
     match project.get("version") {
         Some(version)
             if version

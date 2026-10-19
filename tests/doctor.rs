@@ -477,6 +477,23 @@ fn missing_project_metadata_and_invalid_package_are_blocking() {
     let dynamic_version = doctor(&project, &bin, &uv);
     assert_eq!(dynamic_version.status.code(), Some(0), "{dynamic_version:?}");
 
+    for dynamic in ["123", "[123]"] {
+        fs::write(&metadata, format!("[project]\nname = 'sample'\nversion = '0.1.0'\ndynamic = {dynamic}\n")).unwrap();
+        let invalid_dynamic = doctor_command(&project, &bin, &uv)
+            .env("UV_NO_CONFIG", "1")
+            .output()
+            .unwrap();
+        assert_eq!(
+            invalid_dynamic.status.code(),
+            Some(1),
+            "{invalid_dynamic:?}"
+        );
+        assert!(
+            text(&invalid_dynamic)
+                .contains("[project].dynamic must be an array of strings")
+        );
+    }
+
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '0.1.0'\n[tool.uv]\npackage = 'invalid'\n").unwrap();
     fs::write(project.join("uv.toml"), "offline = true\n").unwrap();
     for no_config in [false, true] {
