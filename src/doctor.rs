@@ -13,18 +13,40 @@ use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::{process, project, tools};
 
+#[derive(Clone, Copy)]
+enum Severity {
+    Ok,
+    Warn,
+    Error,
+}
+
+impl Severity {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Ok => "OK",
+            Self::Warn => "WARN",
+            Self::Error => "ERROR",
+        }
+    }
+}
+
 struct Report {
     blocking: usize,
 }
 
 impl Report {
-    fn line(&mut self, level: &str, message: impl AsRef<str>) -> Result<()> {
-        if level == "ERROR" {
+    fn line(
+        &mut self,
+        level: Severity,
+        message: impl AsRef<str>,
+    ) -> Result<()> {
+        if matches!(level, Severity::Error) {
             self.blocking += 1;
         }
         writeln!(
             std::io::stdout().lock(),
-            "{level}: {}",
+            "{}: {}",
+            level.label(),
             tools::single_line(message.as_ref())
         )
         .map_err(Error::Output)
@@ -36,12 +58,13 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
     let mut report = Report { blocking: 0 };
     let root = match project::select(args.project.as_deref()) {
         Ok(root) => {
-            report.line("OK", format!("project: {}", root.display()))?;
+            report
+                .line(Severity::Ok, format!("project: {}", root.display()))?;
             Some(root)
         }
         Err(error) => {
             report.line(
-                "ERROR",
+                Severity::Error,
                 format!(
                     "project: {error}; use --project <PATH> to select a project"
                 ),
@@ -53,20 +76,12 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
     let mut dependencies = Vec::new();
     let mut requires_python = None;
     if let Some(root) = root.as_deref() {
-        match Config::load(root) {
-            Ok(_) => {
-                report
-                    .line("OK", "pyproject.toml: valid Pyfaro configuration")?;
-                let metadata = root.join("pyproject.toml");
-                let source =
-                    fs::read_to_string(&metadata).map_err(|error| {
-                        Error::io("read project metadata", &metadata, error)
-                    })?;
-                let document: DocumentMut =
-                    source.parse().map_err(|source| Error::ConfigToml {
-                        path: metadata,
-                        source,
-                    })?;
+        match Config::load_document(root) {
+            Ok(document) => {
+                report.line(
+                    Severity::Ok,
+                    "pyproject.toml: valid Pyfaro configuration",
+                )?;
                 inspect_configuration(root, &document, &mut report)?;
                 dependencies = declared_dependencies(&document, &mut report)?;
                 requires_python = document
@@ -76,7 +91,7 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
                 inspect_layout(root, &mut report)?;
             }
             Err(error) => report.line(
-                "ERROR",
+                Severity::Error,
                 format!("configuration: {error}; correct pyproject.toml"),
             )?,
         }
@@ -85,7 +100,7 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
     let python = match tools::inspect_python(root.as_deref(), &cancelled) {
         Ok((path, version)) => {
             report.line(
-                "OK",
+                Severity::Ok,
                 format!("Python: {} ({version})", path.display()),
             )?;
             if let Some(requirement) = requires_python.as_ref() {
@@ -99,7 +114,7 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
         }
         Err(Error::Cancelled) => return Err(Error::Cancelled),
         Err(error) => {
-            report.line("ERROR", format!("Python: {error}"))?;
+            report.line(Severity::Error, format!("Python: {error}"))?;
             None
         }
     };
@@ -133,7 +148,7 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
     if report.blocking > 0 {
         Err(Error::DoctorFailed { count: report.blocking })
     } else {
-        report.line("OK", "doctor: no blocking issues")
+        report.line(Severity::Ok, "doctor: no blocking issues")
     }
 }
 
@@ -147,12 +162,13 @@ fn inspect_tool(
 ) -> Result<()> {
     let name = tools::name(tool);
     match tools::inspect(tool, root, uv, cancelled) {
-        Ok((path, version)) => {
-            report.line("OK", format!("{name}: {} ({version})", path.display()))
-        }
+        Ok((path, version)) => report.line(
+            Severity::Ok,
+            format!("{name}: {} ({version})", path.display()),
+        ),
         Err(Error::Cancelled) => Err(Error::Cancelled),
         Err(error) => report.line(
-            if required { "ERROR" } else { "WARN" },
+            if required { Severity::Error } else { Severity::Warn },
             format!("{name}: {error}"),
         ),
     }
@@ -178,7 +194,7 @@ fn inspect_configuration(
             .collect();
         if configured && !present.is_empty() {
             report.line(
-                "ERROR",
+                Severity::Error,
                 format!(
                     "configuration: [tool.{section}] and {} both configure {section}; keep one source of configuration",
                     present.join(", ")
@@ -186,7 +202,7 @@ fn inspect_configuration(
             )?;
         } else if present.len() > 1 {
             report.line(
-                "ERROR",
+                Severity::Error,
                 format!(
                     "configuration: {} both configure {section}; keep one source of configuration",
                     present.join(" and ")
@@ -202,7 +218,7 @@ fn inspect_layout(root: &Path, report: &mut Report) -> Result<()> {
         let path = root.join(directory);
         if path.exists() && !path.is_dir() {
             report.line(
-                "ERROR",
+                Severity::Error,
                 format!("layout: {} must be a directory; move or remove the conflicting file", path.display()),
             )?;
         }
@@ -215,7 +231,7 @@ fn inspect_layout(root: &Path, report: &mut Report) -> Result<()> {
     });
     if venv.is_dir() && !interpreter.is_file() {
         report.line(
-            "ERROR",
+            Severity::Error,
             format!(
                 "layout: {} has no Python interpreter; repair it with pyfaro sync",
                 venv.display()
@@ -232,13 +248,13 @@ fn inspect_python_requirement(
 ) -> Result<()> {
     let Some(requirement) = requirement else {
         return report.line(
-            "ERROR",
+            Severity::Error,
             "configuration: [project].requires-python must be a version specifier string",
         );
     };
     let Ok(specifiers) = requirement.parse::<VersionSpecifiers>() else {
         return report.line(
-            "ERROR",
+            Severity::Error,
             format!("configuration: invalid requires-python {requirement:?}; correct pyproject.toml"),
         );
     };
@@ -250,7 +266,7 @@ fn inspect_python_requirement(
         && !specifiers.contains(&version)
     {
         return report.line(
-            "ERROR",
+            Severity::Error,
             format!("Python: {reported_version} does not satisfy requires-python {requirement:?}; select a compatible interpreter"),
         );
     }
@@ -267,17 +283,17 @@ fn declared_dependencies(
         return Ok(Vec::new());
     };
     let Some(dependencies) = dependencies.as_array() else {
-        report.line("ERROR", "dependencies: [project].dependencies must be an array of requirement strings")?;
+        report.line(Severity::Error, "dependencies: [project].dependencies must be an array of requirement strings")?;
         return Ok(Vec::new());
     };
     let mut names = Vec::new();
     for dependency in dependencies.iter() {
         let Some(requirement) = dependency.as_str() else {
-            report.line("ERROR", "dependencies: each [project].dependencies entry must be a string")?;
+            report.line(Severity::Error, "dependencies: each [project].dependencies entry must be a string")?;
             continue;
         };
         if requirement.contains(';') {
-            report.line("WARN", format!("dependencies: conditional requirement {requirement:?} was not checked; verify its marker in the target environment"))?;
+            report.line(Severity::Warn, format!("dependencies: conditional requirement {requirement:?} was not checked; verify its marker in the target environment"))?;
             continue;
         }
         let name: String = requirement
@@ -293,7 +309,7 @@ fn declared_dependencies(
                 .next()
                 .is_some_and(|character| character.is_ascii_alphanumeric())
         {
-            report.line("ERROR", format!("dependencies: invalid requirement {requirement:?}; correct pyproject.toml"))?;
+            report.line(Severity::Error, format!("dependencies: invalid requirement {requirement:?}; correct pyproject.toml"))?;
         } else {
             names.push(name);
         }
@@ -312,7 +328,7 @@ fn inspect_dependencies(
 ) -> Result<()> {
     if dependencies.is_empty() {
         return report.line(
-            "OK",
+            Severity::Ok,
             "dependencies: no unconditional runtime dependencies to check",
         );
     }
@@ -323,7 +339,7 @@ fn inspect_dependencies(
     });
     if !local.is_file() {
         return report.line(
-            "ERROR",
+            Severity::Error,
             format!("dependencies: project interpreter {} is missing; run pyfaro sync", local.display()),
         );
     }
@@ -355,16 +371,16 @@ fn inspect_dependencies(
     let status = match process::run(command, cancelled) {
         Ok(status) => status,
         Err(Error::Cancelled) => return Err(Error::Cancelled),
-        Err(error) => return report.line("ERROR", format!("dependencies: could not inspect {}: {error}; repair the project environment or run pyfaro sync", local.display())),
+        Err(error) => return report.line(Severity::Error, format!("dependencies: could not inspect {}: {error}; repair the project environment or run pyfaro sync", local.display())),
     };
     if !status.success() {
-        return report.line("ERROR", format!("dependencies: interpreter check failed ({status}): {}; repair the project environment or run pyfaro sync", process::read_diagnostic(errors.path())?));
+        return report.line(Severity::Error, format!("dependencies: interpreter check failed ({status}): {}; repair the project environment or run pyfaro sync", process::read_diagnostic(errors.path())?));
     }
     let missing = fs::read_to_string(output.path())
         .map_err(|error| Error::io("read", output.path(), error))?;
     if missing.is_empty() {
         report.line(
-            "OK",
+            Severity::Ok,
             format!(
                 "dependencies: {} runtime distribution(s) installed in .venv",
                 dependencies.len()
@@ -372,7 +388,7 @@ fn inspect_dependencies(
         )
     } else {
         for name in missing.lines() {
-            report.line("ERROR", format!("dependencies: {name} is missing from .venv; run pyfaro sync"))?;
+            report.line(Severity::Error, format!("dependencies: {name} is missing from .venv; run pyfaro sync"))?;
         }
         Ok(())
     }

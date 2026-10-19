@@ -11,6 +11,11 @@ pub(crate) enum Config {
 
 impl Config {
     pub(crate) fn load(root: &Path) -> Result<Self> {
+        Self::load_document(root)?;
+        Ok(Self::V1 { root: root.to_owned() })
+    }
+
+    pub(crate) fn load_document(root: &Path) -> Result<DocumentMut> {
         let metadata = root.join("pyproject.toml");
         let source = fs::read_to_string(&metadata).map_err(|error| {
             Error::io("read project metadata", &metadata, error)
@@ -19,7 +24,7 @@ impl Config {
             Error::ConfigToml { path: metadata.clone(), source }
         })?;
         validate(&document).map_err(|error| Error::config(&metadata, error))?;
-        Ok(Self::V1 { root: root.to_owned() })
+        Ok(document)
     }
 
     pub(crate) fn root(&self) -> &Path {
