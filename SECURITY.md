@@ -18,13 +18,15 @@ private reporting to be restored rather than disclosing details publicly.
 
 ## Supported versions
 
-Pyfaro has no published supported release yet. Security fixes currently target
-`main`; a versioned support policy will accompany public releases.
+The published experimental alphas do not yet have a versioned support policy.
+Security fixes currently target `main`; a versioned support policy will
+accompany the public beta.
 
 ## Trust boundaries
 
-The current executable only parses CLI arguments. Future workflow commands
-will execute external tools and project code with the user's privileges.
+The current executable delegates initialization and environment operations to
+uv, can run project programs, and probes external tool versions with the user's
+privileges.
 Treat untrusted repositories and their configuration as untrusted input.
 Tool installation must be explicit; subprocesses must not use an implicit
 shell. Pyfaro will not send telemetry by default. Any network use by delegated
