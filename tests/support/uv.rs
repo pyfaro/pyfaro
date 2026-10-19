@@ -16,6 +16,10 @@ fn main() {
     if (stem == "ty" && args == ["version"])
         || (stem != "ty" && args == ["--version"])
     {
+        if env::var_os("PYFARO_FIXTURE_VERSION_FAIL").is_some() {
+            eprintln!("fixture interpreter is broken");
+            process::exit(7);
+        }
         let default = match stem.as_ref() {
             "ruff" => "ruff 0.14.0",
             "ty" => "ty 0.0.1-alpha.24",

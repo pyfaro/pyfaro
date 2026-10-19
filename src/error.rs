@@ -52,6 +52,15 @@ pub(crate) enum Error {
     UvVersion(String),
     #[error("{tool}: {reason}")]
     Tool { tool: &'static str, reason: String },
+    #[error(
+        "could not inspect {tool} at {path}: {source}; repair or replace the selected installation"
+    )]
+    ToolProbe {
+        tool: &'static str,
+        path: PathBuf,
+        #[source]
+        source: Box<Error>,
+    },
     #[error("could not install the cancellation handler: {0}")]
     CancellationSetup(#[from] ctrlc::Error),
     #[error("operation cancelled")]

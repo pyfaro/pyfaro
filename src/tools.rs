@@ -1,6 +1,7 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs;
+use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -80,12 +81,10 @@ fn inspect(
             if matches!(error, Error::Cancelled) {
                 error
             } else {
-                Error::Tool {
+                Error::ToolProbe {
                     tool: tool_name,
-                    reason: format!(
-                        "{} is incompatible: {error}; check its installation",
-                        binary.display()
-                    ),
+                    path: binary.clone(),
+                    source: Box::new(error),
                 }
             }
         })?;
@@ -96,9 +95,6 @@ fn resolve(
     tool: &'static str,
     root: Option<&Path>,
 ) -> std::result::Result<PathBuf, String> {
-    let cwd = env::current_dir().map_err(|error| {
-        format!("could not resolve current directory: {error}")
-    })?;
     let mut directories = Vec::new();
     if let Some(root) = root {
         directories.push(root.join(".venv").join(scripts_directory()));
@@ -109,9 +105,7 @@ fn resolve(
         directories.push(PathBuf::from(active).join(scripts_directory()));
     }
     for directory in directories {
-        if let Ok(binary) =
-            which::which_in(tool, Some(directory.as_os_str()), &cwd)
-        {
+        if let Ok(binary) = which::which(directory.join(tool)) {
             return native_binary(binary);
         }
     }
@@ -156,17 +150,35 @@ fn probe_version(
     let file = output
         .reopen()
         .map_err(|error| Error::io("open", output.path(), error))?;
+    let stderr = tempfile::NamedTempFile::new().map_err(|error| {
+        Error::io(
+            "create tool error output",
+            Path::new("temporary file"),
+            error,
+        )
+    })?;
+    let error_file = stderr
+        .reopen()
+        .map_err(|error| Error::io("open", stderr.path(), error))?;
     let mut command = Command::new(binary);
     let version_argument = if tool == "ty" { "version" } else { "--version" };
     command
         .arg(version_argument)
         .stdin(Stdio::null())
         .stdout(file)
-        .stderr(Stdio::null());
+        .stderr(error_file);
     let status = process::run(command, cancelled)?;
     if !status.success() {
+        let mut captured = Vec::new();
+        fs::File::open(stderr.path())
+            .map_err(|error| Error::io("read", stderr.path(), error))?
+            .take(4096)
+            .read_to_end(&mut captured)
+            .map_err(|error| Error::io("read", stderr.path(), error))?;
+        let detail = String::from_utf8_lossy(&captured);
         return Err(Error::Project(format!(
-            "{version_argument} exited with {status}"
+            "{version_argument} exited with {status}: {}",
+            detail.trim()
         )));
     }
     let output = fs::read_to_string(output.path())

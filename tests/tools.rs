@@ -139,6 +139,50 @@ fn rejects_unrecognized_versions_and_old_explicit_uv() {
 }
 
 #[test]
+fn project_environment_wins_even_when_its_path_contains_a_path_separator() {
+    let sandbox = tempdir().unwrap();
+    let folder = if cfg!(windows) {
+        "project;with-separator"
+    } else {
+        "project:with-separator"
+    };
+    let project = sandbox.path().join(folder);
+    let path = sandbox.path().join("global");
+    fs::create_dir(&project).unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'example'\n")
+        .unwrap();
+    let local = install(&project.join(".venv").join(scripts()), "ruff");
+    install(&path, "ruff");
+    let output = cli(&project, &path, sandbox.path(), &["tools", "ruff"]);
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap().trim_end(),
+        format!("ruff: {} (ruff 0.14.0)", resolved(&local))
+    );
+}
+
+#[test]
+fn failed_version_probe_reports_its_stderr_and_selected_path() {
+    let sandbox = tempdir().unwrap();
+    let path = sandbox.path().join("path");
+    let ruff = install(&path, "ruff");
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["tools", "ruff"])
+        .current_dir(sandbox.path())
+        .env("PATH", &path)
+        .env("PYFARO_FIXTURE_VERSION_FAIL", "1")
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    let diagnostic = String::from_utf8_lossy(&output.stderr);
+    assert!(diagnostic.contains(&resolved(&ruff)), "{diagnostic}");
+    assert!(
+        diagnostic.contains("fixture interpreter is broken"),
+        "{diagnostic}"
+    );
+}
+
+#[test]
 fn explicit_project_requires_its_own_metadata() {
     let sandbox = tempdir().unwrap();
     fs::write(
