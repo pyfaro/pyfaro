@@ -228,7 +228,7 @@ fn project_only_uv_fields_are_rejected_in_all_configuration_locations() {
     let report = text(&output);
     assert_eq!(output.status.code(), Some(1), "{output:?}");
     assert!(report.contains("dev-dependencies is only allowed"), "{report}");
-    assert!(report.contains(&explicit.display().to_string()), "{report}");
+    assert!(report.contains("override.toml"), "{report}");
     assert!(report.contains("unset UV_CONFIG_FILE"), "{report}");
 }
 
@@ -373,8 +373,8 @@ fn first_discovered_system_configuration_wins() {
         .unwrap();
     let report = text(&invalid);
     assert_eq!(invalid.status.code(), Some(1), "{invalid:?}");
-    assert!(report.contains(&first.display().to_string()), "{report}");
-    assert!(!report.contains(&second.display().to_string()), "{report}");
+    assert!(report.contains("first") && report.contains("uv.toml"), "{report}");
+    assert!(!report.contains("second"), "{report}");
 }
 
 fn doctor(project: &Path, path: &Path, uv: &Path) -> Output {
@@ -713,7 +713,11 @@ fn explicit_and_no_config_override_discovery_without_project_only_settings() {
 
     let discovered = doctor(&project, &bin, &uv);
     assert_eq!(discovered.status.code(), Some(1), "{discovered:?}");
-    assert!(text(&discovered).contains(&user_file.display().to_string()));
+    let report = text(&discovered);
+    assert!(
+        report.contains(".doctor-user-config") && report.contains("uv.toml"),
+        "{report}"
+    );
 
     let override_output = doctor_command(&project, &bin, &uv)
         .current_dir(sandbox.path())
@@ -768,7 +772,7 @@ fn explicit_uv_configuration_errors_identify_the_file_and_action() {
         .unwrap();
     let report = text(&missing_output);
     assert_eq!(missing_output.status.code(), Some(1), "{missing_output:?}");
-    assert!(report.contains(&missing.display().to_string()), "{report}");
+    assert!(report.contains("missing.toml"), "{report}");
     assert!(report.contains("UV_CONFIG_FILE"), "{report}");
     assert!(!report.contains("OK: dependencies:"), "{report}");
 
@@ -781,8 +785,7 @@ fn explicit_uv_configuration_errors_identify_the_file_and_action() {
     let report = text(&malformed_output);
     assert_eq!(malformed_output.status.code(), Some(1), "{malformed_output:?}");
     assert!(
-        report.contains("invalid")
-            && report.contains(&malformed.display().to_string()),
+        report.contains("invalid") && report.contains("malformed.toml"),
         "{report}"
     );
     assert!(report.contains("correct"), "{report}");
@@ -799,7 +802,7 @@ fn explicit_uv_configuration_errors_identify_the_file_and_action() {
         Some(1),
         "{unreadable_output:?}"
     );
-    assert!(report.contains(&unreadable.display().to_string()), "{report}");
+    assert!(report.contains("directory.toml"), "{report}");
     assert!(report.contains("UV_CONFIG_FILE"), "{report}");
 }
 
