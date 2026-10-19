@@ -55,6 +55,15 @@ pub(crate) enum Error {
     #[error("{tool}: {reason}")]
     Tool { tool: &'static str, reason: String },
     #[error(
+        "could not locate {tool} at {path}: {source}; check the selected environment"
+    )]
+    ToolLookup {
+        tool: &'static str,
+        path: PathBuf,
+        #[source]
+        source: which::Error,
+    },
+    #[error(
         "could not inspect {tool} at {path}: {source}; repair or replace the selected installation"
     )]
     ToolProbe {

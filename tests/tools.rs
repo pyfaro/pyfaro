@@ -261,6 +261,17 @@ fn tool_reports_escape_newlines_in_executable_paths() {
     let report = String::from_utf8(output.stdout).unwrap();
     assert_eq!(report.lines().count(), 1, "{report:?}");
     assert!(report.contains("line\\nbreak"), "{report}");
+
+    let failed = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["tools", "ruff"])
+        .current_dir(&project)
+        .env("PYFARO_FIXTURE_VERSION_FAIL", "1")
+        .output()
+        .unwrap();
+    assert_eq!(failed.status.code(), Some(1), "{failed:?}");
+    let diagnostic = String::from_utf8(failed.stderr).unwrap();
+    assert_eq!(diagnostic.lines().count(), 1, "{diagnostic:?}");
+    assert!(diagnostic.contains("line\\nbreak"), "{diagnostic}");
 }
 
 #[test]

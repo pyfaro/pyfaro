@@ -51,7 +51,7 @@ pub(crate) fn run(args: ToolsArgs) -> Result<()> {
     Ok(())
 }
 
-fn single_line(value: &str) -> String {
+pub(crate) fn single_line(value: &str) -> String {
     let mut escaped = String::new();
     for character in value.chars() {
         match character {
@@ -98,8 +98,7 @@ fn inspect(
         });
     }
     let tool_name = name(tool);
-    let binary = resolve(tool_name, root)
-        .map_err(|reason| Error::Tool { tool: tool_name, reason })?;
+    let binary = resolve(tool_name, root)?;
     let version =
         probe_version(&binary, tool_name, cancelled).map_err(|error| {
             if matches!(error, Error::Cancelled) {
@@ -115,10 +114,7 @@ fn inspect(
     Ok((binary, version))
 }
 
-fn resolve(
-    tool: &'static str,
-    root: Option<&Path>,
-) -> std::result::Result<PathBuf, String> {
+fn resolve(tool: &'static str, root: Option<&Path>) -> Result<PathBuf> {
     let mut directories = Vec::new();
     if let Some(root) = root {
         directories.push(root.join(".venv").join(scripts_directory()));
@@ -129,32 +125,59 @@ fn resolve(
         directories.push(PathBuf::from(active).join(scripts_directory()));
     }
     for directory in directories {
-        if let Ok(binary) = which::which(directory.join(tool)) {
-            return native_binary(binary);
+        let candidate = directory.join(tool);
+        match which::which(&candidate) {
+            Ok(binary) => return native_binary(tool, binary),
+            Err(which::Error::CannotFindBinaryPath) => {}
+            Err(source) => {
+                return Err(lookup_failure(tool, candidate, source));
+            }
         }
     }
     which::which(tool)
-        .map_err(|_| format!("not found; install {tool} in the project .venv, activate an environment, or add it to PATH"))
-        .and_then(native_binary)
+        .map_err(|source| lookup_failure(tool, PathBuf::from(tool), source))
+        .and_then(|binary| native_binary(tool, binary))
+}
+
+fn lookup_failure(
+    tool: &'static str,
+    path: PathBuf,
+    source: which::Error,
+) -> Error {
+    match source {
+        which::Error::CannotFindBinaryPath => Error::Tool {
+            tool,
+            reason: format!(
+                "not found; install {tool} in the project .venv, activate an environment, or add it to PATH"
+            ),
+        },
+        source => Error::ToolLookup { tool, path, source },
+    }
 }
 
 fn scripts_directory() -> &'static str {
     if cfg!(windows) { "Scripts" } else { "bin" }
 }
 
-fn native_binary(binary: PathBuf) -> std::result::Result<PathBuf, String> {
-    let binary = fs::canonicalize(&binary).map_err(|error| {
-        format!("could not resolve {}: {error}", binary.display())
-    })?;
+fn native_binary(tool: &'static str, binary: PathBuf) -> Result<PathBuf> {
+    let binary =
+        fs::canonicalize(&binary).map_err(|source| Error::ToolProbe {
+            tool,
+            path: binary.clone(),
+            source: Box::new(Error::io("resolve", &binary, source)),
+        })?;
     #[cfg(windows)]
     if binary.extension().is_some_and(|extension| {
         extension.eq_ignore_ascii_case("cmd")
             || extension.eq_ignore_ascii_case("bat")
     }) {
-        return Err(format!(
-            "{} is a batch wrapper; use a native executable",
-            binary.display()
-        ));
+        return Err(Error::Tool {
+            tool,
+            reason: format!(
+                "{} is a batch wrapper; use a native executable",
+                binary.display()
+            ),
+        });
     }
     Ok(binary)
 }
@@ -219,4 +242,22 @@ fn probe_version(
         )));
     }
     Ok(version.to_owned())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn non_missing_lookup_failure_keeps_its_source() {
+        let error = lookup_failure(
+            "ruff",
+            PathBuf::from("ruff"),
+            which::Error::CannotCanonicalize,
+        );
+        assert!(matches!(
+            error,
+            Error::ToolLookup { source: which::Error::CannotCanonicalize, .. }
+        ));
+    }
 }
