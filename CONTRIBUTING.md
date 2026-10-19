@@ -91,6 +91,8 @@ See the [backlog maintenance guide](tools/github-backlog/README.md).
 
 ## Releases
 
-Publishing is future work tracked by backlog issue B06. See
-[the publishing plan](docs/releasing.md). Bootstrap does not publish crates,
-create release tags, or configure registry credentials.
+Experimental `alpha.1` and `alpha.2` crates were published manually. Backlog
+issue B06 still owns automated public-beta distribution, standalone artifacts,
+and GitHub Releases. See [the publishing guide](docs/releasing.md) for verified
+release records and the explicit approval gate for every future upload. No
+release tags or registry credentials are stored in this repository.

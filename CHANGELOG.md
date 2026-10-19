@@ -1,6 +1,13 @@
 # Changelog
 
-## Unreleased — 0.1.0-alpha.2 release candidate
+## Unreleased — 0.1.0-alpha.3 development
+
+No changes yet. This version has not been published.
+
+## 0.1.0-alpha.2 — 2026-10-19
+
+Published on [crates.io](https://crates.io/crates/pyfaro/0.1.0-alpha.2).
+This experimental release adds these capabilities to `alpha.1`:
 
 - Load and validate typed Pyfaro configuration from the selected project's
   `pyproject.toml`, with a non-writing schema default and path-aware errors.
@@ -16,6 +23,15 @@
   `--locked` stale-lock rejection, and `--frozen` lockfile reuse.
 - Add `pyfaro run -- <program> [args...]` with OS-native passthrough, project
   environment selection, terminal-input relay, and delegated exit status.
+
+The published archive comes from commit
+[`be259107668c1a34dfd52d24ec10fa14a8563cbb`](https://github.com/pyfaro/pyfaro/commit/be259107668c1a34dfd52d24ec10fa14a8563cbb)
+and was registered at `2026-10-19T05:58:23.344503Z`. Its registry and
+downloaded-archive SHA-256 is
+`e52fd92c157227330e3894f55abd7b171317cd3788ec5596f9bd12aabf5fbfd1`.
+Installation from crates.io and offline Linux `init` preview/apply/reapply,
+`sync`, `run`, and `tools` smoke checks passed with uv 0.9.26. Reapplying
+left `pyproject.toml` and `uv.lock` byte-for-byte unchanged.
 
 ## 0.1.0-alpha.1 — 2026-10-19
 
