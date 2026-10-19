@@ -8,7 +8,7 @@ use clap::{Args, Parser, Subcommand};
 #[command(version, about, long_about = None)]
 #[command(arg_required_else_help = true)]
 #[command(
-    after_help = "Experimental alpha: create, init, sync, run, add, remove, python, and tools are implemented; other workflow commands are not implemented yet."
+    after_help = "Experimental alpha: create, init, sync, run, add, remove, python, tools, and doctor are implemented; other workflow commands are not implemented yet."
 )]
 pub(crate) struct Cli {
     #[command(subcommand)]
@@ -33,6 +33,19 @@ pub(crate) enum Command {
     Python(PythonArgs),
     /// Show resolved paths and versions of external tools
     Tools(ToolsArgs),
+    /// Diagnose project configuration, environment, and tool availability
+    Doctor(DoctorArgs),
+}
+
+#[derive(Args)]
+pub(crate) struct DoctorArgs {
+    /// Explicit project directory; otherwise discover the nearest project
+    #[arg(long)]
+    pub project: Option<PathBuf>,
+
+    /// uv executable (a path or a name found on PATH)
+    #[arg(long)]
+    pub uv: Option<OsString>,
 }
 
 #[derive(Args)]

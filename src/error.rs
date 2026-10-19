@@ -28,6 +28,10 @@ pub(crate) enum Error {
     },
     #[error("{0}")]
     Project(String),
+    #[error(
+        "doctor found {count} blocking issue(s); follow the actions above and run pyfaro doctor again"
+    )]
+    DoctorFailed { count: usize },
     #[error("no pyproject.toml found from {}; use --project <PATH>", directory.display())]
     NoProject { directory: PathBuf },
     #[error(

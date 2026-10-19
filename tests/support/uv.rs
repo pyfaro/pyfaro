@@ -41,6 +41,7 @@ fn main() {
             process::exit(7);
         }
         let default = match stem.as_ref() {
+            "python" | "python3" => "Python 3.12.1",
             "ruff" => "ruff 0.14.0",
             "ty" => "ty 0.0.1-alpha.24",
             "pytest" => "pytest 8.4.2",

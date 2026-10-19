@@ -67,7 +67,7 @@ pub(crate) fn single_line(value: &str) -> String {
     escaped
 }
 
-fn name(tool: Tool) -> &'static str {
+pub(crate) fn name(tool: Tool) -> &'static str {
     match tool {
         Tool::Uv => "uv",
         Tool::Ruff => "ruff",
@@ -76,7 +76,7 @@ fn name(tool: Tool) -> &'static str {
     }
 }
 
-fn inspect(
+pub(crate) fn inspect(
     tool: Tool,
     root: Option<&Path>,
     explicit_uv: Option<&OsString>,
@@ -114,6 +114,38 @@ fn inspect(
     Ok((binary, version))
 }
 
+pub(crate) fn inspect_python(
+    root: Option<&Path>,
+    cancelled: &AtomicBool,
+) -> Result<(PathBuf, String)> {
+    let binary = match resolve("python", root) {
+        Ok(binary) => binary,
+        Err(Error::Tool { .. }) if !cfg!(windows) => {
+            resolve("python3", root).map_err(|error| match error {
+                Error::Tool { .. } => Error::Tool {
+                    tool: "python",
+                    reason: "not found; install Python or make it available in the project .venv, active environment, or PATH".into(),
+                },
+                error => error,
+            })?
+        }
+        Err(error) => return Err(error),
+    };
+    let version =
+        probe_version(&binary, "python", cancelled).map_err(|error| {
+            if matches!(error, Error::Cancelled) {
+                error
+            } else {
+                Error::ToolProbe {
+                    tool: "python",
+                    path: binary.clone(),
+                    source: Box::new(error),
+                }
+            }
+        })?;
+    Ok((binary, version))
+}
+
 fn resolve(tool: &'static str, root: Option<&Path>) -> Result<PathBuf> {
     let mut directories = Vec::new();
     if let Some(root) = root {
@@ -125,12 +157,19 @@ fn resolve(tool: &'static str, root: Option<&Path>) -> Result<PathBuf> {
         directories.push(PathBuf::from(active).join(scripts_directory()));
     }
     for directory in directories {
-        let candidate = directory.join(tool);
-        match which::which(&candidate) {
-            Ok(binary) => return native_binary(tool, binary),
-            Err(which::Error::CannotFindBinaryPath) => {}
-            Err(source) => {
-                return Err(lookup_failure(tool, candidate, source));
+        let names = if tool == "python" && !cfg!(windows) {
+            &["python", "python3"][..]
+        } else {
+            &[tool][..]
+        };
+        for name in names {
+            let candidate = directory.join(name);
+            match which::which(&candidate) {
+                Ok(binary) => return native_binary(tool, binary),
+                Err(which::Error::CannotFindBinaryPath) => {}
+                Err(source) => {
+                    return Err(lookup_failure(tool, candidate, source));
+                }
             }
         }
     }
@@ -225,12 +264,13 @@ fn probe_version(
     let output = fs::read_to_string(output.path())
         .map_err(|error| Error::io("read", output.path(), error))?;
     let version = output.lines().next().unwrap_or_default().trim();
+    let label = if tool == "python" { "Python" } else { tool };
     let number = version
-        .strip_prefix(tool)
+        .strip_prefix(label)
         .and_then(|rest| rest.strip_prefix(' '))
         .and_then(|rest| rest.split_whitespace().next());
     let valid = number.is_some_and(|number| {
-        if tool == "pytest" {
+        if tool == "pytest" || tool == "python" {
             number.parse::<pep440_rs::Version>().is_ok()
         } else {
             Version::parse(number).is_ok()

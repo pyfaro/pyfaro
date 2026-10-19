@@ -2,6 +2,7 @@ mod cli;
 mod config;
 mod create;
 mod deps;
+mod doctor;
 mod error;
 mod init;
 mod process;
@@ -31,6 +32,7 @@ fn main() {
         cli::Command::Run(args) => run::run(args),
         cli::Command::Python(args) => python::run(args),
         cli::Command::Tools(args) => tools::run(args),
+        cli::Command::Doctor(args) => doctor::run(args),
     };
     if let Err(error) = result {
         let diagnostic = format!("error: {error}");
