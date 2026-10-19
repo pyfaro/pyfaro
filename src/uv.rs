@@ -204,7 +204,7 @@ mod tests {
         let wrapper = directory.path().join("uv.cmd");
         fs::write(&wrapper, "@echo off\r\nexit /b 0\r\n").unwrap();
         let result = Uv::discover(
-            wrapper.into_os_string(),
+            wrapper.as_os_str().to_owned(),
             false,
             &AtomicBool::new(false),
         );
