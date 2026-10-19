@@ -6,14 +6,25 @@ quality checks, tests, and development workflows into one cohesive CLI.
 
 ## Status
 
-**Experimental alpha — `0.1.0-alpha.1` release candidate.** `pyfaro init`,
-`pyfaro --help`, and `pyfaro --version` are implemented. The alpha is being
-prepared for its first crates.io publication; it has not shipped yet.
-Interfaces may change between alpha versions.
+**Experimental alpha — [`0.1.0-alpha.1`](https://crates.io/crates/pyfaro/0.1.0-alpha.1),
+published on 2026-10-19.** `pyfaro init`, `pyfaro --help`, and
+`pyfaro --version` are implemented. Interfaces may change between alpha versions.
 
 The first alpha targets **Linux** for `init --apply`. macOS and Windows
 retain builds, help/version, and non-writing previews; applying initialization
 there is explicitly unavailable until lifecycle guarantees are implemented.
+
+## Install the alpha
+
+With Rust 1.90 or newer and Cargo installed:
+
+```sh
+cargo install pyfaro --version 0.1.0-alpha.1 --locked
+pyfaro --version
+```
+
+The expected output is `pyfaro 0.1.0-alpha.1`. uv and Python are separate
+runtime requirements for applying initialization on Linux.
 
 ## Try the initialization workflow
 
@@ -21,12 +32,12 @@ Install uv separately and have a suitable Python interpreter available.
 The tested uv version is **0.9.26**; older versions are rejected. Pyfaro never
 installs uv or downloads Python automatically.
 
-After building from source, preview initialization of a new or existing
-standalone project, then explicitly apply it:
+Preview initialization of a new or existing standalone project, then
+explicitly apply it:
 
 ```sh
-cargo run --locked -- init ./my-project
-cargo run --locked -- init ./my-project --apply
+pyfaro init ./my-project
+pyfaro init ./my-project --apply
 ```
 
 `init` delegates new project metadata and dependency locking to uv, adds
