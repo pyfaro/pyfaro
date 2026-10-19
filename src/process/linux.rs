@@ -46,16 +46,22 @@ pub(super) fn run(
             let _ = killpg(group, Signal::SIGINT);
             let deadline = Instant::now() + Duration::from_millis(250);
             while Instant::now() < deadline {
-                if matches!(leader_exited(group), Ok(true)) {
+                if matches!(leader_state(group), Ok(super::LeaderState::Exited))
+                {
                     break;
                 }
                 thread::sleep(POLL);
             }
             break Err(Error::Cancelled);
         }
-        match leader_exited(group) {
-            Ok(true) => break Ok(()),
-            Ok(false) => thread::sleep(POLL),
+        match leader_state(group) {
+            Ok(super::LeaderState::Exited) => break Ok(()),
+            Ok(super::LeaderState::Running) => thread::sleep(POLL),
+            Ok(super::LeaderState::Stopped) => {
+                break Err(Error::Project(
+                    "delegated command stopped while accessing the terminal; run uv directly for commands requiring a TTY".into(),
+                ));
+            }
             Err(source) => {
                 break Err(Error::io("observe uv", &program, source));
             }
@@ -66,15 +72,21 @@ pub(super) fn run(
     super::finish_with_relay(result, cleanup, relay_result, &program)
 }
 
-fn leader_exited(group: Pid) -> io::Result<bool> {
+fn leader_state(group: Pid) -> io::Result<super::LeaderState> {
     // Keep the leader unreaped until all signals are sent. Its PID/PGID cannot
     // be reused and accidentally refer to an unrelated process group.
     match waitid(
         Id::Pid(group),
-        WaitPidFlag::WEXITED | WaitPidFlag::WNOHANG | WaitPidFlag::WNOWAIT,
+        WaitPidFlag::WEXITED
+            | WaitPidFlag::WSTOPPED
+            | WaitPidFlag::WNOHANG
+            | WaitPidFlag::WNOWAIT,
     ) {
-        Ok(status) => Ok(status != WaitStatus::StillAlive),
-        Err(Errno::EINTR) => Ok(false),
+        Ok(WaitStatus::StillAlive) | Err(Errno::EINTR) => {
+            Ok(super::LeaderState::Running)
+        }
+        Ok(WaitStatus::Stopped(_, _)) => Ok(super::LeaderState::Stopped),
+        Ok(_) => Ok(super::LeaderState::Exited),
         Err(error) => Err(error.into()),
     }
 }

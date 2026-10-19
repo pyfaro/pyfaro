@@ -18,18 +18,20 @@ project, which must contain `pyproject.toml`, synchronizes its environment by
 default, and runs the program
 inside it. `--locked` refuses a missing or stale `uv.lock`; `--frozen` uses
 an existing lock without checking it. These modes are mutually exclusive.
-Explicit `.py` script paths such as `./task.py` or `scripts/task.py` run through
-the project's Python interpreter,
+`.py` script files in the project, including bare names such as `task.py`,
+run through its Python interpreter,
 including scripts with PEP 723 inline metadata. This avoids uv switching them
-to an isolated script environment. A bare `.py` command name retains normal
-executable lookup on `PATH`, even if a same-named project file exists. Use
-`./-task.py` for a leading-dash script name so Python does not parse it as an
-option.
+to an isolated script environment. If no project-local file matches a bare
+`.py` name, uv retains normal executable lookup on `PATH`. A same-named local
+file takes precedence, as it does with uv directly. Leading-dash script names
+also work without being parsed as Python options.
 
 Use `--uv <executable>` to select uv and `--offline` to disable network
 access. Pyfaro accepts stable uv versions >=0.9.26; CI tests 0.9.26. It
 does not download uv or Python. Output streams directly, redirected stdin
 is inherited, and an interactive Unix terminal is relayed to avoid
-background-process-group suspension. Programs needing stdin to be an
-actual TTY may need uv directly. A numeric command failure is returned
+background-process-group suspension. A command accessing the terminal device
+directly can be stopped by job control; Pyfaro terminates it with a diagnostic
+rather than hanging. Run uv directly for commands that need stdin to be a TTY.
+A numeric command failure is returned
 unchanged; cancellation stops the delegated process tree and returns 130.

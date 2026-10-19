@@ -271,3 +271,68 @@ fn run_accepts_input_from_a_foreground_terminal() {
     let output = String::from_utf8_lossy(&output);
     assert!(output.contains("HELLO"), "{output}");
 }
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
+fn run_reports_terminal_device_access_instead_of_hanging() {
+    use std::io::Read;
+    use std::sync::mpsc;
+    use std::thread;
+    use std::time::Duration;
+
+    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
+
+    let project = tempdir().unwrap();
+    fs::write(
+        project.path().join("pyproject.toml"),
+        "[project]\nname = 'tty-example'\nversion = '1.0.0'\nrequires-python = '>=3.10'\ndependencies = []\n",
+    )
+    .unwrap();
+    let pair = native_pty_system()
+        .openpty(PtySize {
+            rows: 24,
+            cols: 80,
+            pixel_width: 0,
+            pixel_height: 0,
+        })
+        .unwrap();
+    let mut command = CommandBuilder::new(env!("CARGO_BIN_EXE_pyfaro"));
+    for argument in ["run", "--offline", "--project"] {
+        command.arg(argument);
+    }
+    command.arg(project.path());
+    for argument in [
+        "--",
+        "python",
+        "-c",
+        "print('ready', flush=True); open('/dev/tty').readline()",
+    ] {
+        command.arg(argument);
+    }
+    command.env("UV_CACHE_DIR", project.path().join("uv-cache"));
+    let mut child = pair.slave.spawn_command(command).unwrap();
+    let mut killer = child.clone_killer();
+    let mut reader = pair.master.try_clone_reader().unwrap();
+    let (status_sender, status_receiver) = mpsc::channel();
+    thread::spawn(move || {
+        let _ = status_sender.send(child.wait());
+    });
+    let (output_sender, output_receiver) = mpsc::channel();
+    thread::spawn(move || {
+        let mut output = Vec::new();
+        let _ = reader.read_to_end(&mut output);
+        let _ = output_sender.send(output);
+    });
+    let status = match status_receiver.recv_timeout(Duration::from_secs(10)) {
+        Ok(status) => status.unwrap(),
+        Err(error) => {
+            let _ = killer.kill();
+            panic!("terminal command did not exit: {error}");
+        }
+    };
+    assert!(!status.success(), "{status:?}");
+    drop(pair.slave);
+    let output = output_receiver.recv_timeout(Duration::from_secs(3)).unwrap();
+    let output = String::from_utf8_lossy(&output);
+    assert!(output.contains("delegated command stopped"), "{output}");
+}

@@ -36,11 +36,9 @@ pub(crate) fn run(args: RunArgs) -> Result<()> {
     }
     command.push(OsString::from("--"));
     let program = Path::new(&args.command[0]);
-    if program.components().count() > 1
-        && program.extension().is_some_and(|extension| {
-            extension.eq_ignore_ascii_case(OsStr::new("py"))
-        })
-        && root.join(program).is_file()
+    if program.extension().is_some_and(|extension| {
+        extension.eq_ignore_ascii_case(OsStr::new("py"))
+    }) && root.join(program).is_file()
     {
         command.push(OsString::from("python"));
         command.push(OsString::from("--"));

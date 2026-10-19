@@ -20,6 +20,14 @@ mod unix_input;
 #[cfg(target_os = "windows")]
 mod windows;
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum LeaderState {
+    Running,
+    Exited,
+    Stopped,
+}
+
 pub(crate) fn cancellation() -> Result<Arc<AtomicBool>> {
     let cancelled = Arc::new(AtomicBool::new(false));
     let signal = Arc::clone(&cancelled);
