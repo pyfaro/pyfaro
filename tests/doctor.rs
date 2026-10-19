@@ -448,6 +448,12 @@ fn pytest_conflicts_require_pytest_sections_in_shared_ini_files() {
     assert_eq!(tox.status.code(), Some(1), "{tox:?}");
     assert!(text(&tox).contains("[tool.pytest] and tox.ini"));
 
+    fs::write(project.join("tox.ini"), "[pytest] # options\naddopts = -q\n")
+        .unwrap();
+    let commented_tox = doctor(&project, &bin, &uv);
+    assert_eq!(commented_tox.status.code(), Some(1), "{commented_tox:?}");
+    assert!(text(&commented_tox).contains("[tool.pytest] and tox.ini"));
+
     fs::remove_file(project.join("tox.ini")).unwrap();
     fs::write(
         project.join("setup.cfg"),
@@ -803,6 +809,13 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         !report.contains("missing-doctor-dev-package is missing"),
         "{report}"
     );
+    let short_true = with_uv_env("UV_NO_DEV", "y");
+    let report = text(&short_true);
+    assert_eq!(short_true.status.code(), Some(0), "{short_true:?}");
+    assert!(
+        !report.contains("missing-doctor-dev-package is missing"),
+        "{report}"
+    );
     let no_defaults = with_uv_env("UV_NO_DEFAULT_GROUPS", "1");
     assert_eq!(no_defaults.status.code(), Some(0), "{no_defaults:?}");
     let no_group = with_uv_env("UV_NO_GROUP", "dev");
@@ -852,6 +865,20 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         !report.contains("missing-doctor-quality-package is missing"),
         "{report}"
     );
+
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\na = [{include-group = 'b'}]\nb = [{include-group = 'c'}]\nc = ['missing-doctor-selected-package==1.0']\n[tool.uv]\ndefault-groups = ['a', 'c']\n").unwrap();
+    let separately_selected = doctor_command(&project, Path::new(&path), &uv)
+        .env("UV_NO_GROUP", "b")
+        .output()
+        .unwrap();
+    let report = text(&separately_selected);
+    assert_eq!(separately_selected.status.code(), Some(1), "{report}");
+    assert!(
+        report
+            .contains("missing-doctor-selected-package is missing from .venv"),
+        "{report}"
+    );
+    assert!(!report.contains("group \"c\" is not checked"), "{report}");
 
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\nQA__Test = [{include-group = 'other..test'}]\nOther-Test = ['missing-doctor-normalized-package==1.0']\n[tool.uv]\ndefault-groups = ['qa.test']\n").unwrap();
     let normalized = Command::new(env!("CARGO_BIN_EXE_pyfaro"))

@@ -206,8 +206,15 @@ fn inspect_configuration(
                     };
                     match fs::read_to_string(&path) {
                         Ok(contents) => contents.lines().any(|line| {
-                            line.trim().trim_start_matches('\u{feff}')
-                                == section
+                            line.trim()
+                                .trim_start_matches('\u{feff}')
+                                .strip_prefix(section)
+                                .is_some_and(|rest| {
+                                    let rest = rest.trim();
+                                    rest.is_empty()
+                                        || rest.starts_with('#')
+                                        || rest.starts_with(';')
+                                })
                         }),
                         Err(error)
                             if error.kind() == std::io::ErrorKind::NotFound =>
@@ -437,7 +444,10 @@ impl GroupCollector<'_> {
             )?;
             return Ok(false);
         }
-        if self.checked.iter().any(|entry| entry == name) {
+        if self.checked.iter().any(|entry| entry == name)
+            && (!selected_group
+                || self.selected.iter().any(|entry| entry == name))
+        {
             return Ok(true);
         }
         let Some(original) = self.names.get(name).cloned() else {
@@ -511,7 +521,7 @@ fn uv_env_enabled(name: &str) -> bool {
     env::var(name).is_ok_and(|value| {
         matches!(
             value.trim().to_ascii_lowercase().as_str(),
-            "1" | "true" | "yes" | "on"
+            "1" | "true" | "t" | "yes" | "y" | "on"
         )
     })
 }
