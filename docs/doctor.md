@@ -97,7 +97,7 @@ as they are for uv commands run by Pyfaro. `UV_NO_CONFIG` disables discovery
 unless `UV_CONFIG_FILE` is also set. Missing explicit files and unreadable or
 malformed discovered files are blocking findings that identify the file to fix.
 Doctor asks the selected uv executable to validate each selected standalone
-configuration file using an offline, installed-interpreter-only command. This
+configuration file using a no-cache, offline, installed-interpreter-only command. This
 also catches unknown or mistyped uv settings without duplicating uv's schema.
 Both table and inline-table group declarations are accepted. Group names in
 defaults and includes match according to PEP 735: case is ignored and runs of
@@ -106,7 +106,8 @@ Invalid group names, duplicate names after normalization, and explicitly
 selected groups that are missing are blocking findings. Included groups are
 followed. Legacy uv `dev-dependencies` are validated even when `dev` is not
 selected. Their installed distributions are checked only when `dev` is
-selected, including when `dev` is explicitly listed in `default-groups` and
+selected, including when `dev` is explicitly listed in `default-groups`,
+included by another selected group despite `UV_NO_DEV` or `UV_NO_GROUP=dev`, or
 legacy `dev-dependencies` are its only definition. Malformed requirements
 identify the selected pyproject file to correct. Non-default groups not included
 by a selected group are reported as unchecked warnings. Doctor still validates

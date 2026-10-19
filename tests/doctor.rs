@@ -205,6 +205,24 @@ fn named_pipe_configuration_paths_are_blocking() {
 
 #[cfg(unix)]
 #[test]
+fn named_pipe_ancestor_metadata_is_blocking() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("parent/project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
+        .unwrap();
+    let ancestor = sandbox.path().join("parent/pyproject.toml");
+    assert!(Command::new("mkfifo").arg(&ancestor).status().unwrap().success());
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    let output = doctor(&project, &bin, &uv);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(text(&output).contains("workspace metadata"), "{output:?}");
+}
+
+#[cfg(unix)]
+#[test]
 fn dangling_layout_symlinks_are_blocking() {
     use std::os::unix::fs::symlink;
 
@@ -256,6 +274,19 @@ fn real_uv_rejects_unknown_standalone_settings() {
     assert_eq!(output.status.code(), Some(1), "{output:?}");
     assert!(text(&output).contains("uv rejected"), "{output:?}");
     assert!(text(&output).contains("uv.toml"), "{output:?}");
+
+    let cache = project.join("uv-cache");
+    fs::write(
+        project.join("uv.toml"),
+        format!("cache-dir = '{}'\n", cache.display()),
+    )
+    .unwrap();
+    let valid = doctor_command(&project, &bin, &uv)
+        .env("UV_WORKING_DIR", project.join("missing-working-dir"))
+        .output()
+        .unwrap();
+    assert_eq!(valid.status.code(), Some(0), "{valid:?}");
+    assert!(!cache.exists());
 }
 
 #[test]
@@ -1859,6 +1890,23 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         text(&included_legacy)
             .contains("missing-doctor-legacy-package is missing from .venv")
     );
+    for (name, value) in [("UV_NO_DEV", "1"), ("UV_NO_GROUP", "dev")] {
+        let included_with_exclusion =
+            doctor_command(&project, Path::new(&path), &uv)
+                .env(name, value)
+                .output()
+                .unwrap();
+        assert_eq!(
+            included_with_exclusion.status.code(),
+            Some(1),
+            "{included_with_exclusion:?}"
+        );
+        assert!(
+            text(&included_with_exclusion).contains(
+                "missing-doctor-legacy-package is missing from .venv"
+            )
+        );
+    }
 
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[tool.uv]\ndefault-groups = ['dev']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n")
         .unwrap();

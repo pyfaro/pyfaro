@@ -19,9 +19,10 @@ fn main() {
         }
     }
     let args: Vec<_> = env::args().skip(1).collect();
-    if args.len() == 6
-        && args[0] == "--config-file"
-        && args[2..] == ["--offline", "python", "list", "--only-installed"]
+    if args.len() == 7
+        && args[0] == "--no-cache"
+        && args[1] == "--config-file"
+        && args[3..] == ["--offline", "python", "list", "--only-installed"]
     {
         return;
     }
