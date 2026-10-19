@@ -9,6 +9,8 @@ quality checks, tests, and development workflows into one cohesive CLI.
 **Experimental alpha — [`0.1.0-alpha.1`](https://crates.io/crates/pyfaro/0.1.0-alpha.1),
 published on 2026-10-19.** `pyfaro init`, `pyfaro --help`, and
 `pyfaro --version` are implemented. Interfaces may change between alpha versions.
+The `main` branch now targets an unpublished `0.1.0-alpha.2` development build;
+the installation command below installs the published `alpha.1`.
 
 The first alpha targets **Linux** for `init --apply`. macOS and Windows
 retain builds, help/version, and non-writing previews; applying initialization

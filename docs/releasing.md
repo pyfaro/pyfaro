@@ -1,5 +1,9 @@
 # Publishing Pyfaro
 
+`main` now targets the unpublished `0.1.0-alpha.2` development version.
+The record below describes the already published `alpha.1`; a future upload
+requires its own reviewed commit and explicit maintainer approval.
+
 ## First manual alpha: 0.1.0-alpha.1
 
 The first crates.io alpha was published on **2026-10-19**, ahead of the public-beta

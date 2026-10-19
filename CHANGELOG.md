@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## Unreleased — 0.1.0-alpha.2 development
+
+- Extract a shared, version-gated uv adapter from `init`, preserving OS-native
+  arguments and delegated output and exit codes.
+- Add process-group and Windows Job Object containment for future delegated
+  workflows. `init --apply` remains Linux-only in this alpha series.
 
 ## 0.1.0-alpha.1 — 2026-10-19
 
