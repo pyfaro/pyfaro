@@ -28,11 +28,17 @@ alone is not publication approval.
   offline Linux `init` preview/apply/reapply and `sync`, `run`, and `tools`
   smoke checks with uv 0.9.26. Reapplying preserved `pyproject.toml` and
   `uv.lock` byte-for-byte.
-- No release tag or GitHub Release was created. Both require separate
-  authorization.
+- The annotated [`v0.1.0-alpha.2` tag](https://github.com/pyfaro/pyfaro/tree/v0.1.0-alpha.2)
+  resolves to the source commit above, not the later `alpha.3` development
+  commit. The [GitHub Release](https://github.com/pyfaro/pyfaro/releases/tag/v0.1.0-alpha.2)
+  was published as a prerelease at `2026-10-19T06:19:32Z` after separate
+  maintainer authorization. It has no attached standalone binaries or
+  installer artifacts.
 
 The preparation and post-merge verification are tracked in
-[issue #77](https://github.com/pyfaro/pyfaro/issues/77). This version exists
+[issue #77](https://github.com/pyfaro/pyfaro/issues/77); the manual tag and
+GitHub prerelease are tracked in
+[issue #81](https://github.com/pyfaro/pyfaro/issues/81). This version exists
 on crates.io and must not be published again.
 
 ## First manual alpha: 0.1.0-alpha.1
@@ -40,7 +46,8 @@ on crates.io and must not be published again.
 The first crates.io alpha was published on **2026-10-19**, ahead of the public-beta
 milestone. It contains the useful but experimental [`init`](init.md) workflow.
 This does not move roadmap milestones or expand B06: automated distribution,
-standalone artifacts, and GitHub Releases still belong to B02/B06 for beta.
+standalone artifacts, and GitHub Release automation still belong to B02/B06
+for beta.
 The first alpha supports `init --apply` on Linux only, as explicitly agreed
 for the early release. macOS and Windows retain compilation and previews;
 their application workflow is deferred pending process-lifecycle guarantees.
@@ -200,8 +207,12 @@ until the merged archive and checksum have been verified.
    `run`, and `tools` with the external uv/Python requirements. Record the
    actual publication date and registry checksum in a follow-up reviewed PR;
    update the changelog, release record, README, and development package version.
-5. Create/push a release tag only after publication is verified and separately
-   authorized. This alpha does not introduce a GitHub Release pipeline.
+5. Create/push a release tag and, if requested, a manual GitHub Release only
+   after publication is verified and each action is separately authorized.
+   Point the tag to the exact published source commit, not a later development
+   commit. Mark alpha GitHub Releases as prereleases and do not claim
+   standalone artifacts unless they have been built and verified. This alpha
+   does not introduce a GitHub Release pipeline.
 
 A published crate version cannot be overwritten. If a defective alpha ships,
 agree on yanking it and publishing a corrected alpha with a new version;

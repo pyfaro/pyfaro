@@ -7,6 +7,10 @@ No changes yet. This version has not been published.
 ## 0.1.0-alpha.2 — 2026-10-19
 
 Published on [crates.io](https://crates.io/crates/pyfaro/0.1.0-alpha.2).
+The annotated [`v0.1.0-alpha.2` tag](https://github.com/pyfaro/pyfaro/tree/v0.1.0-alpha.2)
+points to the published source. A manual
+[GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.1.0-alpha.2)
+followed on `2026-10-19T06:19:32Z`, without standalone binaries.
 This experimental release adds these capabilities to `alpha.1`:
 
 - Load and validate typed Pyfaro configuration from the selected project's
