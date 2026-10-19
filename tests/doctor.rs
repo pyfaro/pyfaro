@@ -297,6 +297,43 @@ fn selected_uv_toml_masks_project_managed_setting() {
     let masked = doctor(&project, &bin, &uv);
     assert_eq!(masked.status.code(), Some(0), "{masked:?}");
     assert!(!text(&masked).contains("managed = false"), "{masked:?}");
+
+    fs::remove_file(project.join("uv.toml")).unwrap();
+    let no_config = doctor_command(&project, &bin, &uv)
+        .env("UV_NO_CONFIG", "1")
+        .output()
+        .unwrap();
+    assert_eq!(no_config.status.code(), Some(0), "{no_config:?}");
+    assert!(!text(&no_config).contains("managed = false"), "{no_config:?}");
+
+    let override_file = project.join("override.toml");
+    fs::write(&override_file, "offline = true\n").unwrap();
+    let explicit = doctor_command(&project, &bin, &uv)
+        .env("UV_CONFIG_FILE", &override_file)
+        .output()
+        .unwrap();
+    assert_eq!(explicit.status.code(), Some(0), "{explicit:?}");
+    assert!(!text(&explicit).contains("managed = false"), "{explicit:?}");
+}
+
+#[test]
+fn malformed_pin_is_reported_without_a_python_executable() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
+        .unwrap();
+    fs::create_dir(project.join(".python-version")).unwrap();
+    let uv = install(&bin, "uv");
+    let output = doctor(&project, &bin, &uv);
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(report.contains("ERROR: Python:"), "{report}");
+    assert!(
+        report.contains(".python-version must be a readable file"),
+        "{report}"
+    );
 }
 
 #[cfg(unix)]

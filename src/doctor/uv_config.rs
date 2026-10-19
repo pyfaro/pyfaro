@@ -134,17 +134,6 @@ pub(super) fn uv_configuration(
             return Ok(None);
         }
         if document.get("tool").and_then(|tool| tool.get("uv")).is_some() {
-            if let Some(binary) = uv_binary
-                && !probe_uv_configuration(
-                    binary,
-                    &metadata,
-                    document.get("tool").and_then(|tool| tool.get("uv")),
-                    cancelled,
-                    report,
-                )?
-            {
-                return Ok(None);
-            }
             configurations.push(UvConfiguration {
                 document,
                 path: metadata,
@@ -173,6 +162,19 @@ pub(super) fn uv_configuration(
             UvDiscovery::Invalid => return Ok(None),
             UvDiscovery::Missing => {}
         }
+    }
+    if let Some(binary) = uv_binary
+        && let Some(project_config) =
+            configurations.iter().find(|config| !config.standalone)
+        && !probe_uv_configuration(
+            binary,
+            &project_config.path,
+            project_config.document.get("tool").and_then(|tool| tool.get("uv")),
+            cancelled,
+            report,
+        )?
+    {
+        return Ok(None);
     }
     Ok(Some(configurations))
 }

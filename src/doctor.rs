@@ -139,13 +139,16 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
                 )?;
             }
             if let Some(root) = root.as_deref() {
-                inspect_python_pin(root, &version, &mut report)?;
+                inspect_python_pin(root, Some(&version), &mut report)?;
             }
             Some(path)
         }
         Err(Error::Cancelled) => return Err(Error::Cancelled),
         Err(error) => {
             report.line(Severity::Error, format!("Python: {error}"))?;
+            if let Some(root) = root.as_deref() {
+                inspect_python_pin(root, None, &mut report)?;
+            }
             None
         }
     };
@@ -386,6 +389,12 @@ fn project_uv_toml_selected(root: &Path) -> bool {
         && fs::symlink_metadata(root.join("uv.toml")).is_ok()
 }
 
+fn project_uv_settings_selected(root: &Path) -> bool {
+    env::var_os("UV_CONFIG_FILE").is_none()
+        && !uv_env_enabled("UV_NO_CONFIG")
+        && fs::symlink_metadata(root.join("uv.toml")).is_err()
+}
+
 fn missing_tool_configuration(
     path: &Path,
     report: &mut Report,
@@ -401,7 +410,7 @@ fn inspect_workspace(
     document: &DocumentMut,
     report: &mut Report,
 ) -> Result<bool> {
-    let project_uv_masked = project_uv_toml_selected(root);
+    let project_uv_masked = !project_uv_settings_selected(root);
     if let Some(managed) = (!project_uv_masked)
         .then(|| document.get("tool").and_then(|tool| tool.get("uv")))
         .flatten()
@@ -639,7 +648,7 @@ fn inspect_python_requirement(
 
 fn inspect_python_pin(
     root: &Path,
-    reported_version: &str,
+    reported_version: Option<&str>,
     report: &mut Report,
 ) -> Result<()> {
     let path = root.join(".python-version");
@@ -685,6 +694,9 @@ fn inspect_python_pin(
         components.filter(|parts| (2..=3).contains(&parts.len()))
     else {
         return report.line(Severity::Warn, format!("Python: cannot compare .python-version request {request:?} with the selected interpreter; verify the pin"));
+    };
+    let Some(reported_version) = reported_version else {
+        return Ok(());
     };
     let selected = reported_version
         .strip_prefix("Python ")
