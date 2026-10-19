@@ -21,6 +21,7 @@ fn run_preserves_arguments_and_uses_the_project_environment() {
         .arg(&project)
         .args(["--", "python", "-c", script, "a b", "-n", "café", "--"])
         .env("UV_CACHE_DIR", &cache)
+        .env("PYTHONIOENCODING", "utf-8")
         .output()
         .unwrap();
     assert!(output.status.success(), "{output:?}");
@@ -68,7 +69,35 @@ fn run_preserves_arguments_and_uses_the_project_environment() {
         .output()
         .unwrap();
     assert_eq!(failed.status.code(), Some(23), "{failed:?}");
-    assert_eq!(failed.stdout, b"failed\n");
+    assert_eq!(String::from_utf8_lossy(&failed.stdout).trim_end(), "failed");
+}
+
+#[test]
+fn run_uses_the_project_environment_for_inline_metadata_scripts() {
+    let project = tempdir().unwrap();
+    fs::write(
+        project.path().join("pyproject.toml"),
+        "[project]\nname = 'script-example'\nversion = '1.0.0'\nrequires-python = '>=3.10'\ndependencies = []\n",
+    )
+    .unwrap();
+    fs::write(
+        project.path().join("script.py"),
+        "# /// script\n# dependencies = []\n# ///\nimport sys\nprint(sys.prefix)\n",
+    )
+    .unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["run", "--offline", "--project"])
+        .arg(project.path())
+        .args(["--", "script.py"])
+        .env("UV_CACHE_DIR", project.path().join("uv-cache"))
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    let prefix = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(
+        fs::canonicalize(prefix.trim()).unwrap(),
+        fs::canonicalize(project.path().join(".venv")).unwrap()
+    );
 }
 
 #[test]
@@ -100,7 +129,7 @@ fn run_forwards_redirected_input() {
     child.stdin.take().unwrap().write_all(b"hello\n").unwrap();
     let output = child.wait_with_output().unwrap();
     assert!(output.status.success(), "{output:?}");
-    assert_eq!(output.stdout, b"HELLO\n");
+    assert_eq!(String::from_utf8_lossy(&output.stdout).trim_end(), "HELLO");
 }
 
 #[cfg(unix)]

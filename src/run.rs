@@ -1,5 +1,6 @@
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs;
+use std::path::Path;
 
 use crate::cli::RunArgs;
 use crate::error::{Error, Result};
@@ -28,6 +29,11 @@ pub(crate) fn run(args: RunArgs) -> Result<()> {
         command.push(OsString::from("--frozen"));
     }
     command.push(OsString::from("--"));
+    if Path::new(&args.command[0]).extension().is_some_and(|extension| {
+        extension.eq_ignore_ascii_case(OsStr::new("py"))
+    }) {
+        command.push(OsString::from("python"));
+    }
     command.extend(args.command);
     uv.execute_interactive(&root, "run", &command, &cancelled)
 }

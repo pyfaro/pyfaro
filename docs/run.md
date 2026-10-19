@@ -17,6 +17,9 @@ arguments to uv and then the program. Pyfaro does not invoke a shell.
 project, synchronizes its environment by default, and runs the program
 inside it. `--locked` refuses a missing or stale `uv.lock`; `--frozen` uses
 an existing lock without checking it. These modes are mutually exclusive.
+Direct `.py` scripts run through the project's Python interpreter, including
+scripts with PEP 723 inline metadata. This avoids uv switching them to an
+isolated script environment.
 
 Use `--uv <executable>` to select uv and `--offline` to disable network
 access. Pyfaro accepts stable uv versions >=0.9.26; CI tests 0.9.26. It
