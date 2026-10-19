@@ -15,7 +15,8 @@ The distribution name is required. `--path` defaults to a directory with that
 name under the current directory. `--python` defaults to `3.10` and sets the
 minimum `requires-python` version; it does not choose or install an interpreter.
 Use a name made of ASCII letters, digits, dots, underscores, and hyphens,
-excluding reserved Windows device names such as `CON` and `COM1`. The
+excluding reserved Windows device names such as `CON` and `COM1`, and
+`-stubs` distribution names that require a different package layout. The
 import package is the lowercased name with each run of dots, underscores, or
 hyphens replaced by one underscore, so `acme-widget` creates
 `src/acme_widget/`. If the distribution
@@ -35,7 +36,7 @@ pyfaro create cli acme-tools --package acme_console --command acme-do \
 
 `--package` selects the Python import package; by default it is derived from
 the distribution name as above. It must be a Python identifier, not a Python
-standard-library module, keyword, Python special name such as `__main__`, or
+standard-library module, keyword, dunder module such as `__main__`, or
 reserved Windows device name. The module inventory covers Python 3.10 through
 3.13. This
 also applies to the derived default; choose another distribution name if it

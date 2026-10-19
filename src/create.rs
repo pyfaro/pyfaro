@@ -200,9 +200,10 @@ fn validate_distribution(name: &str) -> Result<()> {
             byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.')
         })
         || is_windows_device_name(name)
+        || normalized_package(name).ends_with("_stubs")
     {
         return Err(Error::Project(
-            "project name must contain ASCII letters, digits, dots, underscores, or hyphens, start/end with a letter or digit, and not be a reserved Windows device name".into(),
+            "project name must contain ASCII letters, digits, dots, underscores, or hyphens, start/end with a letter or digit, and not be a reserved Windows device name or stub-package name".into(),
         ));
     }
     Ok(())
@@ -220,12 +221,12 @@ fn validate_package(package: &str) -> Result<()> {
         .any(|name| name == package);
     if !valid
         || PYTHON_KEYWORDS.contains(&package)
-        || matches!(package, "__main__" | "__pycache__")
+        || (package.starts_with("__") && package.ends_with("__"))
         || stdlib
         || is_windows_device_name(package)
     {
         return Err(Error::Project(format!(
-            "invalid Python package name: {package}; use an ASCII identifier that is not a keyword, standard-library module, Python special name, or reserved Windows device name"
+            "invalid Python package name: {package}; use an ASCII identifier that is not a keyword, standard-library module, dunder module, or reserved Windows device name"
         )));
     }
     Ok(())

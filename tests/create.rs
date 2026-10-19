@@ -127,11 +127,13 @@ fn invalid_inputs_do_not_create_a_project() {
     for (args, expected) in [
         (vec!["lib", "../escape"], "project name"),
         (vec!["lib", "con.demo"], "project name"),
+        (vec!["lib", "foo-stubs"], "project name"),
         (vec!["lib", "hello", "--python", "3.12.1"], "Python version"),
         (vec!["cli", "hello", "--package", "for"], "package name"),
         (vec!["cli", "hello", "--package", "__pycache__"], "package name"),
         (vec!["cli", "hello", "--package", "unittest"], "package name"),
         (vec!["cli", "hello", "--package", "__main__"], "package name"),
+        (vec!["cli", "hello", "--package", "__hello__"], "package name"),
         (vec!["cli", "hello", "--package", "con"], "package name"),
         (vec!["lib", "unittest"], "package name"),
         (vec!["lib", "cgi"], "package name"),
