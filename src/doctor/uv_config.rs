@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::AtomicBool;
 
-use toml_edit::DocumentMut;
+use toml_edit::{DocumentMut, Item, Table};
 
 use crate::error::{Error, Result};
 use crate::process;
@@ -138,7 +138,7 @@ pub(super) fn uv_configuration(
                 && !probe_uv_configuration(
                     binary,
                     &metadata,
-                    Some(root),
+                    document.get("tool").and_then(|tool| tool.get("uv")),
                     cancelled,
                     report,
                 )?
@@ -329,17 +329,39 @@ fn read_uv_configuration_file(
 fn probe_uv_configuration(
     binary: &Path,
     path: &Path,
-    project_root: Option<&Path>,
+    project_uv: Option<&Item>,
     cancelled: &AtomicBool,
     report: &mut Report,
 ) -> Result<bool> {
     let stderr = tempfile::NamedTempFile::new().map_err(|error| {
         Error::io("create uv configuration output", path, error)
     })?;
+    let isolated_project = if let Some(project_uv) = project_uv {
+        let directory = tempfile::tempdir().map_err(|error| {
+            Error::io("create uv configuration probe", path, error)
+        })?;
+        let mut document = DocumentMut::new();
+        let mut tool = Table::new();
+        tool.insert("uv", project_uv.clone());
+        document.as_table_mut().insert("tool", Item::Table(tool));
+        let metadata = directory.path().join("pyproject.toml");
+        fs::write(&metadata, document.to_string()).map_err(|error| {
+            Error::io("write uv configuration probe", &metadata, error)
+        })?;
+        Some(directory)
+    } else {
+        None
+    };
     let mut command = Command::new(binary);
     command.arg("--no-cache");
-    if let Some(project_root) = project_root {
-        command.arg("--directory").arg(project_root);
+    if let Some(directory) = isolated_project.as_ref() {
+        command.arg("--directory").arg(directory.path());
+        command
+            .env("XDG_CONFIG_HOME", directory.path())
+            .env("XDG_CONFIG_DIRS", directory.path())
+            .env("HOME", directory.path())
+            .env("APPDATA", directory.path())
+            .env("PROGRAMDATA", directory.path());
     } else {
         command.arg("--config-file").arg(path);
     }
@@ -362,7 +384,7 @@ fn probe_uv_configuration(
     let status = process::run(command, cancelled)?;
     let diagnostic = process::read_diagnostic(stderr.path())?;
     if !status.success()
-        || (project_root.is_some()
+        || (isolated_project.is_some()
             && diagnostic.contains(
                 "Failed to parse `pyproject.toml` during settings discovery",
             ))

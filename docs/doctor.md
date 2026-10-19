@@ -21,7 +21,8 @@ Python and uv are required. Python is searched in the project's environment, the
 Python version is checked against `[project].requires-python`, when present.
 Doctor also compares numeric `.python-version` pins (such as `3.12` or
 `3.12.4`) with the selected interpreter. Other pin forms produce a warning
-when doctor cannot compare them.
+when doctor cannot compare them. The pin must be a readable regular file;
+special files and dangling symlinks are blocking.
 `UV_PROJECT_ENVIRONMENT` selects the project environment instead of `.venv`.
 Absolute paths are used directly; relative paths are resolved from the
 selected project root. For standalone projects, this is uv's workspace root.
@@ -62,6 +63,7 @@ and paths whose membership cannot be determined because of non-UTF-8 characters
 are blocking findings.
 The selected project's `[tool.uv] managed = false` is also blocking because uv
 project management is disabled; doctor does not scan ancestor workspaces for it.
+An adjacent selected `uv.toml` masks this project setting.
 `managed` must be a boolean, and `workspace` must be a table when present.
 
 For uv, a project `uv.toml` takes precedence over `[tool.uv]` in
@@ -101,7 +103,9 @@ malformed discovered files are blocking findings that identify the file to fix.
 Doctor asks the selected uv executable to validate selected standalone files
 and `[tool.uv]` settings using a no-cache, offline,
 installed-interpreter-only command. This catches unknown or mistyped uv
-settings without duplicating uv's schema. Missing targets of configuration
+settings without duplicating uv's schema. The `[tool.uv]` probe uses an isolated
+temporary project so user and system uv configuration cannot be misattributed
+to the project file. Missing targets of configuration
 symlinks are blocking rather than silently treated as absent.
 Both table and inline-table group declarations are accepted. Group names in
 defaults and includes match according to PEP 735: case is ignored and runs of

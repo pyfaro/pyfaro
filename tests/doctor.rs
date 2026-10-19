@@ -254,6 +254,53 @@ fn named_pipe_ancestor_metadata_is_blocking() {
 
 #[cfg(unix)]
 #[test]
+fn python_pin_must_be_a_readable_regular_file() {
+    use std::os::unix::fs::symlink;
+
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
+        .unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    let pin = project.join(".python-version");
+    assert!(Command::new("mkfifo").arg(&pin).status().unwrap().success());
+    let fifo = doctor(&project, &bin, &uv);
+    assert_eq!(fifo.status.code(), Some(1), "{fifo:?}");
+    assert!(text(&fifo).contains("must be a readable file"), "{fifo:?}");
+    fs::remove_file(&pin).unwrap();
+    symlink("missing", &pin).unwrap();
+    let dangling = doctor(&project, &bin, &uv);
+    assert_eq!(dangling.status.code(), Some(1), "{dangling:?}");
+    assert!(text(&dangling).contains("cannot read"), "{dangling:?}");
+}
+
+#[test]
+fn selected_uv_toml_masks_project_managed_setting() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\n[tool.uv]\nmanaged = false\n",
+    )
+    .unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    let blocked = doctor(&project, &bin, &uv);
+    assert_eq!(blocked.status.code(), Some(1), "{blocked:?}");
+    assert!(text(&blocked).contains("managed = false"), "{blocked:?}");
+    fs::write(project.join("uv.toml"), "offline = true\n").unwrap();
+    let masked = doctor(&project, &bin, &uv);
+    assert_eq!(masked.status.code(), Some(0), "{masked:?}");
+    assert!(!text(&masked).contains("managed = false"), "{masked:?}");
+}
+
+#[cfg(unix)]
+#[test]
 fn dangling_layout_symlinks_are_blocking() {
     use std::os::unix::fs::symlink;
 
@@ -338,6 +385,30 @@ fn real_uv_rejects_unknown_standalone_settings() {
     assert!(
         text(&invalid_project_settings).contains("defualt-groups"),
         "{invalid_project_settings:?}"
+    );
+
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\n[tool.uv]\ndefault-groups = ['dev']\n").unwrap();
+    let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
+    fs::create_dir_all(user_file.parent().unwrap()).unwrap();
+    fs::write(&user_file, "nonsense = true\n").unwrap();
+    let invalid_user_settings = doctor(&project, &bin, &uv);
+    let report = text(&invalid_user_settings);
+    assert_eq!(
+        invalid_user_settings.status.code(),
+        Some(1),
+        "{invalid_user_settings:?}"
+    );
+    assert!(
+        report.contains("uv rejected")
+            && report.contains(".doctor-user-config"),
+        "{report}"
+    );
+    assert!(
+        !report.contains(&format!(
+            "uv rejected {}",
+            project.join("pyproject.toml").display()
+        )),
+        "{report}"
     );
 }
 

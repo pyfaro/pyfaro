@@ -370,9 +370,7 @@ fn inspect_configuration(
         }
     }
     if document.get("tool").and_then(|tool| tool.get("uv")).is_some()
-        && env::var_os("UV_CONFIG_FILE").is_none()
-        && !uv_env_enabled("UV_NO_CONFIG")
-        && fs::symlink_metadata(root.join("uv.toml")).is_ok()
+        && project_uv_toml_selected(root)
     {
         report.line(
             Severity::Warn,
@@ -380,6 +378,12 @@ fn inspect_configuration(
         )?;
     }
     Ok(())
+}
+
+fn project_uv_toml_selected(root: &Path) -> bool {
+    env::var_os("UV_CONFIG_FILE").is_none()
+        && !uv_env_enabled("UV_NO_CONFIG")
+        && fs::symlink_metadata(root.join("uv.toml")).is_ok()
 }
 
 fn missing_tool_configuration(
@@ -397,9 +401,10 @@ fn inspect_workspace(
     document: &DocumentMut,
     report: &mut Report,
 ) -> Result<bool> {
-    if let Some(managed) = document
-        .get("tool")
-        .and_then(|tool| tool.get("uv"))
+    let project_uv_masked = project_uv_toml_selected(root);
+    if let Some(managed) = (!project_uv_masked)
+        .then(|| document.get("tool").and_then(|tool| tool.get("uv")))
+        .flatten()
         .and_then(|uv| uv.get("managed"))
     {
         match managed.as_bool() {
@@ -451,9 +456,9 @@ fn inspect_workspace(
                 }
             }
         };
-        let workspace = candidate
-            .get("tool")
-            .and_then(|tool| tool.get("uv"))
+        let workspace = (directory != root || !project_uv_masked)
+            .then(|| candidate.get("tool").and_then(|tool| tool.get("uv")))
+            .flatten()
             .and_then(|uv| uv.get("workspace"));
         let Some(workspace) = workspace else {
             if directory == root {
@@ -638,10 +643,20 @@ fn inspect_python_pin(
     report: &mut Report,
 ) -> Result<()> {
     let path = root.join(".python-version");
+    let contents = match fs::metadata(&path) {
+        Ok(metadata) if metadata.is_file() => fs::read_to_string(&path),
+        Ok(_) => {
+            return report.line(Severity::Error, format!("Python: {} must be a readable file, not a directory or special file; repair the version pin", path.display()));
+        }
+        Err(error) => Err(error),
+    };
     let request =
-        match fs::read_to_string(&path) {
+        match contents {
             Ok(request) => request,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            Err(error)
+                if error.kind() == std::io::ErrorKind::NotFound
+                    && !path.is_symlink() =>
+            {
                 return Ok(());
             }
             Err(error) => return report.line(
