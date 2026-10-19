@@ -269,7 +269,7 @@ fn unmanaged_project_does_not_inherit_an_ancestor_workspace() {
     assert!(!report.contains("OK: dependencies:"), "{report}");
 }
 
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 #[test]
 fn non_utf8_workspace_path_cannot_be_classified_silently() {
     use std::os::unix::ffi::OsStringExt;
