@@ -9,13 +9,14 @@ quality checks, tests, and development workflows into one cohesive CLI.
 **Experimental alpha — [`0.1.0-alpha.1`](https://crates.io/crates/pyfaro/0.1.0-alpha.1),
 published on 2026-10-19.** The published alpha implements `init`, `--help`,
 and `--version`. Interfaces may change between alpha versions.
-The development branch adds `sync` and targets an unpublished
-`0.1.0-alpha.2` build;
-the installation command below installs the published `alpha.1`.
+The development branch adds `sync` and `run`, and targets an unpublished
+`0.1.0-alpha.2` build. The installation command below installs the published
+`alpha.1`.
 
 The first alpha targets **Linux** for `init --apply`. macOS and Windows
 retain builds, help/version, and non-writing previews; applying initialization
 there is explicitly unavailable until lifecycle guarantees are implemented.
+The development `sync` and `run` commands operate on all three CI platforms.
 
 ## Install the alpha
 
@@ -59,6 +60,11 @@ project's `.venv` and `uv.lock` through uv. Use `--locked` to reject stale
 locks or `--frozen` to install from an existing lock without checking it.
 See the [sync guide](docs/sync.md) for the mode differences.
 
+`pyfaro run -- <program> [args...]` executes through uv in the project
+environment. For example, `pyfaro run -- python -m pytest` runs pytest from
+the project. Use `--project <PATH>` to select another project, or `--locked`
+to reject a stale lock before execution. See the [run guide](docs/run.md).
+
 ## Planned experience
 
 - Create and initialize Python projects with opinionated, editable defaults.
@@ -68,7 +74,7 @@ See the [sync guide](docs/sync.md) for the mode differences.
 - Combine non-destructive quality checks with clear diagnostics.
 - Build Python distributions through uv; later add workspaces and task graphs.
 
-Remaining planned commands: `create`, `add`, `remove`, `run`, `dev`,
+Remaining planned commands: `create`, `add`, `remove`, `dev`,
 `lint`, `fmt`, `type`, `check`, `test`, `build`, and `doctor`.
 These commands are roadmap items, not working functionality. The initial
 `init` slice is available ahead of the broader project-management milestone.
@@ -85,9 +91,9 @@ These commands are roadmap items, not working functionality. The initial
 
 Pyfaro will use `pyproject.toml` and uv's `uv.lock`. It will not introduce
 another dependency solver, package manager, Python installer, lockfile format,
-linter, type checker, or test engine. The initial code contains only a Clap
-CLI and a focused uv-backed initialization workflow; modules will grow when
-there is functionality to own.
+linter, type checker, or test engine. The current code keeps each workflow
+in a focused module and delegates environment and package operations to uv.
+Modules will grow when there is functionality to own.
 See [ADR 0001](docs/architecture/0001-project-architecture.md).
 
 ## Build from source
@@ -104,7 +110,7 @@ cargo run --locked -- --version
 ```
 
 Python, uv, Ruff, ty, and pytest are not needed to compile the Rust binary.
-Running `init --apply`, `sync`, and their integration tests requires uv and
+Running `init --apply`, `sync`, `run`, and their integration tests requires uv and
 Python.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for checks and development conventions.
 

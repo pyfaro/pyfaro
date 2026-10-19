@@ -8,7 +8,7 @@ use clap::{Args, Parser, Subcommand};
 #[command(version, about, long_about = None)]
 #[command(arg_required_else_help = true)]
 #[command(
-    after_help = "Experimental alpha: init and sync are implemented; other workflow commands are not implemented yet."
+    after_help = "Experimental alpha: init, sync, and run are implemented; other workflow commands are not implemented yet."
 )]
 pub(crate) struct Cli {
     #[command(subcommand)]
@@ -21,6 +21,8 @@ pub(crate) enum Command {
     Init(InitArgs),
     /// Synchronize the project environment through uv
     Sync(SyncArgs),
+    /// Run a command in the project environment through uv
+    Run(RunArgs),
 }
 
 #[derive(Args)]
@@ -63,4 +65,31 @@ pub(crate) struct SyncArgs {
     /// Disable network access in uv
     #[arg(long)]
     pub offline: bool,
+}
+
+#[derive(Args)]
+pub(crate) struct RunArgs {
+    /// Project directory (defaults to the current directory)
+    #[arg(long, default_value = ".")]
+    pub project: PathBuf,
+
+    /// Refuse to update an absent or stale uv.lock
+    #[arg(long, conflicts_with = "frozen")]
+    pub locked: bool,
+
+    /// Use uv.lock without checking it against project metadata
+    #[arg(long)]
+    pub frozen: bool,
+
+    /// uv executable (a path or a name found on PATH)
+    #[arg(long, default_value = "uv")]
+    pub uv: OsString,
+
+    /// Disable network access in uv
+    #[arg(long)]
+    pub offline: bool,
+
+    /// Command and arguments after --
+    #[arg(last = true, required = true, num_args = 1..)]
+    pub command: Vec<OsString>,
 }

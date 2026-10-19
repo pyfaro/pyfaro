@@ -18,6 +18,7 @@ const POLL: Duration = Duration::from_millis(20);
 pub(super) fn run(
     command: &mut Command,
     cancelled: &AtomicBool,
+    relay: bool,
 ) -> Result<ExitStatus> {
     if cancelled.load(Ordering::SeqCst) {
         return Err(Error::Cancelled);
@@ -32,6 +33,11 @@ pub(super) fn run(
         .process_group(0)
         .spawn()
         .map_err(|source| Error::UvStart { path: program.clone(), source })?;
+    let input = if relay {
+        child.stdin.take().map(super::unix_input::Relay::start)
+    } else {
+        None
+    };
     let group = Pid::from_raw(child.id() as i32);
     let result = loop {
         if cancelled.load(Ordering::SeqCst) {
@@ -55,14 +61,22 @@ pub(super) fn run(
             }
         }
     };
-    match (result, cleanup(&mut child, group, &program)) {
+    let cleanup = cleanup(&mut child, group, &program);
+    let relay_result = input.map(super::unix_input::Relay::finish).transpose();
+    let outcome = match (result, cleanup) {
         (Ok(()), status) => status,
         (Err(error), Ok(_)) => Err(error),
         (Err(operation), Err(source)) => Err(Error::OperationCleanup {
             operation: Box::new(operation),
             source: Box::new(source),
         }),
+    };
+    if let Err(source) = relay_result
+        && outcome.is_ok()
+    {
+        return Err(Error::io("relay terminal input", &program, source));
     }
+    outcome
 }
 
 fn leader_exited(group: Pid) -> io::Result<bool> {

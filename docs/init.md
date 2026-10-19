@@ -61,7 +61,8 @@ without `--upgrade`; external metadata or index changes may still require
 uv to update a stale lockfile. Commit `pyproject.toml` and `uv.lock` together.
 
 After initialization, the unreleased development build can synchronize the
-environment with `pyfaro sync --locked`. In the published `alpha.1`, use uv
+environment with `pyfaro sync --locked` and execute through it with
+`pyfaro run --locked -- python --version`. In the published `alpha.1`, use uv
 directly for workflows not yet implemented there:
 
 ```sh
@@ -109,8 +110,9 @@ another metadata/lockfile writer concurrently with initialization.
 - Metadata/lockfile symlinks are rejected to avoid replacing their targets.
 - Dynamic/source dependencies that require a build to determine metadata
   may fail with `--no-build`; the previous project files are then restored.
-- There is no preset selection, automatic quality-tool dependency setup,
-  environment synchronization, or implementation of other Pyfaro workflows.
+- There is no preset selection or automatic quality-tool dependency setup.
+  The published `alpha.1` has no `sync` or `run`; both are in the unreleased
+  development build.
 
 ## Verification
 
@@ -121,5 +123,6 @@ They cover new/existing projects, preservation, idempotence, and non-ASCII
 paths with spaces. Portable Rust process fixtures cover uv failures and
 process-tree cancellation and confirm that descendant PIDs have been reaped.
 Linux additionally tests actual SIGINT delivery through the CLI. CI runs the
-full workflow suite on Linux and checks compilation, previews, and the
-unsupported-apply contract on macOS and Windows.
+full `init --apply` workflow suite on Linux and checks compilation, previews,
+and the unsupported-apply contract on macOS and Windows. Real `sync` and
+`run` smoke tests execute on all three platforms in the development build.

@@ -1,4 +1,5 @@
-use std::process::{Command, ExitStatus};
+use std::io::IsTerminal;
+use std::process::{Command, ExitStatus, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -8,6 +9,8 @@ use crate::error::Result;
 mod linux;
 #[cfg(target_os = "macos")]
 mod macos;
+#[cfg(unix)]
+mod unix_input;
 #[cfg(target_os = "windows")]
 mod windows;
 
@@ -22,17 +25,35 @@ pub(crate) fn run(
     command: Command,
     cancelled: &AtomicBool,
 ) -> Result<ExitStatus> {
+    run_with_input(command, cancelled, false)
+}
+
+pub(crate) fn run_interactive(
+    mut command: Command,
+    cancelled: &AtomicBool,
+) -> Result<ExitStatus> {
+    let relay = cfg!(unix) && std::io::stdin().is_terminal();
+    command.stdin(if relay { Stdio::piped() } else { Stdio::inherit() });
+    run_with_input(command, cancelled, relay)
+}
+
+fn run_with_input(
+    command: Command,
+    cancelled: &AtomicBool,
+    relay: bool,
+) -> Result<ExitStatus> {
     #[cfg(target_os = "linux")]
     {
         let mut command = command;
-        linux::run(&mut command, cancelled)
+        linux::run(&mut command, cancelled, relay)
     }
     #[cfg(target_os = "macos")]
     {
-        macos::run(command, cancelled)
+        macos::run(command, cancelled, relay)
     }
     #[cfg(target_os = "windows")]
     {
+        let _ = relay;
         windows::run(command, cancelled)
     }
     #[cfg(not(any(
@@ -41,7 +62,7 @@ pub(crate) fn run(
         target_os = "windows"
     )))]
     {
-        let _ = (command, cancelled);
+        let _ = (command, cancelled, relay);
         Err(crate::error::Error::Project(
             "delegated commands are unavailable on this platform".into(),
         ))
