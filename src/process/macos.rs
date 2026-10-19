@@ -83,6 +83,7 @@ fn cleanup(
     let mut failures = Vec::new();
     if let Err(source) = child.start_kill()
         && source.raw_os_error() != Some(Errno::ESRCH as i32)
+        && source.raw_os_error() != Some(Errno::EPERM as i32)
     {
         failures.push(Error::io(
             "stop delegated process group",

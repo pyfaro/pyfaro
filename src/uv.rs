@@ -23,6 +23,16 @@ impl Uv {
         let selected = PathBuf::from(binary);
         let binary = which::which(&selected)
             .map_err(|source| Error::UvLookup { path: selected, source })?;
+        #[cfg(windows)]
+        if binary.extension().is_some_and(|extension| {
+            extension.eq_ignore_ascii_case("cmd")
+                || extension.eq_ignore_ascii_case("bat")
+        }) {
+            return Err(Error::Project(
+                "uv must be a native executable, not a Windows batch wrapper"
+                    .into(),
+            ));
+        }
         let uv = Self { binary, offline };
         let output = tempfile::NamedTempFile::new().map_err(|error| {
             Error::io(
@@ -38,12 +48,11 @@ impl Uv {
         let cwd = std::env::current_dir().map_err(|error| {
             Error::io("resolve", Path::new("current directory"), error)
         })?;
-        command
-            .current_dir(cwd)
-            .arg("--version")
-            .stdin(Stdio::null())
-            .stdout(file);
-        let status = process::run(command, cancelled)?;
+        command.current_dir(cwd).arg("--version").stdin(Stdio::null()).stdout(
+            file.try_clone()
+                .map_err(|error| Error::io("clone", output.path(), error))?,
+        );
+        let status = process::run_with_stdout(command, cancelled, Some(&file))?;
         if !status.success() {
             return Err(Error::UvStatus { operation: "--version", status });
         }
@@ -107,6 +116,7 @@ impl Uv {
         let mut command = Command::new(&self.binary);
         command
             .current_dir(root)
+            .stdin(Stdio::null())
             .env_remove("UV_WORKING_DIR")
             .env_remove("UV_PROJECT")
             .env_remove("UV_FROZEN")
@@ -180,5 +190,19 @@ mod tests {
                 "café"
             ]
         );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_batch_wrapper_is_rejected_before_launch() {
+        let directory = tempfile::tempdir().unwrap();
+        let wrapper = directory.path().join("uv.cmd");
+        fs::write(&wrapper, "@echo off\r\nexit /b 0\r\n").unwrap();
+        let result = Uv::discover(
+            wrapper.into_os_string(),
+            false,
+            &AtomicBool::new(false),
+        );
+        assert!(matches!(result, Err(Error::Project(_))));
     }
 }
