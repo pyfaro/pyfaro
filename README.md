@@ -6,10 +6,39 @@ quality checks, tests, and development workflows into one cohesive CLI.
 
 ## Status
 
-**Early development — Foundation milestone.** Only `pyfaro --help` and
-`pyfaro --version` are implemented. There is no published release or supported
-installation package yet. The package version `0.1.0-dev.0` identifies this
-development scaffold, not a shipped v0.1.0 release.
+**Experimental alpha — `0.1.0-alpha.1` release candidate.** `pyfaro init`,
+`pyfaro --help`, and `pyfaro --version` are implemented. The alpha is being
+prepared for its first crates.io publication; it has not shipped yet.
+Interfaces may change between alpha versions.
+
+The first alpha targets **Linux** for `init --apply`. macOS and Windows
+retain builds, help/version, and non-writing previews; applying initialization
+there is explicitly unavailable until lifecycle guarantees are implemented.
+
+## Try the initialization workflow
+
+Install uv separately and have a suitable Python interpreter available.
+The tested uv version is **0.9.26**; older versions are rejected. Pyfaro never
+installs uv or downloads Python automatically.
+
+After building from source, preview initialization of a new or existing
+standalone project, then explicitly apply it:
+
+```sh
+cargo run --locked -- init ./my-project
+cargo run --locked -- init ./my-project --apply
+```
+
+`init` delegates new project metadata and dependency locking to uv, adds
+`[tool.pyfaro]` with `schema-version = 1`, and preserves existing dependency
+declarations and third-party tool settings. It does not install dependencies
+or create a virtual environment. A second run is idempotent for an unchanged
+project and dependency resolution.
+
+Use `--offline` to disable network access or `--uv <path>` to select an
+executable. See the [init guide](docs/init.md) for exact behavior, error
+handling, and alpha limitations, and the [release instructions](docs/releasing.md)
+for the publication approval gate.
 
 ## Planned experience
 
@@ -20,9 +49,10 @@ development scaffold, not a shipped v0.1.0 release.
 - Combine non-destructive quality checks with clear diagnostics.
 - Build Python distributions through uv; later add workspaces and task graphs.
 
-Planned commands: `create`, `init`, `add`, `remove`, `sync`, `run`, `dev`,
+Remaining planned commands: `create`, `add`, `remove`, `sync`, `run`, `dev`,
 `lint`, `fmt`, `type`, `check`, `test`, `build`, and `doctor`.
-These commands are roadmap items, not working functionality.
+These commands are roadmap items, not working functionality. The initial
+`init` slice is available ahead of the broader project-management milestone.
 
 ## Integration over reimplementation
 
@@ -37,7 +67,8 @@ These commands are roadmap items, not working functionality.
 Pyfaro will use `pyproject.toml` and uv's `uv.lock`. It will not introduce
 another dependency solver, package manager, Python installer, lockfile format,
 linter, type checker, or test engine. The initial code contains only a Clap
-CLI boundary; modules will grow when there is functionality to own.
+CLI and a focused uv-backed initialization workflow; modules will grow when
+there is functionality to own.
 See [ADR 0001](docs/architecture/0001-project-architecture.md).
 
 ## Build from source
@@ -53,7 +84,8 @@ cargo run --locked -- --help
 cargo run --locked -- --version
 ```
 
-Python, uv, Ruff, ty, and pytest are not needed to build this scaffold.
+Python, uv, Ruff, ty, and pytest are not needed to compile the Rust binary.
+Running `init --apply` and the integration tests requires uv and Python.
 See [CONTRIBUTING.md](CONTRIBUTING.md) for checks and development conventions.
 
 ## Roadmap
