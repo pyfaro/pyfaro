@@ -71,6 +71,12 @@ positional `PATH` starts discovery elsewhere, while `--project <PATH>`
 selects an exact project instead.
 See the [sync guide](docs/sync.md) for the mode differences.
 
+In the unpublished development version, `pyfaro add 'requests>=2'` and
+`pyfaro remove requests` delegate dependency and lockfile edits to uv.
+Use `--dev` or `--group <NAME>` for dependency groups, then run `pyfaro sync`
+to update the environment. These commands are not in the published `alpha.2`.
+See the [dependency guide](docs/dependencies.md).
+
 `pyfaro run -- <program> [args...]` executes through uv in the project
 environment. For example, `pyfaro run -- python -m pytest` runs pytest from
 the project. Use `--project <PATH>` to select another project, or `--locked`
@@ -94,10 +100,11 @@ tools are found in the selected project's `.venv`, then `VIRTUAL_ENV`, then
 - Combine non-destructive quality checks with clear diagnostics.
 - Build Python distributions through uv; later add workspaces and task graphs.
 
-Remaining planned commands: `create`, `add`, `remove`, `dev`,
+Remaining planned commands: `create`, `dev`,
 `lint`, `fmt`, `type`, `check`, `test`, `build`, and `doctor`.
 These commands are roadmap items, not working functionality. The published
-`alpha.2` includes `init`, `sync`, `run`, and `tools`.
+`alpha.2` includes `init`, `sync`, `run`, and `tools`; the development version
+also includes `add` and `remove`.
 
 ## Integration over reimplementation
 
