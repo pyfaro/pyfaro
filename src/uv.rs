@@ -24,6 +24,10 @@ impl Uv {
         let binary = which::which(&selected)
             .map_err(|source| Error::UvLookup { path: selected, source })?;
         #[cfg(windows)]
+        let binary = fs::canonicalize(&binary).map_err(|source| {
+            Error::io("resolve uv executable", &binary, source)
+        })?;
+        #[cfg(windows)]
         if binary.extension().is_some_and(|extension| {
             extension.eq_ignore_ascii_case("cmd")
                 || extension.eq_ignore_ascii_case("bat")
@@ -205,5 +209,12 @@ mod tests {
             &AtomicBool::new(false),
         );
         assert!(matches!(result, Err(Error::Project(_))));
+
+        let trailing_dot = OsString::from(format!("{}.", wrapper.display()));
+        let result = Uv::discover(trailing_dot, false, &AtomicBool::new(false));
+        assert!(matches!(
+            result,
+            Err(Error::Project(_) | Error::UvLookup { .. })
+        ));
     }
 }
