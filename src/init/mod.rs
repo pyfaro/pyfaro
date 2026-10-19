@@ -43,15 +43,15 @@ pub(crate) fn run(args: InitArgs) -> Result<()> {
             config::prepare(source).map_err(|error| Error::config(&path, error))
         })
         .transpose()?;
-    let inline_tool = original
+    let inline_config = original
         .map(|source| {
-            config::has_inline_tool(source)
+            config::has_inline_config(source)
                 .map_err(|error| Error::config(&path, error))
         })
         .transpose()?
         .unwrap_or(false);
 
-    print_plan(&args, original, proposed.as_deref(), inline_tool)
+    print_plan(&args, original, proposed.as_deref(), inline_config)
         .map_err(Error::Output)?;
     if !args.apply {
         return Ok(());
@@ -114,7 +114,7 @@ fn print_plan(
     args: &InitArgs,
     original: Option<&str>,
     proposed: Option<&str>,
-    inline_tool: bool,
+    inline_config: bool,
 ) -> io::Result<()> {
     let mut output = io::stdout().lock();
     writeln!(output, "Initialization plan for {}:", args.path.display())?;
@@ -126,7 +126,7 @@ fn print_plan(
     }
     if original.is_some() && proposed == original {
         writeln!(output, "  [tool.pyfaro] is already configured.")?;
-    } else if inline_tool {
+    } else if inline_config {
         writeln!(
             output,
             "  Proposed pyproject.toml:\n{}",

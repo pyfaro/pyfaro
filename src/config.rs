@@ -38,9 +38,13 @@ pub(crate) fn is_workspace(source: &str) -> Result<bool> {
         .is_some())
 }
 
-pub(crate) fn has_inline_tool(source: &str) -> Result<bool> {
+pub(crate) fn has_inline_config(source: &str) -> Result<bool> {
     let document: DocumentMut = source.parse()?;
-    Ok(document.get("tool").is_some_and(Item::is_inline_table))
+    Ok(document.get("tool").is_some_and(Item::is_inline_table)
+        || document
+            .get("tool")
+            .and_then(|tool| tool.get("pyfaro"))
+            .is_some_and(Item::is_inline_table))
 }
 
 /// Plan the opt-in change while preserving unrelated TOML formatting.
