@@ -19,6 +19,19 @@ fn main() {
         }
     }
     let args: Vec<_> = env::args().skip(1).collect();
+    if args.len() == 7
+        && args[0] == "--no-cache"
+        && (args[1] == "--config-file" || args[1] == "--directory")
+        && args[3..] == ["--offline", "python", "list", "--only-installed"]
+    {
+        return;
+    }
+    if args.len() == 8
+        && args[0..3] == ["--no-cache", "--no-config", "--directory"]
+        && args[4..] == ["--offline", "version", "--output-format", "json"]
+    {
+        return;
+    }
     if args == ["--heartbeat"] {
         fs::write("uv-descendant.pid", process::id().to_string()).unwrap();
         let start = Instant::now();
@@ -41,13 +54,19 @@ fn main() {
             process::exit(7);
         }
         let default = match stem.as_ref() {
+            "python" | "python3" => "Python 3.12.1",
             "ruff" => "ruff 0.14.0",
             "ty" => "ty 0.0.1-alpha.24",
             "pytest" => "pytest 8.4.2",
             _ => "uv 0.9.26",
         };
-        println!("{}", env::var("PYFARO_FIXTURE_VERSION")
-            .unwrap_or_else(|_| default.into()));
+        let version = if stem == "pytest" {
+            env::var("PYFARO_FIXTURE_PYTEST_VERSION")
+                .or_else(|_| env::var("PYFARO_FIXTURE_VERSION"))
+        } else {
+            env::var("PYFARO_FIXTURE_VERSION")
+        };
+        println!("{}", version.unwrap_or_else(|_| default.into()));
         if env::var_os("PYFARO_FIXTURE_VERSION_EXTRA").is_some() {
             println!("plugin printed another line");
         }

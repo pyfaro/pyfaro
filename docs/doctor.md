@@ -1,0 +1,161 @@
+# Diagnose a project
+
+`pyfaro doctor` inspects the nearest project without intentionally changing
+project files. Use `--project <PATH>` to select an exact directory and
+`--uv <PATH>` to select a specific uv executable.
+
+```sh
+pyfaro doctor
+pyfaro doctor --project ./my-project --uv /path/to/uv
+```
+
+The report uses `OK`, `WARN`, and `ERROR` lines in a fixed order. It reports
+the project root, Pyfaro configuration, Python, uv, Ruff, ty, pytest, and
+selected dependencies. Paths and diagnostics escape control characters so each
+finding stays on one line. Doctor exits 1 if it reports any `ERROR`; warnings
+alone leave exit status 0. Cancellation exits 130. A failed tool version probe
+is a doctor finding, so its child process exit code is not forwarded.
+
+Python and uv are required. Python is searched in the project's environment, then
+`VIRTUAL_ENV`, then `PATH` (`python3` is a fallback on Unix). The reported
+Python version is checked against `[project].requires-python`, when present.
+Doctor also compares numeric `.python-version` pins (such as `3.12` or
+`3.12.4`) with the selected interpreter. Other pin forms produce a warning
+when doctor cannot compare them. The pin must be a readable regular file;
+special files and dangling symlinks are blocking even if Python is unavailable.
+`UV_PROJECT_ENVIRONMENT` selects the project environment instead of `.venv`.
+Absolute paths are used directly; relative paths are resolved from the
+selected project root. For standalone projects, this is uv's workspace root.
+On Unix, an environment with `bin/python3` but no `bin/python` is valid; doctor
+uses that interpreter for layout and dependency checks.
+
+uv follows the normal Pyfaro executable selection and requires stable uv
+0.9.26 or newer. Ruff, ty, and pytest use the same discovery and version rules
+as `pyfaro tools`; missing or broken optional tools are warnings. To fix a
+missing executable, install it in the intended environment or put it on
+`PATH`, then run doctor again.
+
+Doctor validates `pyproject.toml` with the same Pyfaro config loader used by
+`sync` and `run`, and reports a non-string or empty `[project].name`. It reports conflicting per-tool files alongside
+`[tool.ruff]`, `[tool.ty]`, or `[tool.pytest]`, and detects files where `src`,
+`tests`, or project environment directories are expected, including dangling symlinks. A project environment
+without its Python interpreter is a blocking layout issue. On Unix, an existing
+project interpreter without executable permission also blocks, even if another
+Python is available on `PATH` and the project has no dependencies. Standalone
+tool configuration paths must be readable regular files, not directories or special files. For pytest,
+`pytest.ini`, `.pytest.ini`, `pytest.toml`, and `.pytest.toml` conflict with
+`[tool.pytest.ini_options]` or native `[tool.pytest]` settings. The TOML files
+are supported by pytest 9. When doctor finds pytest earlier than 9 with either
+TOML file or native `[tool.pytest]` settings, it reports a blocking compatibility finding:
+upgrade to pytest 9 or move the settings to an INI format. `tox.ini` counts
+only when it has `[pytest]`, and
+`setup.cfg` counts only when it has `[tool:pytest]`. Any key other than
+`ini_options` under `[tool.pytest]`, including a nested table, counts as native
+pytest configuration. Multiple pytest configuration files also conflict.
+Native `[tool.pytest]` settings cannot be
+combined with nonempty `[tool.pytest.ini_options]` in the same file. Doctor
+reports uv workspace roots and projects matched by normalized `members` globs
+and not by `exclude` globs as unsupported. Matching uses the absolute project
+path and uv's glob defaults. Discovery stops at the first ancestor
+`pyproject.toml`: an intervening project or a workspace that does not include
+the selected project prevents an outer workspace from applying. Invalid globs
+and paths whose membership cannot be determined because of non-UTF-8 characters
+are blocking findings. Dangling ancestor `pyproject.toml` symlinks are blocking
+rather than treated as absent.
+The selected project's `[tool.uv] managed = false` is also blocking because uv
+project management is disabled; doctor does not scan ancestor workspaces for it.
+This project metadata still applies when `uv.toml`, `UV_NO_CONFIG`, or
+`UV_CONFIG_FILE` overrides uv configuration settings.
+`managed` must be a boolean, and `workspace` must be a table when present.
+
+For uv, a project `uv.toml` takes precedence over overlapping `[tool.uv]`
+configuration settings in `pyproject.toml`, not project metadata; doctor reports their
+coexistence as a warning when the project file is selected. `UV_CONFIG_FILE`
+and `UV_NO_CONFIG` suppress that warning because they override discovery.
+A non-table `[tool.uv]` value is invalid project metadata and blocks even when
+standalone uv configuration is selected.
+Doctor also checks required `[project]` name and version metadata, including
+the shape of `dynamic`, independently of uv configuration discovery.
+When uv is available, an offline, no-cache `uv version` probe validates the
+full project metadata schema without resolving dependencies or creating an
+environment. A dynamic version is valid even though `uv version` cannot
+display it.
+
+Doctor parses `[project].dependencies` and uv's default dependency groups
+with PyPA's PEP 508 implementation available to the project interpreter
+(including pip's bundled copy or the copy in CPython's `ensurepip` wheel).
+The `dev` group is selected by default, unless the selected project's
+`[tool.uv] default-groups` metadata
+changes that selection. `UV_NO_DEV`, `UV_NO_DEFAULT_GROUPS`, and the
+space-delimited `UV_NO_GROUP` environment variable remove top-level groups from installed
+distribution checks, as they do for uv. An included group remains selected when its parent is selected. Doctor discovers the nearest project
+configuration from the project directory upward: in each directory, `uv.toml`
+takes precedence over `[tool.uv]` in `pyproject.toml`. It also reads user
+configuration from `$XDG_CONFIG_HOME/uv/uv.toml` (defaulting to
+`~/.config/uv/uv.toml`) on Unix or `%APPDATA%\uv\uv.toml` on Windows, and
+system configuration from the first available `$XDG_CONFIG_DIRS/uv/uv.toml`
+(defaulting to `/etc/xdg/uv/uv.toml`) or `/etc/uv/uv.toml` on Unix, or
+`%PROGRAMDATA%\uv\uv.toml` on Windows. The selected project's `pyproject.toml`
+supplies `default-groups` and legacy `dev-dependencies` independently of uv
+configuration discovery. An adjacent `uv.toml`, `UV_NO_CONFIG`, and
+`UV_CONFIG_FILE` do not remove this project metadata. Doctor rejects `conflicts`, `workspace`, `sources`,
+`dev-dependencies`, `default-groups`, `dependency-groups`, `managed`, `package`,
+`build-backend`, `environments`, and `required-environments` in any `uv.toml`
+with a blocking finding that identifies the file and the pyproject destination.
+Standalone `uv.toml` files may contain build constraints, constraints,
+exclusions, and overrides. Doctor checks each selected file's schema and the
+effective merged uv configuration separately, so an overridden
+`required-version` does not cause a false blocking finding.
+`UV_CONFIG_FILE` selects an explicit standalone uv configuration file instead
+of discovery; relative paths are resolved from the selected project directory,
+as they are for uv commands run by Pyfaro. `UV_NO_CONFIG` disables discovery
+unless `UV_CONFIG_FILE` is also set. Missing explicit files and unreadable or
+malformed discovered files are blocking findings that identify the file to fix.
+Doctor asks the selected uv executable to validate selected standalone files
+and `[tool.uv]` settings using a no-cache, offline,
+installed-interpreter-only command. This catches unknown or mistyped uv
+settings without duplicating uv's schema. The `[tool.uv]` probe uses an isolated
+temporary project so user and system uv configuration cannot be misattributed
+to the project file. Standalone layers are validated first, including the
+selected system fallback. Missing targets of configuration
+symlinks are blocking rather than silently treated as absent.
+Both table and inline-table group declarations are accepted. Group names in
+defaults and includes match according to PEP 735: case is ignored and runs of
+`-`, `_`, or `.` are equivalent.
+Invalid group names, duplicate names after normalization, and explicitly
+selected groups that are missing are blocking findings. Included groups are
+followed. Legacy uv `dev-dependencies` are validated even when `dev` is not
+selected. Their installed distributions are checked only when `dev` is
+selected, including when `dev` is explicitly listed in `default-groups`,
+or legacy `dev-dependencies` are its only definition. Including `dev` from
+another selected group does not select legacy `dev-dependencies`, because uv
+adds them after resolving group includes. Malformed requirements
+identify the selected pyproject file to correct. Non-default groups not included
+by a selected group are reported as unchecked warnings. Doctor still validates
+every group's requirement strings, entry structure, and inclusion cycles
+without checking whether their distributions are installed. Invalid group
+entries, inclusion cycles, and dynamic project dependencies are blocking
+findings, even when a static dependencies array is also present. Explicit
+default group names are validated even when environment switches exclude them.
+An include table must contain only `include-group`.
+Doctor evaluates environment markers and checks applicable distribution names
+in the project's existing environment using Python's standard
+`importlib.metadata`. When at least one selected distribution applies, a
+missing project interpreter or distribution is a blocking issue with a
+`pyfaro sync` action. Projects with no applicable distributions do not require
+an existing project environment for this check. If the parser is unavailable,
+cannot run, or rejects any requirement, doctor reports a blocking finding
+without an OK dependency summary. Doctor checks presence, not requirement
+version constraints, optional extras, or lockfile freshness. Use
+`pyfaro sync --locked` when a fresh, reproducible installation check is needed.
+
+Doctor does not invoke a shell, access a package index, install packages, or
+create a project environment. Its dependency queries use Python isolated mode
+(`-I`), disable bytecode writes (`-B`), and run from a temporary directory.
+Python and other tool version probes run `--version` without those isolation
+flags or a temporary working directory. Probe
+stdout and stderr are captured in temporary files. Temporary files follow the
+system temporary directory setting, which may point inside the project.
+Starting Python or another tool for a version probe can also trigger that
+tool's own startup side effects, so doctor cannot guarantee a physically
+read-only filesystem.
