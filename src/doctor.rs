@@ -190,10 +190,14 @@ fn inspect_configuration(
     for (section, files) in [
         ("ruff", &["ruff.toml", ".ruff.toml"][..]),
         ("ty", &["ty.toml"][..]),
-        ("pytest", &["pytest.ini", "tox.ini", "setup.cfg"][..]),
+        ("pytest", &["pytest.ini", ".pytest.ini", "tox.ini", "setup.cfg"][..]),
     ] {
-        let configured =
-            document.get("tool").and_then(|tool| tool.get(section)).is_some();
+        let configured = document
+            .get("tool")
+            .and_then(|tool| tool.get(section))
+            .is_some_and(|config| {
+                section != "pytest" || config.get("ini_options").is_some()
+            });
         let mut present = Vec::new();
         for file in files {
             let path = root.join(file);
@@ -785,6 +789,7 @@ fn declared_dependencies(
         .collect();
     let no_default_groups = uv_env_enabled("UV_NO_DEFAULT_GROUPS");
     let mut unselected_requirements = Vec::new();
+    let mut included_dev = false;
     if let Some(groups) = document.get("dependency-groups") {
         let groups = groups.as_table().cloned().or_else(|| {
             groups.as_inline_table().map(|inline| inline.clone().into_table())
@@ -843,6 +848,7 @@ fn declared_dependencies(
                     report,
                 )?;
             }
+            included_dev = collector.selected.iter().any(|name| name == "dev");
             for (name, _) in groups.iter() {
                 let normalized = normalize_group_name(name);
                 if !collector.checked.iter().any(|entry| entry == &normalized) {
@@ -882,6 +888,8 @@ fn declared_dependencies(
         let selected = selected_groups
             .as_ref()
             .is_none_or(|selected| selected.iter().any(|name| name == "dev"))
+            || included_dev;
+        let selected = selected
             && !no_default_groups
             && !disabled_groups.iter().any(|name| name == "dev");
         if let Some(legacy) = legacy.as_array() {

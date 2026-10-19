@@ -464,7 +464,25 @@ fn pytest_conflicts_require_pytest_sections_in_shared_ini_files() {
     assert_eq!(setup.status.code(), Some(1), "{setup:?}");
     assert!(text(&setup).contains("[tool.pytest] and setup.cfg"));
 
+    fs::remove_file(project.join("setup.cfg")).unwrap();
+    fs::write(project.join(".pytest.ini"), "[pytest]\naddopts = -q\n").unwrap();
+    let hidden = doctor(&project, &bin, &uv);
+    assert_eq!(hidden.status.code(), Some(1), "{hidden:?}");
+    assert!(text(&hidden).contains("[tool.pytest] and .pytest.ini"));
+
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\n[tool.pytest.other]\nvalue = 1\n",
+    )
+    .unwrap();
+    let unrelated = doctor(&project, &bin, &uv);
+    assert_eq!(unrelated.status.code(), Some(0), "{unrelated:?}");
+    assert!(!text(&unrelated).contains("ERROR: configuration:"));
+    fs::remove_file(project.join(".pytest.ini")).unwrap();
+
     fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
+        .unwrap();
+    fs::write(project.join("setup.cfg"), "[tool:pytest]\naddopts = -q\n")
         .unwrap();
     fs::write(project.join("tox.ini"), "[pytest]\naddopts = -q\n").unwrap();
     let shared = doctor(&project, &bin, &uv);
@@ -997,6 +1015,17 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
             .contains("missing-doctor-legacy-package is missing from .venv")
     );
 
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\nqa = [{include-group = 'dev'}]\ndev = []\n").unwrap();
+    fs::write(project.join("uv.toml"), "default-groups = ['qa']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
+    let included_legacy =
+        doctor_command(&project, Path::new(&path), &uv).output().unwrap();
+    assert_eq!(included_legacy.status.code(), Some(1), "{included_legacy:?}");
+    assert!(
+        text(&included_legacy)
+            .contains("missing-doctor-legacy-package is missing from .venv")
+    );
+
+    fs::write(project.join("uv.toml"), "default-groups = ['dev']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n")
         .unwrap();
     let legacy_only = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
