@@ -21,8 +21,9 @@ project's uv indexes, sources, and dependency settings to uv.
 
 Linux keeps the existing process-group and child-subreaper cleanup used by
 `init`. macOS uses a process group and sends SIGINT before forcing cleanup.
-Windows creates a kill-on-close Job Object before starting uv, terminates it
-after the leader exits, and confirms the job has no active processes.
+Windows assigns a suspended child to a kill-on-close Job Object before it
+runs, stops remaining job members after the leader exits, and confirms the
+job's active-process list is empty.
 Windows batch wrappers are rejected because Rust would invoke a shell for
 them. Cancellation stops the owned process tree and returns `130`; an unconfirmed cleanup is
 reported as an error. The adapter is shared infrastructure for later commands.
