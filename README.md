@@ -59,7 +59,8 @@ In the development build, `pyfaro sync [PATH]` creates or updates the
 project's `.venv` and `uv.lock` through uv. Use `--locked` to reject stale
 locks or `--frozen` to install from an existing lock without checking it.
 From a nested directory, Pyfaro selects the nearest `pyproject.toml`;
-`--project <PATH>` selects an exact project instead.
+positional `PATH` starts discovery elsewhere, while `--project <PATH>`
+selects an exact project instead.
 See the [sync guide](docs/sync.md) for the mode differences.
 
 `pyfaro run -- <program> [args...]` executes through uv in the project

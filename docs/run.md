@@ -17,7 +17,9 @@ Without `--project`, Pyfaro finds the nearest `pyproject.toml` in the current
 directory or its ancestors. `--project <PATH>` selects that exact directory
 and requires its own `pyproject.toml`; it never falls back to a parent.
 Discovery resolves symlinks first and does not change Pyfaro's process-wide
-working directory. uv synchronizes the selected environment by default and
+working directory. The program keeps the caller's working directory, so
+relative script paths and arguments remain relative to the invocation point.
+uv synchronizes the selected environment by default and
 runs the program inside it. `--locked` refuses a missing or stale `uv.lock`;
 `--frozen` uses an existing lock without checking it. These modes are
 mutually exclusive.

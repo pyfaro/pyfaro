@@ -2,8 +2,9 @@
 
 `pyfaro sync [PATH]` delegates to `uv sync` in the selected project. Without
 a path, Pyfaro finds the nearest `pyproject.toml` in the current directory or
-its ancestors. An explicit `PATH` or `--project <PATH>` selects that exact
-directory and never falls back to a parent project. Symlinks are resolved
+its ancestors. Positional `PATH` starts the same search from that directory.
+`--project <PATH>` selects the exact directory and never falls back to a parent.
+Symlinks are resolved
 before discovery, so a linked working directory selects its physical project.
 This command is in the unreleased `0.1.0-alpha.2` development
 build, not the published `0.1.0-alpha.1` crate.

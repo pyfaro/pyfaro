@@ -6,6 +6,14 @@ use crate::error::{Error, Result};
 
 pub(crate) fn select(explicit: Option<&Path>) -> Result<PathBuf> {
     let start = explicit.unwrap_or_else(|| Path::new("."));
+    find(start, explicit.is_some())
+}
+
+pub(crate) fn discover(start: &Path) -> Result<PathBuf> {
+    find(start, false)
+}
+
+fn find(start: &Path, exact: bool) -> Result<PathBuf> {
     let directory = fs::canonicalize(start).map_err(|source| {
         Error::io("resolve project directory", start, source)
     })?;
@@ -15,7 +23,7 @@ pub(crate) fn select(explicit: Option<&Path>) -> Result<PathBuf> {
             directory.display()
         )));
     }
-    let candidates: Vec<&Path> = if explicit.is_some() {
+    let candidates: Vec<&Path> = if exact {
         vec![directory.as_path()]
     } else {
         directory.ancestors().collect()
@@ -40,7 +48,7 @@ pub(crate) fn select(explicit: Option<&Path>) -> Result<PathBuf> {
             }
         }
     }
-    if explicit.is_some() {
+    if exact {
         Err(Error::Project(format!(
             "project directory has no pyproject.toml: {}",
             directory.display()

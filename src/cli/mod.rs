@@ -46,7 +46,7 @@ pub(crate) struct InitArgs {
 
 #[derive(Args)]
 pub(crate) struct SyncArgs {
-    /// Explicit project directory (otherwise discover from the current directory)
+    /// Directory to start project discovery from (defaults to the current directory)
     #[arg(conflicts_with = "project")]
     pub path: Option<PathBuf>,
 

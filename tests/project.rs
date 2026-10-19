@@ -20,6 +20,7 @@ fn nested_commands_select_the_nearest_project_and_allow_an_override() {
         .unwrap();
     }
     let cache = sandbox.path().join("uv-cache");
+    fs::write(nested.join("marker.txt"), "nested").unwrap();
     let discovered = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
         .args([
             "run",
@@ -27,34 +28,45 @@ fn nested_commands_select_the_nearest_project_and_allow_an_override() {
             "--",
             "python",
             "-c",
-            "import sys; print(sys.prefix)",
+            "import sys; print(sys.prefix); print(open('marker.txt').read())",
         ])
         .current_dir(&nested)
         .env("UV_CACHE_DIR", &cache)
         .output()
         .unwrap();
     assert!(discovered.status.success(), "{discovered:?}");
-    let prefix = String::from_utf8(discovered.stdout).unwrap();
+    let output = String::from_utf8(discovered.stdout).unwrap();
+    let mut lines = output.lines();
+    let prefix = lines.next().unwrap();
     assert_eq!(
-        fs::canonicalize(prefix.trim()).unwrap(),
+        fs::canonicalize(prefix).unwrap(),
         fs::canonicalize(inner.join(".venv")).unwrap()
     );
+    assert_eq!(lines.next(), Some("nested"));
     assert!(!outer.join(".venv").exists());
 
     let overridden = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
         .args(["run", "--offline", "--project"])
         .arg(&other)
-        .args(["--", "python", "-c", "import sys; print(sys.prefix)"])
+        .args([
+            "--",
+            "python",
+            "-c",
+            "import sys; print(sys.prefix); print(open('marker.txt').read())",
+        ])
         .current_dir(&nested)
         .env("UV_CACHE_DIR", &cache)
         .output()
         .unwrap();
     assert!(overridden.status.success(), "{overridden:?}");
-    let prefix = String::from_utf8(overridden.stdout).unwrap();
+    let output = String::from_utf8(overridden.stdout).unwrap();
+    let mut lines = output.lines();
+    let prefix = lines.next().unwrap();
     assert_eq!(
-        fs::canonicalize(prefix.trim()).unwrap(),
+        fs::canonicalize(prefix).unwrap(),
         fs::canonicalize(other.join(".venv")).unwrap()
     );
+    assert_eq!(lines.next(), Some("nested"));
 
     let synced = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
         .args(["sync", "--locked", "--offline"])
@@ -75,6 +87,16 @@ fn nested_commands_select_the_nearest_project_and_allow_an_override() {
         .unwrap();
     assert!(explicit.status.success(), "{explicit:?}");
     assert!(other.join("uv.lock").exists());
+
+    let positional = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("sync")
+        .arg(&nested)
+        .arg("--offline")
+        .current_dir(sandbox.path())
+        .env("UV_CACHE_DIR", &cache)
+        .output()
+        .unwrap();
+    assert!(positional.status.success(), "{positional:?}");
 }
 
 #[test]
