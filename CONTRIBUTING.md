@@ -93,6 +93,8 @@ See the [backlog maintenance guide](tools/github-backlog/README.md).
 
 Experimental `alpha.1` and `alpha.2` crates were published manually. Backlog
 issue B06 still owns automated public-beta distribution, standalone artifacts,
-and GitHub Releases. See [the publishing guide](docs/releasing.md) for verified
-release records and the explicit approval gate for every future upload. No
-release tags or registry credentials are stored in this repository.
+and GitHub Release automation. The manually created `v0.1.0-alpha.2` tag and
+prerelease point to the published source commit. See
+[the publishing guide](docs/releasing.md) for verified release records and
+explicit approval gates for future uploads, tags, and releases. No registry
+credentials are stored in this repository.

@@ -11,6 +11,8 @@ published on 2026-10-19.** The published crate implements `init`, `sync`,
 `run`, `tools`, `--help`, and `--version`. Interfaces may change between alpha
 versions. The repository now develops unpublished `0.1.0-alpha.3`.
 Completing the Foundation backlog milestone did not publish stable `0.1.0`.
+The [GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.1.0-alpha.2)
+tags the published source; it does not include standalone binaries.
 
 The alpha series targets **Linux** for `init --apply`. macOS and Windows
 retain builds, help/version, and non-writing previews; applying initialization
