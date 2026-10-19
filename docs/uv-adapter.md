@@ -17,10 +17,11 @@ Pyfaro returns uv's numeric failure status and reports its
 own discovery, version, spawn, and process-cleanup errors separately. It never
 installs uv or downloads Python; uv receives `--no-python-downloads`.
 
-`UV_PROJECT`, `UV_WORKING_DIR`, `UV_FROZEN`, `UV_LOCKED`, and `UV_NO_SYNC`
-environment overrides are removed before delegation so they cannot redirect
-the project or change an explicit locking or syncing mode. Pyfaro leaves the
-project's uv indexes, sources, and dependency settings to uv.
+`UV_PROJECT`, `UV_WORKING_DIR`, `UV_FROZEN`, `UV_LOCKED`, `UV_NO_SYNC`, and
+`UV_ISOLATED` environment overrides are removed before delegation so they
+cannot redirect the project, isolate the run environment, or change an
+explicit locking or syncing mode. Pyfaro leaves the project's uv indexes,
+sources, and dependency settings to uv.
 
 Linux keeps the existing process-group and child-subreaper cleanup used by
 `init`. macOS uses a process group and sends SIGINT before forcing cleanup.

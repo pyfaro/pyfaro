@@ -21,6 +21,7 @@ fn run_preserves_arguments_and_uses_the_project_environment() {
         .arg(&project)
         .args(["--", "python", "-c", script, "a b", "-n", "café", "--"])
         .env("UV_CACHE_DIR", &cache)
+        .env("UV_ISOLATED", "1")
         .env("PYTHONIOENCODING", "utf-8")
         .output()
         .unwrap();
@@ -81,14 +82,14 @@ fn run_uses_the_project_environment_for_inline_metadata_scripts() {
     )
     .unwrap();
     fs::write(
-        project.path().join("script.py"),
+        project.path().join("-task.py"),
         "# /// script\n# dependencies = []\n# ///\nimport sys\nprint(sys.prefix)\n",
     )
     .unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
         .args(["run", "--offline", "--project"])
         .arg(project.path())
-        .args(["--", "script.py"])
+        .args(["--", "-task.py"])
         .env("UV_CACHE_DIR", project.path().join("uv-cache"))
         .output()
         .unwrap();

@@ -72,7 +72,7 @@ pub(super) fn run(
         }),
     };
     if let Err(source) = relay_result
-        && outcome.is_ok()
+        && matches!(&outcome, Ok(status) if status.success())
     {
         return Err(Error::io("relay terminal input", &program, source));
     }

@@ -35,6 +35,7 @@ pub(crate) fn run(args: RunArgs) -> Result<()> {
     }) && root.join(program).is_file()
     {
         command.push(OsString::from("python"));
+        command.push(OsString::from("--"));
     }
     command.extend(args.command);
     uv.execute_interactive(&root, "run", &command, &cancelled)

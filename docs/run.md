@@ -20,7 +20,8 @@ an existing lock without checking it. These modes are mutually exclusive.
 Direct `.py` script files in the project run through its Python interpreter,
 including scripts with PEP 723 inline metadata. This avoids uv switching them
 to an isolated script environment. A `.py` executable found only on `PATH`
-retains normal executable lookup.
+retains normal executable lookup. Leading-dash script names also work without
+being parsed as Python options.
 
 Use `--uv <executable>` to select uv and `--offline` to disable network
 access. Pyfaro accepts stable uv versions >=0.9.26; CI tests 0.9.26. It
