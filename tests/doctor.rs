@@ -105,6 +105,70 @@ fn workspace_root_reports_unsupported_layout() {
 }
 
 #[test]
+fn invalid_uv_workspace_and_managed_types_are_blocking() {
+    let sandbox = tempdir().unwrap();
+    let workspace = sandbox.path().join("workspace");
+    let project = workspace.join("member");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'member'\n")
+        .unwrap();
+
+    fs::write(
+        workspace.join("pyproject.toml"),
+        "[tool.uv]\nworkspace = true\n",
+    )
+    .unwrap();
+    let invalid_workspace = doctor(&project, &bin, &uv);
+    assert_eq!(
+        invalid_workspace.status.code(),
+        Some(1),
+        "{invalid_workspace:?}"
+    );
+    assert!(
+        text(&invalid_workspace).contains("workspace")
+            && text(&invalid_workspace).contains("must be a table")
+    );
+
+    fs::remove_file(workspace.join("pyproject.toml")).unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'member'\n[tool.uv]\nmanaged = 'false'\n",
+    )
+    .unwrap();
+    let invalid_managed = doctor(&project, &bin, &uv);
+    assert_eq!(invalid_managed.status.code(), Some(1), "{invalid_managed:?}");
+    assert!(text(&invalid_managed).contains("managed must be a boolean"));
+    assert!(!text(&invalid_managed).contains("OK: dependencies:"));
+}
+
+#[test]
+fn standalone_tool_configuration_paths_must_be_files() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
+        .unwrap();
+
+    for name in ["ruff.toml", "ty.toml", "pytest.ini"] {
+        fs::create_dir(project.join(name)).unwrap();
+        let output = doctor(&project, &bin, &uv);
+        let report = text(&output);
+        assert_eq!(output.status.code(), Some(1), "{output:?}");
+        assert!(
+            report.contains(name) && report.contains("readable file"),
+            "{report}"
+        );
+        fs::remove_dir(project.join(name)).unwrap();
+    }
+}
+
+#[test]
 fn workspace_ancestor_only_blocks_matching_nonexcluded_members() {
     let sandbox = tempdir().unwrap();
     let workspace = sandbox.path().join("workspace");

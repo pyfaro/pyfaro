@@ -40,7 +40,8 @@ Doctor validates `pyproject.toml` with the same Pyfaro config loader used by
 `tests`, or project environment directories are expected. A project environment
 without its Python interpreter is a blocking layout issue. On Unix, an existing
 project interpreter without executable permission also blocks, even if another
-Python is available on `PATH` and the project has no dependencies. For pytest,
+Python is available on `PATH` and the project has no dependencies. Standalone
+tool configuration paths must be readable files, not directories. For pytest,
 `pytest.ini`, `.pytest.ini`, `pytest.toml`, and `.pytest.toml` conflict with
 `[tool.pytest.ini_options]` or native `[tool.pytest]` settings. The TOML files
 are supported by pytest 9. When doctor finds pytest earlier than 9 with either
@@ -61,6 +62,7 @@ and paths whose membership cannot be determined because of non-UTF-8 characters
 are blocking findings.
 The selected project's `[tool.uv] managed = false` is also blocking because uv
 project management is disabled; doctor does not scan ancestor workspaces for it.
+`managed` must be a boolean, and `workspace` must be a table when present.
 
 For uv, a project `uv.toml` takes precedence over `[tool.uv]` in
 `pyproject.toml`; doctor reports their

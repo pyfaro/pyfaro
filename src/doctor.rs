@@ -281,7 +281,28 @@ fn inspect_configuration(
                         }
                     }
                 }
-                _ => path.exists(),
+                _ => match fs::File::open(&path) {
+                    Ok(file) => match file.metadata() {
+                        Ok(metadata) if metadata.is_file() => true,
+                        Ok(_) => {
+                            report.line(Severity::Error, format!("configuration: {} must be a readable file, not a directory or special file", path.display()))?;
+                            false
+                        }
+                        Err(error) => {
+                            report.line(Severity::Error, format!("configuration: cannot inspect {}: {error}; check the file and its permissions", path.display()))?;
+                            false
+                        }
+                    },
+                    Err(error)
+                        if error.kind() == std::io::ErrorKind::NotFound =>
+                    {
+                        false
+                    }
+                    Err(error) => {
+                        report.line(Severity::Error, format!("configuration: cannot read {}: {error}; check the file and its permissions", path.display()))?;
+                        false
+                    }
+                },
             };
             if contains_configuration {
                 present.push(*file);
@@ -335,15 +356,22 @@ fn inspect_workspace(
     document: &DocumentMut,
     report: &mut Report,
 ) -> Result<bool> {
-    if document
+    if let Some(managed) = document
         .get("tool")
         .and_then(|tool| tool.get("uv"))
         .and_then(|uv| uv.get("managed"))
-        .and_then(toml_edit::Item::as_bool)
-        == Some(false)
     {
-        report.line(Severity::Error, "configuration: [tool.uv] managed = false disables uv project management; remove it before using pyfaro project workflows")?;
-        return Ok(true);
+        match managed.as_bool() {
+            Some(false) => {
+                report.line(Severity::Error, "configuration: [tool.uv] managed = false disables uv project management; remove it before using pyfaro project workflows")?;
+                return Ok(true);
+            }
+            Some(true) => {}
+            None => {
+                report.line(Severity::Error, "configuration: [tool.uv] managed must be a boolean; correct pyproject.toml")?;
+                return Ok(true);
+            }
+        }
     }
     for directory in root.ancestors() {
         let metadata = directory.join("pyproject.toml");
@@ -378,6 +406,10 @@ fn inspect_workspace(
             }
             return Ok(false);
         };
+        if workspace.as_table_like().is_none() {
+            report.line(Severity::Error, format!("configuration: [tool.uv] workspace in {} must be a table; correct pyproject.toml", metadata.display()))?;
+            return Ok(true);
+        }
         let member = if directory == root {
             true
         } else {
