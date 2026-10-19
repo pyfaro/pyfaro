@@ -199,9 +199,10 @@ fn validate_distribution(name: &str) -> Result<()> {
         || !bytes.iter().all(|byte| {
             byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.')
         })
+        || is_windows_device_name(name)
     {
         return Err(Error::Project(
-            "project name must contain ASCII letters, digits, dots, underscores, or hyphens and start/end with a letter or digit".into(),
+            "project name must contain ASCII letters, digits, dots, underscores, or hyphens, start/end with a letter or digit, and not be a reserved Windows device name".into(),
         ));
     }
     Ok(())
@@ -219,11 +220,12 @@ fn validate_package(package: &str) -> Result<()> {
         .any(|name| name == package);
     if !valid
         || PYTHON_KEYWORDS.contains(&package)
-        || package == "__pycache__"
+        || matches!(package, "__main__" | "__pycache__")
         || stdlib
+        || is_windows_device_name(package)
     {
         return Err(Error::Project(format!(
-            "invalid Python package name: {package}; use an ASCII identifier that is not a keyword, standard-library module, or reserved build directory"
+            "invalid Python package name: {package}; use an ASCII identifier that is not a keyword, standard-library module, Python special name, or reserved Windows device name"
         )));
     }
     Ok(())
@@ -236,12 +238,21 @@ fn validate_command(command: &str) -> Result<()> {
         || !bytes.iter().all(|byte| {
             byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_')
         })
+        || is_windows_device_name(command)
     {
         return Err(Error::Project(format!(
-            "invalid command name: {command}; use ASCII letters, digits, hyphens, or underscores"
+            "invalid command name: {command}; use ASCII letters, digits, hyphens, or underscores and avoid reserved Windows device names"
         )));
     }
     Ok(())
+}
+
+fn is_windows_device_name(name: &str) -> bool {
+    let stem = name.split('.').next().unwrap_or(name).to_ascii_uppercase();
+    matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || (stem.len() == 4
+            && (stem.starts_with("COM") || stem.starts_with("LPT"))
+            && matches!(stem.as_bytes()[3], b'1'..=b'9'))
 }
 
 fn validate_python(version: &str) -> Result<()> {

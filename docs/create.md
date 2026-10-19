@@ -14,7 +14,8 @@ pyfaro create lib acme-widget --path ./projects/acme-widget --python 3.12
 The distribution name is required. `--path` defaults to a directory with that
 name under the current directory. `--python` defaults to `3.10` and sets the
 minimum `requires-python` version; it does not choose or install an interpreter.
-Use a name made of ASCII letters, digits, dots, underscores, and hyphens. The
+Use a name made of ASCII letters, digits, dots, underscores, and hyphens,
+excluding reserved Windows device names such as `CON` and `COM1`. The
 import package is the lowercased name with each run of dots, underscores, or
 hyphens replaced by one underscore, so `acme-widget` creates
 `src/acme_widget/`. If the distribution
@@ -34,12 +35,14 @@ pyfaro create cli acme-tools --package acme_console --command acme-do \
 
 `--package` selects the Python import package; by default it is derived from
 the distribution name as above. It must be a Python identifier, not a Python
-standard-library module, keyword, or reserved `__pycache__` directory. This
+standard-library module, keyword, Python special name such as `__main__`, or
+reserved Windows device name. The module inventory covers Python 3.10 through
+3.13. This
 also applies to the derived default; choose another distribution name if it
 would collide. `--command`
 selects the installed executable name; by default it is the distribution
 name with dots changed to hyphens. It accepts ASCII letters, digits, hyphens,
-and underscores. These names
+and underscores, excluding reserved Windows device names. These names
 can differ independently. The generated `[project.scripts]` entry points to
 `acme_console.cli:main` in this example. When the import package differs from
 the distribution's normalized name, the template sets
