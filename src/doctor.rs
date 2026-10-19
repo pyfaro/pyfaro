@@ -110,6 +110,9 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
                     &mut report,
                 )?;
             }
+            if let Some(root) = root.as_deref() {
+                inspect_python_pin(root, &version, &mut report)?;
+            }
             Some(path)
         }
         Err(Error::Cancelled) => return Err(Error::Cancelled),
@@ -273,6 +276,57 @@ fn inspect_python_requirement(
     Ok(())
 }
 
+fn inspect_python_pin(
+    root: &Path,
+    reported_version: &str,
+    report: &mut Report,
+) -> Result<()> {
+    let path = root.join(".python-version");
+    let request =
+        match fs::read_to_string(&path) {
+            Ok(request) => request,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(());
+            }
+            Err(error) => return report.line(
+                Severity::Error,
+                format!(
+                    "Python: cannot read {}: {error}; repair the version pin",
+                    path.display()
+                ),
+            ),
+        };
+    let request = request.trim();
+    let numeric = request.strip_prefix("cpython@").unwrap_or(request);
+    let components: Option<Vec<u64>> = numeric
+        .split('.')
+        .map(|part| {
+            if part.is_empty()
+                || !part.bytes().all(|byte| byte.is_ascii_digit())
+            {
+                None
+            } else {
+                part.parse().ok()
+            }
+        })
+        .collect();
+    let Some(components) =
+        components.filter(|parts| (2..=3).contains(&parts.len()))
+    else {
+        return report.line(Severity::Warn, format!("Python: cannot compare .python-version request {request:?} with the selected interpreter; verify the pin"));
+    };
+    let selected = reported_version
+        .strip_prefix("Python ")
+        .and_then(|rest| rest.split_whitespace().next())
+        .and_then(|number| number.parse::<Version>().ok());
+    if selected
+        .is_some_and(|version| !version.release().starts_with(&components))
+    {
+        report.line(Severity::Error, format!("Python: {reported_version} does not match .python-version {request:?}; select a matching interpreter or update the pin"))?;
+    }
+    Ok(())
+}
+
 fn declared_dependencies(
     document: &DocumentMut,
     report: &mut Report,
@@ -286,37 +340,134 @@ fn declared_dependencies(
         report.line(Severity::Error, "dependencies: [project].dependencies must be an array of requirement strings")?;
         return Ok(Vec::new());
     };
-    let mut names = Vec::new();
+    let mut requirements = Vec::new();
     for dependency in dependencies.iter() {
         let Some(requirement) = dependency.as_str() else {
             report.line(Severity::Error, "dependencies: each [project].dependencies entry must be a string")?;
             continue;
         };
-        if requirement.contains(';') {
-            report.line(Severity::Warn, format!("dependencies: conditional requirement {requirement:?} was not checked; verify its marker in the target environment"))?;
-            continue;
-        }
-        let name: String = requirement
-            .chars()
-            .take_while(|character| {
-                character.is_ascii_alphanumeric()
-                    || matches!(character, '-' | '_' | '.')
-            })
-            .collect();
-        if name.is_empty()
-            || !name
-                .chars()
-                .next()
-                .is_some_and(|character| character.is_ascii_alphanumeric())
-        {
-            report.line(Severity::Error, format!("dependencies: invalid requirement {requirement:?}; correct pyproject.toml"))?;
-        } else {
-            names.push(name);
+        requirements.push(requirement.to_owned());
+    }
+    Ok(requirements)
+}
+
+const REQUIREMENT_PROBE: &str = r#"
+import pathlib
+import sys
+
+try:
+    from packaging.requirements import Requirement, InvalidRequirement
+    from packaging.utils import canonicalize_name
+except ImportError:
+    try:
+        from pip._vendor.packaging.requirements import Requirement, InvalidRequirement
+        from pip._vendor.packaging.utils import canonicalize_name
+    except ImportError:
+        import ensurepip
+        bundled = pathlib.Path(ensurepip.__file__).parent / '_bundled'
+        wheels = sorted(bundled.glob('pip-*.whl'))
+        if not wheels:
+            raise RuntimeError('PyPA packaging is unavailable; install packaging or pip in the selected Python environment')
+        sys.path.insert(0, str(wheels[-1]))
+        from pip._vendor.packaging.requirements import Requirement, InvalidRequirement
+        from pip._vendor.packaging.utils import canonicalize_name
+
+for index, source in enumerate(sys.argv[1:]):
+    try:
+        requirement = Requirement(source)
+        if requirement.marker is None or requirement.marker.evaluate({'extra': ''}):
+            print(f'A\t{index}\t{canonicalize_name(requirement.name)}')
+    except InvalidRequirement:
+        print(f'E\t{index}')
+"#;
+
+fn active_dependencies(
+    python: &Path,
+    requirements: &[String],
+    cancelled: &AtomicBool,
+    report: &mut Report,
+) -> Result<Option<Vec<String>>> {
+    let output = tempfile::NamedTempFile::new().map_err(|error| {
+        Error::io(
+            "create requirement output",
+            Path::new("temporary file"),
+            error,
+        )
+    })?;
+    let errors = tempfile::NamedTempFile::new().map_err(|error| {
+        Error::io(
+            "create requirement error output",
+            Path::new("temporary file"),
+            error,
+        )
+    })?;
+    let scratch = tempfile::tempdir().map_err(|error| {
+        Error::io(
+            "create requirement scratch directory",
+            Path::new("temporary directory"),
+            error,
+        )
+    })?;
+    let mut command = Command::new(python);
+    command
+        .current_dir(scratch.path())
+        .args(["-I", "-B", "-c", REQUIREMENT_PROBE])
+        .args(requirements)
+        .stdin(Stdio::null())
+        .stdout(
+            output
+                .reopen()
+                .map_err(|error| Error::io("open", output.path(), error))?,
+        )
+        .stderr(
+            errors
+                .reopen()
+                .map_err(|error| Error::io("open", errors.path(), error))?,
+        );
+    let status = process::run(command, cancelled)?;
+    if !status.success() {
+        report.line(Severity::Error, format!("dependencies: could not parse requirements with {} ({status}): {}", python.display(), process::read_diagnostic(errors.path())?))?;
+        return Ok(None);
+    }
+    let output = fs::read_to_string(output.path())
+        .map_err(|error| Error::io("read", output.path(), error))?;
+    let mut names = Vec::new();
+    let mut invalid = false;
+    for line in output.lines() {
+        let mut fields = line.split('\t');
+        let kind = fields.next();
+        let index = fields.next().and_then(|value| value.parse::<usize>().ok());
+        let Some(requirement) = index.and_then(|index| requirements.get(index))
+        else {
+            report.line(
+                Severity::Error,
+                "dependencies: invalid requirement probe output",
+            )?;
+            return Ok(None);
+        };
+        match (kind, fields.next(), fields.next()) {
+            (Some("A"), Some(name), None) if !name.is_empty() => {
+                names.push(name.to_owned())
+            }
+            (Some("E"), None, None) => {
+                report.line(Severity::Error, format!("dependencies: invalid requirement {requirement:?}; correct pyproject.toml"))?;
+                invalid = true;
+            }
+            _ => {
+                report.line(
+                    Severity::Error,
+                    "dependencies: invalid requirement probe output",
+                )?;
+                return Ok(None);
+            }
         }
     }
     names.sort_unstable();
     names.dedup();
-    Ok(names)
+    if names.is_empty() && invalid {
+        return Ok(None);
+    }
+    Ok(Some(names))
 }
 
 fn inspect_dependencies(
@@ -329,7 +480,21 @@ fn inspect_dependencies(
     if dependencies.is_empty() {
         return report.line(
             Severity::Ok,
-            "dependencies: no unconditional runtime dependencies to check",
+            "dependencies: no runtime dependencies to check",
+        );
+    }
+    let Some(python) = python else {
+        return Ok(());
+    };
+    let Some(dependencies) =
+        active_dependencies(python, dependencies, cancelled, report)?
+    else {
+        return Ok(());
+    };
+    if dependencies.is_empty() {
+        return report.line(
+            Severity::Ok,
+            "dependencies: no applicable runtime distributions to check",
         );
     }
     let local = root.join(".venv").join(if cfg!(windows) {
@@ -342,9 +507,6 @@ fn inspect_dependencies(
             Severity::Error,
             format!("dependencies: project interpreter {} is missing; run pyfaro sync", local.display()),
         );
-    }
-    if python.is_none() {
-        return Ok(());
     }
     let output = tempfile::NamedTempFile::new().map_err(|error| {
         Error::io(
@@ -361,10 +523,17 @@ fn inspect_dependencies(
         )
     })?;
     let mut command = Command::new(&local);
+    let scratch = tempfile::tempdir().map_err(|error| {
+        Error::io(
+            "create dependency scratch directory",
+            Path::new("temporary directory"),
+            error,
+        )
+    })?;
     command
-        .current_dir(root)
+        .current_dir(scratch.path())
         .args(["-I", "-B", "-c", "import importlib.metadata as m, sys\nfor name in sys.argv[1:]:\n try: m.version(name)\n except m.PackageNotFoundError: print(name)"])
-        .args(dependencies)
+        .args(&dependencies)
         .stdin(Stdio::null())
         .stdout(output.reopen().map_err(|error| Error::io("open", output.path(), error))?)
         .stderr(errors.reopen().map_err(|error| Error::io("open", errors.path(), error))?);

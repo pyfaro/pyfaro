@@ -156,6 +156,15 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
     let incompatible = doctor(&project, &bin, &uv);
     assert_eq!(incompatible.status.code(), Some(1), "{incompatible:?}");
     assert!(text(&incompatible).contains("does not satisfy requires-python"));
+
+    fs::write(&metadata, "[project]\nname = 'sample'\n").unwrap();
+    fs::write(project.join(".python-version"), "3.11\n").unwrap();
+    let pinned = doctor(&project, &bin, &uv);
+    assert_eq!(pinned.status.code(), Some(1), "{pinned:?}");
+    assert!(text(&pinned).contains("does not match .python-version"));
+    fs::write(project.join(".python-version"), "3.12\n").unwrap();
+    let matching = doctor(&project, &bin, &uv);
+    assert_eq!(matching.status.code(), Some(0), "{matching:?}");
 }
 
 #[test]
@@ -176,6 +185,23 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert!(sync.status.success(), "{sync:?}");
     let uv = PathBuf::from("uv");
     let path = std::env::var_os("PATH").unwrap();
+    let interpreter = project.join(".venv").join(if cfg!(windows) {
+        "Scripts/python.exe"
+    } else {
+        "bin/python"
+    });
+    let version_output =
+        Command::new(&interpreter).arg("--version").output().unwrap();
+    assert!(version_output.status.success(), "{version_output:?}");
+    let version = String::from_utf8(version_output.stdout).unwrap();
+    let major_minor = version
+        .trim()
+        .strip_prefix("Python ")
+        .unwrap()
+        .split('.')
+        .take(2)
+        .collect::<Vec<_>>()
+        .join(".");
     let healthy = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
         .arg("doctor")
         .arg("--project")
@@ -204,4 +230,37 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     );
     assert_eq!(fs::read(project.join("uv.lock")).unwrap(), before);
     assert!(!project.join("pyfaro.lock").exists());
+
+    fs::write(&metadata, format!("[project]\nname = 'sample'\nversion = '1.0.0'\nrequires-python = '>=3.10'\ndependencies = ['missing-doctor-fixture-package==1.0; python_version == \"{major_minor}\"', 'ignored-doctor-fixture-package; python_version < \"0\"']\n")).unwrap();
+    let marked = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("doctor")
+        .arg("--project")
+        .arg(&project)
+        .env("PATH", &path)
+        .env_remove("VIRTUAL_ENV")
+        .output()
+        .unwrap();
+    assert_eq!(marked.status.code(), Some(1), "{marked:?}");
+    let report = text(&marked);
+    assert!(
+        report.contains("missing-doctor-fixture-package is missing from .venv"),
+        "{report}"
+    );
+    assert!(
+        !report.contains("ignored-doctor-fixture-package is missing"),
+        "{report}"
+    );
+    assert_eq!(fs::read(project.join("uv.lock")).unwrap(), before);
+
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\ndependencies = ['broken =>1']\n").unwrap();
+    let malformed = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("doctor")
+        .arg("--project")
+        .arg(&project)
+        .env("PATH", &path)
+        .env_remove("VIRTUAL_ENV")
+        .output()
+        .unwrap();
+    assert_eq!(malformed.status.code(), Some(1), "{malformed:?}");
+    assert!(text(&malformed).contains("invalid requirement"), "{malformed:?}");
 }
