@@ -8,10 +8,11 @@ Thank you for helping build Pyfaro. Please follow our
 - Git and Rust through rustup. `rust-toolchain.toml` pins Rust 1.90.0 with
   rustfmt and Clippy; the package's minimum supported Rust version is 1.90.
 - Python 3.10+ and uv **0.9.26** for workflow integration tests.
-  CI pins Python 3.12 and uv 0.9.26 on all three platforms. macOS and
-  Windows run `sync`, `run`, and tool-discovery tests, plus builds,
-  previews, explicit rejection of `init --apply`, and portable process tests.
-  Successful uv scenarios run
+  CI pins Python 3.12 and uv 0.9.26 on all three platforms. Linux, macOS,
+  and Windows run creation, dependency, sync, run, Python-version, tool,
+  and doctor tests, plus builds, previews, and portable process tests.
+  `init --apply` remains Linux-only; other platforms test its explicit
+  rejection. Successful uv scenarios run
   offline in disposable directories without third-party package installation.
   Failure scenarios use a portable Rust executable fixture.
 - Authenticated GitHub CLI for backlog maintenance.
@@ -59,8 +60,10 @@ version pinned in `.github/workflows/security.yml`, then run `cargo audit`.
 The CLI uses Clap's help/version status 0 and usage-error status 2. Initialization
 errors use status 1; delegated uv failures preserve their numeric exit code;
 cancellation uses 130. Test both preservation and idempotence when changing
-initialization. See the [init guide](docs/init.md), [sync guide](docs/sync.md),
-[run guide](docs/run.md), and the ADR for the contract.
+initialization. See the [init guide](docs/init.md), [create guide](docs/create.md),
+[dependency guide](docs/dependencies.md), [sync guide](docs/sync.md),
+[run guide](docs/run.md), [Python guide](docs/python.md), and
+[doctor guide](docs/doctor.md) for command contracts.
 The [uv adapter guide](docs/uv-adapter.md) records delegation and platform
 behavior for new workflows.
 

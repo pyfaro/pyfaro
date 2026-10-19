@@ -27,23 +27,27 @@ build backend configuration, and unrelated metadata.
 
 ## Command contract
 
-Only `--help` and `--version` work in the bootstrap. The following matrix is
-design intent, not an implemented interface. Flags are defined by subsequent
-backlog work and must be documented and tested when introduced.
+At bootstrap, only `--help` and `--version` worked. The table remains the
+design map; the development tree now implements `create`, `init`, `add`,
+`remove`, `sync`, `run`, `python`, `tools`, and `doctor`. Other rows remain
+planned. Command flags and limitations are documented in their guides.
 
-| Planned command | Pyfaro responsibility | Delegated capability |
+| Command | Pyfaro responsibility | Delegated capability |
 | --- | --- | --- |
-| `create`, `init` | Templates, safe opt-in configuration | uv project setup |
+| `create` | Local library and CLI templates with project metadata | None; uv is not invoked |
+| `init` | Safe opt-in configuration of a new or existing project | uv metadata and locking |
 | `add`, `remove` | Consistent dependency UX | uv dependency editing |
 | `sync` | Locked/reproducible workflow | uv environment sync |
 | `run` | Context and argument passthrough | uv execution |
+| `python` | Interpreter command selection | uv Python version management |
+| `tools` | Tool discovery and diagnostics | Executable/version probes |
 | `dev` | Lifecycle, logs, preset selection | Project dev server |
 | `lint`, `fmt` | Paths, flags, diagnostics | Ruff |
 | `type` | Environment and invocation | ty |
 | `check` | Non-writing aggregate quality gate | Ruff and ty |
 | `test` | Environment, passthrough, status | pytest |
 | `build` | Invocation and artifact diagnostics | uv build |
-| `doctor` | Discovery and actionable diagnostics | Tool version queries |
+| `doctor` | Project and environment diagnostics | Tool probes and Python metadata |
 
 `check` must not write files unless `--fix` is explicit. Direct `fmt` is an
 intentional formatting operation; `fmt --check` is non-writing. Alternate
