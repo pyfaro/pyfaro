@@ -18,7 +18,8 @@ files. It reads the first version line and includes up to 4096 bytes of
 stderr on failure.
 Pyfaro returns uv's numeric failure status and reports its
 own discovery, version, spawn, and process-cleanup errors separately. It never
-installs uv or downloads Python; uv receives `--no-python-downloads`.
+installs uv. uv receives `--no-python-downloads` except for an explicit
+`pyfaro python install` request; `--offline` still forbids network access.
 
 `UV_PROJECT`, `UV_WORKING_DIR`, `UV_FROZEN`, `UV_LOCKED`, `UV_NO_SYNC`, and
 `UV_ISOLATED` environment overrides are removed before delegation so they
@@ -26,7 +27,9 @@ cannot redirect the project, isolate the run environment, or change an
 explicit locking or syncing mode. `add` and `remove` also ignore `UV_DEV` so
 the selected dependency group follows the CLI flags, and pass `--no-sync` so
 they update the lockfile without installing packages. Pyfaro leaves the
-project's uv indexes, sources, and dependency settings to uv.
+project's uv indexes, sources, and dependency settings to uv. Python-version
+commands use the same adapter and clear `UV_NO_PROJECT`, `UV_NO_CONFIG`, and
+`UV_PYTHON` so uv can honor project metadata and `.python-version`.
 
 Linux keeps the existing process-group and child-subreaper cleanup used by
 `init`. macOS uses a process group and sends SIGINT before forcing cleanup.
