@@ -14,6 +14,10 @@ fn install(directory: &Path, name: &str) -> PathBuf {
     binary
 }
 
+fn resolved(path: &Path) -> String {
+    fs::canonicalize(path).unwrap().display().to_string()
+}
+
 fn cli(project: &Path, path: &Path, active: &Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_pyfaro"))
         .args(args)
@@ -55,15 +59,15 @@ fn lists_resolved_paths_and_versions_in_precedence_order() {
     assert_eq!(
         stdout.lines().collect::<Vec<_>>(),
         [
-            format!("uv: {} (uv 0.9.26)", selected_uv.display()),
-            format!("ruff: {} (ruff 0.14.0)", project_ruff.display()),
-            format!("ty: {} (ty 0.0.1-alpha.24)", active_ty.display()),
-            format!("pytest: {} (pytest 8.4.2)", path_pytest.display()),
+            format!("uv: {} (uv 0.9.26)", resolved(&selected_uv)),
+            format!("ruff: {} (ruff 0.14.0)", resolved(&project_ruff)),
+            format!("ty: {} (ty 0.0.1-alpha.24)", resolved(&active_ty)),
+            format!("pytest: {} (pytest 8.4.2)", resolved(&path_pytest)),
         ]
     );
-    assert!(!stdout.contains(&active_ruff.display().to_string()));
-    assert!(!stdout.contains(&path_ty.display().to_string()));
-    assert!(!stdout.contains(&path_uv.display().to_string()));
+    assert!(!stdout.contains(&resolved(&active_ruff)));
+    assert!(!stdout.contains(&resolved(&path_ty)));
+    assert!(!stdout.contains(&resolved(&path_uv)));
     assert!(output.stderr.is_empty());
 
     let nested = project.join("src/nested");
@@ -72,7 +76,7 @@ fn lists_resolved_paths_and_versions_in_precedence_order() {
     assert!(discovered.status.success(), "{discovered:?}");
     assert_eq!(
         String::from_utf8(discovered.stdout).unwrap().trim_end(),
-        format!("ruff: {} (ruff 0.14.0)", project_ruff.display())
+        format!("ruff: {} (ruff 0.14.0)", resolved(&project_ruff))
     );
 }
 
@@ -118,7 +122,7 @@ fn rejects_unrecognized_versions_and_old_explicit_uv() {
         .unwrap();
     assert_eq!(invalid.status.code(), Some(1), "{invalid:?}");
     let stderr = String::from_utf8(invalid.stderr).unwrap();
-    assert!(stderr.contains(&ruff.display().to_string()), "{stderr}");
+    assert!(stderr.contains(&resolved(&ruff)), "{stderr}");
     assert!(stderr.contains("unexpected --version output"), "{stderr}");
 
     let uv = install(&path, "uv");

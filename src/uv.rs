@@ -31,7 +31,6 @@ impl Uv {
         let selected = PathBuf::from(binary);
         let binary = which::which(&selected)
             .map_err(|source| Error::UvLookup { path: selected, source })?;
-        #[cfg(windows)]
         let binary = fs::canonicalize(&binary).map_err(|source| {
             Error::io("resolve uv executable", &binary, source)
         })?;

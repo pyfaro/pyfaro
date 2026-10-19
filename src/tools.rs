@@ -176,7 +176,7 @@ fn probe_version(
         .strip_prefix(tool)
         .and_then(|rest| rest.strip_prefix(' '))
         .and_then(|rest| rest.split_whitespace().next());
-    if !number.is_some_and(|number| Version::parse(number).is_ok()) {
+    if number.is_none_or(|number| Version::parse(number).is_err()) {
         return Err(Error::Project(format!(
             "unexpected {version_argument} output: {version:?}"
         )));
