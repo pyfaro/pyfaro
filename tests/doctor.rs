@@ -155,7 +155,14 @@ fn standalone_tool_configuration_paths_must_be_files() {
     fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
         .unwrap();
 
-    for name in ["ruff.toml", "ty.toml", "pytest.ini"] {
+    for name in [
+        "ruff.toml",
+        "ty.toml",
+        "pytest.ini",
+        "tox.ini",
+        "setup.cfg",
+        "uv.toml",
+    ] {
         fs::create_dir(project.join(name)).unwrap();
         let output = doctor(&project, &bin, &uv);
         let report = text(&output);
@@ -166,6 +173,89 @@ fn standalone_tool_configuration_paths_must_be_files() {
         );
         fs::remove_dir(project.join(name)).unwrap();
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn named_pipe_configuration_paths_are_blocking() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
+        .unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    for name in [
+        "ruff.toml",
+        "ty.toml",
+        "pytest.ini",
+        "tox.ini",
+        "setup.cfg",
+        "uv.toml",
+    ] {
+        let path = project.join(name);
+        assert!(Command::new("mkfifo").arg(&path).status().unwrap().success());
+        let output = doctor(&project, &bin, &uv);
+        assert_eq!(output.status.code(), Some(1), "{output:?}");
+        assert!(text(&output).contains("readable file"), "{output:?}");
+        fs::remove_file(path).unwrap();
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn dangling_layout_symlinks_are_blocking() {
+    use std::os::unix::fs::symlink;
+
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
+        .unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    for name in ["src", "tests", ".venv"] {
+        let path = project.join(name);
+        symlink("missing", &path).unwrap();
+        let output = doctor(&project, &bin, &uv);
+        assert_eq!(output.status.code(), Some(1), "{output:?}");
+        assert!(text(&output).contains("must be a directory"), "{output:?}");
+        fs::remove_file(path).unwrap();
+    }
+}
+
+#[test]
+fn invalid_project_name_is_blocking() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 42\n")
+        .unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    let output = doctor(&project, &bin, &uv);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(text(&output).contains("[project].name must be a nonempty string"));
+}
+
+#[test]
+fn real_uv_rejects_unknown_standalone_settings() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
+        .unwrap();
+    fs::write(project.join("uv.toml"), "nonsense = true\n").unwrap();
+    install(&bin, "python");
+    let uv = which::which("uv").unwrap();
+    let output = doctor(&project, &bin, &uv);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(text(&output).contains("uv rejected"), "{output:?}");
+    assert!(text(&output).contains("uv.toml"), "{output:?}");
 }
 
 #[test]
@@ -1632,9 +1722,9 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert!(!report.contains("group \"quality\" is not checked"), "{report}");
     let excluded_include = with_uv_env("UV_NO_GROUP", "quality");
     let report = text(&excluded_include);
-    assert_eq!(excluded_include.status.code(), Some(0), "{excluded_include:?}");
+    assert_eq!(excluded_include.status.code(), Some(1), "{excluded_include:?}");
     assert!(
-        !report.contains("missing-doctor-quality-package is missing"),
+        report.contains("missing-doctor-quality-package is missing"),
         "{report}"
     );
 

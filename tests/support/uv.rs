@@ -19,6 +19,12 @@ fn main() {
         }
     }
     let args: Vec<_> = env::args().skip(1).collect();
+    if args.len() == 6
+        && args[0] == "--config-file"
+        && args[2..] == ["--offline", "python", "list", "--only-installed"]
+    {
+        return;
+    }
     if args == ["--heartbeat"] {
         fs::write("uv-descendant.pid", process::id().to_string()).unwrap();
         let start = Instant::now();

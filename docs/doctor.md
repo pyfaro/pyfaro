@@ -35,13 +35,13 @@ missing executable, install it in the intended environment or put it on
 `PATH`, then run doctor again.
 
 Doctor validates `pyproject.toml` with the same Pyfaro config loader used by
-`sync` and `run`. It reports conflicting per-tool files alongside
+`sync` and `run`, and reports a non-string or empty `[project].name`. It reports conflicting per-tool files alongside
 `[tool.ruff]`, `[tool.ty]`, or `[tool.pytest]`, and detects files where `src`,
-`tests`, or project environment directories are expected. A project environment
+`tests`, or project environment directories are expected, including dangling symlinks. A project environment
 without its Python interpreter is a blocking layout issue. On Unix, an existing
 project interpreter without executable permission also blocks, even if another
 Python is available on `PATH` and the project has no dependencies. Standalone
-tool configuration paths must be readable files, not directories. For pytest,
+tool configuration paths must be readable regular files, not directories or special files. For pytest,
 `pytest.ini`, `.pytest.ini`, `pytest.toml`, and `.pytest.toml` conflict with
 `[tool.pytest.ini_options]` or native `[tool.pytest]` settings. The TOML files
 are supported by pytest 9. When doctor finds pytest earlier than 9 with either
@@ -74,8 +74,8 @@ with PyPA's PEP 508 implementation available to the project interpreter
 (including pip's bundled copy or the copy in CPython's `ensurepip` wheel).
 The `dev` group is selected by default, unless uv's `default-groups` setting
 changes that selection. `UV_NO_DEV`, `UV_NO_DEFAULT_GROUPS`, and the
-space-delimited `UV_NO_GROUP` environment variable remove groups from installed
-distribution checks, as they do for uv. Doctor discovers the nearest project
+space-delimited `UV_NO_GROUP` environment variable remove top-level groups from installed
+distribution checks, as they do for uv. An included group remains selected when its parent is selected. Doctor discovers the nearest project
 configuration from the project directory upward: in each directory, `uv.toml`
 takes precedence over `[tool.uv]` in `pyproject.toml`. It also reads user
 configuration from `$XDG_CONFIG_HOME/uv/uv.toml` (defaulting to
@@ -96,6 +96,9 @@ of discovery; relative paths are resolved from the selected project directory,
 as they are for uv commands run by Pyfaro. `UV_NO_CONFIG` disables discovery
 unless `UV_CONFIG_FILE` is also set. Missing explicit files and unreadable or
 malformed discovered files are blocking findings that identify the file to fix.
+Doctor asks the selected uv executable to validate each selected standalone
+configuration file using an offline, installed-interpreter-only command. This
+also catches unknown or mistyped uv settings without duplicating uv's schema.
 Both table and inline-table group declarations are accepted. Group names in
 defaults and includes match according to PEP 735: case is ignored and runs of
 `-`, `_`, or `.` are equivalent.

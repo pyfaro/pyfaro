@@ -75,6 +75,12 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
             None
         }
     };
+    let uv_probe =
+        tools::inspect(Tool::Uv, root.as_deref(), args.uv.as_ref(), &cancelled);
+    if matches!(uv_probe, Err(Error::Cancelled)) {
+        return Err(Error::Cancelled);
+    }
+    let uv_binary = uv_probe.as_ref().ok().map(|(path, _)| path.as_path());
 
     let mut dependencies = None;
     let mut requires_python = None;
@@ -87,10 +93,22 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
                     "pyproject.toml: valid Pyfaro configuration",
                 )?;
                 inspect_configuration(root, &document, &mut report)?;
+                if let Some(name) = document
+                    .get("project")
+                    .and_then(|project| project.get("name"))
+                    && name.as_str().is_none_or(|name| name.trim().is_empty())
+                {
+                    report.line(Severity::Error, "configuration: [project].name must be a nonempty string; correct pyproject.toml")?;
+                }
                 pytest_9_only = uses_pytest_9_configuration(root, &document);
                 if !inspect_workspace(root, &document, &mut report)? {
-                    dependencies =
-                        declared_dependencies(root, &document, &mut report)?;
+                    dependencies = declared_dependencies(
+                        root,
+                        &document,
+                        uv_binary,
+                        &cancelled,
+                        &mut report,
+                    )?;
                 }
                 requires_python = document
                     .get("project")
@@ -129,14 +147,13 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
             None
         }
     };
-    inspect_tool(
-        Tool::Uv,
-        root.as_deref(),
-        args.uv.as_ref(),
-        &cancelled,
-        &mut report,
-        true,
-    )?;
+    match uv_probe {
+        Ok((path, version)) => report.line(
+            Severity::Ok,
+            format!("uv: {} ({version})", path.display()),
+        )?,
+        Err(error) => report.line(Severity::Error, format!("uv: {error}"))?,
+    }
     for tool in [Tool::Ruff, Tool::Ty, Tool::Pytest] {
         let version = inspect_tool(
             tool,
@@ -258,7 +275,17 @@ fn inspect_configuration(
                     } else {
                         "[tool:pytest]"
                     };
-                    match fs::read_to_string(&path) {
+                    let contents = match fs::metadata(&path) {
+                        Ok(metadata) if metadata.is_file() => {
+                            fs::read_to_string(&path)
+                        }
+                        Ok(_) => {
+                            report.line(Severity::Error, format!("configuration: {} must be a readable file, not a directory or special file", path.display()))?;
+                            continue;
+                        }
+                        Err(error) => Err(error),
+                    };
+                    match contents {
                         Ok(contents) => contents.lines().any(|line| {
                             line.trim()
                                 .trim_start_matches('\u{feff}')
@@ -504,7 +531,7 @@ fn workspace_matches(
 fn inspect_layout(root: &Path, report: &mut Report) -> Result<()> {
     for directory in ["src", "tests"] {
         let path = root.join(directory);
-        if path.exists() && !path.is_dir() {
+        if fs::symlink_metadata(&path).is_ok() && !path.is_dir() {
             report.line(
                 Severity::Error,
                 format!("layout: {} must be a directory; move or remove the conflicting file", path.display()),
@@ -512,7 +539,7 @@ fn inspect_layout(root: &Path, report: &mut Report) -> Result<()> {
         }
     }
     let venv = tools::project_environment(root);
-    if venv.exists() && !venv.is_dir() {
+    if fs::symlink_metadata(&venv).is_ok() && !venv.is_dir() {
         report.line(Severity::Error, format!("layout: {} must be a directory; move or remove the conflicting file", venv.display()))?;
     }
     let interpreter = tools::project_python(root);
@@ -661,7 +688,6 @@ struct GroupCollector<'a> {
     checked: Vec<String>,
     selected: Vec<String>,
     active: Vec<String>,
-    disabled: &'a [String],
 }
 
 impl GroupCollector<'_> {
@@ -730,11 +756,7 @@ impl GroupCollector<'_> {
                         &included,
                         requirements,
                         unselected_requirements,
-                        selected_group
-                            && !self
-                                .disabled
-                                .iter()
-                                .any(|name| name == &included),
+                        selected_group,
                         report,
                     )?;
                 } else {
@@ -810,11 +832,15 @@ impl UvConfiguration {
 fn uv_configuration(
     root: &Path,
     project_document: &DocumentMut,
+    uv_binary: Option<&Path>,
+    cancelled: &AtomicBool,
     report: &mut Report,
 ) -> Result<Option<Vec<UvConfiguration>>> {
     if let Some(path) = env::var_os("UV_CONFIG_FILE") {
         let path = root.join(path);
-        return match read_uv_configuration_file(&path, report, true)? {
+        return match read_uv_configuration_file(
+            &path, uv_binary, cancelled, report, true,
+        )? {
             UvDiscovery::Config(config) => Ok(Some(vec![*config])),
             UvDiscovery::Missing | UvDiscovery::Invalid => Ok(None),
         };
@@ -825,7 +851,9 @@ fn uv_configuration(
     let mut configurations = Vec::new();
     for directory in root.ancestors() {
         let uv_path = directory.join("uv.toml");
-        match read_uv_configuration_file(&uv_path, report, false)? {
+        match read_uv_configuration_file(
+            &uv_path, uv_binary, cancelled, report, false,
+        )? {
             UvDiscovery::Missing => {}
             UvDiscovery::Config(config) => {
                 configurations.push(*config);
@@ -886,14 +914,18 @@ fn uv_configuration(
         }
     }
     if let Some(path) = user_uv_configuration_path() {
-        match read_uv_configuration_file(&path, report, false)? {
+        match read_uv_configuration_file(
+            &path, uv_binary, cancelled, report, false,
+        )? {
             UvDiscovery::Config(config) => configurations.push(*config),
             UvDiscovery::Invalid => return Ok(None),
             UvDiscovery::Missing => {}
         }
     }
     for path in system_uv_configuration_paths() {
-        match read_uv_configuration_file(&path, report, false)? {
+        match read_uv_configuration_file(
+            &path, uv_binary, cancelled, report, false,
+        )? {
             UvDiscovery::Config(config) => {
                 configurations.push(*config);
                 break;
@@ -943,10 +975,25 @@ fn system_uv_configuration_paths() -> Vec<PathBuf> {
 
 fn read_uv_configuration_file(
     path: &Path,
+    uv_binary: Option<&Path>,
+    cancelled: &AtomicBool,
     report: &mut Report,
     explicit: bool,
 ) -> Result<UvDiscovery> {
-    let contents = match fs::read_to_string(path) {
+    let contents = match fs::metadata(path) {
+        Ok(metadata) if metadata.is_file() => fs::read_to_string(path),
+        Ok(_) => {
+            let action = if explicit {
+                "check UV_CONFIG_FILE and select a regular file"
+            } else {
+                "replace it with a regular file"
+            };
+            report.line(Severity::Error, format!("dependencies: cannot read {}: must be a readable file, not a directory or special file; {action}", path.display()))?;
+            return Ok(UvDiscovery::Invalid);
+        }
+        Err(error) => Err(error),
+    };
+    let contents = match contents {
         Ok(contents) => contents,
         Err(error)
             if !explicit && error.kind() == std::io::ErrorKind::NotFound =>
@@ -1025,6 +1072,31 @@ fn read_uv_configuration_file(
     if invalid {
         return Ok(UvDiscovery::Invalid);
     }
+    if let Some(binary) = uv_binary {
+        let stderr = tempfile::NamedTempFile::new().map_err(|error| {
+            Error::io("create uv configuration output", path, error)
+        })?;
+        let mut command = Command::new(binary);
+        command
+            .arg("--config-file")
+            .arg(path)
+            .arg("--offline")
+            .arg("python")
+            .arg("list")
+            .arg("--only-installed")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(
+                stderr
+                    .reopen()
+                    .map_err(|error| Error::io("open", stderr.path(), error))?,
+            );
+        let status = process::run(command, cancelled)?;
+        if !status.success() {
+            report.line(Severity::Error, format!("dependencies: uv rejected {}: {}; correct the uv configuration", path.display(), process::read_diagnostic(stderr.path())?))?;
+            return Ok(UvDiscovery::Invalid);
+        }
+    }
     Ok(UvDiscovery::Config(Box::new(UvConfiguration {
         document,
         path: path.to_path_buf(),
@@ -1035,6 +1107,8 @@ fn read_uv_configuration_file(
 fn declared_dependencies(
     root: &Path,
     document: &DocumentMut,
+    uv_binary: Option<&Path>,
+    cancelled: &AtomicBool,
     report: &mut Report,
 ) -> Result<Option<DeclaredDependencies>> {
     let mut requirements = Vec::new();
@@ -1071,7 +1145,8 @@ fn declared_dependencies(
         report.line(Severity::Error, "dependencies: dynamic project dependencies cannot be checked from pyproject.toml; inspect the build backend output and sync the environment")?;
         invalid = true;
     }
-    let Some(uv_configuration) = uv_configuration(root, document, report)?
+    let Some(uv_configuration) =
+        uv_configuration(root, document, uv_binary, cancelled, report)?
     else {
         return Ok(None);
     };
@@ -1153,7 +1228,6 @@ fn declared_dependencies(
                 checked: Vec::new(),
                 selected: Vec::new(),
                 active: Vec::new(),
-                disabled: &disabled_groups,
             };
             let configured_names: Vec<String> = match &selected_groups {
                 Some(selected) => selected.clone(),
