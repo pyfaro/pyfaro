@@ -2,11 +2,13 @@ use std::ffi::{OsStr, OsString};
 use std::path::Path;
 
 use crate::cli::RunArgs;
+use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::{process, project, uv};
 
 pub(crate) fn run(args: RunArgs) -> Result<()> {
     let root = project::select(args.project.as_deref())?;
+    let config = Config::load(&root)?;
     let working_directory = std::env::current_dir().map_err(|source| {
         Error::io("resolve working directory", Path::new("."), source)
     })?;
@@ -15,7 +17,7 @@ pub(crate) fn run(args: RunArgs) -> Result<()> {
     let mut command = vec![
         OsString::from("run"),
         OsString::from("--project"),
-        root.as_os_str().to_owned(),
+        config.root().as_os_str().to_owned(),
     ];
     if args.locked {
         command.push(OsString::from("--locked"));

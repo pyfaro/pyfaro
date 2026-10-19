@@ -2,6 +2,8 @@
 
 ## Unreleased — 0.1.0-alpha.2 development
 
+- Load and validate typed Pyfaro configuration from the selected project's
+  `pyproject.toml`, with a non-writing schema default and path-aware errors.
 - Discover the nearest project for `sync` and `run` from nested directories,
   with explicit project selection and deterministic symlink resolution.
 - Extract a shared, version-gated uv adapter from `init`, preserving OS-native

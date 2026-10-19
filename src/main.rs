@@ -1,4 +1,5 @@
 mod cli;
+mod config;
 mod error;
 mod init;
 mod process;

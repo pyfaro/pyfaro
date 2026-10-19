@@ -33,6 +33,68 @@ fn preview_preserves_the_project_and_does_not_require_uv() {
 }
 
 #[test]
+fn inline_tool_preview_shows_the_actual_proposed_metadata() {
+    let project = tempdir().unwrap();
+    let metadata = project.path().join("pyproject.toml");
+    let original = "tool = { ruff = { line-length = 100 } }\n[project]\nname = 'example'\nversion = '1.0.0'\n";
+    fs::write(&metadata, original).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["init", "--uv", "missing-uv"])
+        .arg(project.path())
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    let preview = String::from_utf8(output.stdout).unwrap();
+    assert!(preview.contains("ruff = { line-length = 100 }"));
+    assert!(preview.contains("pyfaro = { schema-version = 1 }"));
+    assert!(!preview.contains("\n[tool.pyfaro]\n"));
+    assert_eq!(fs::read_to_string(metadata).unwrap(), original);
+}
+
+#[test]
+fn inline_pyfaro_preview_shows_the_actual_proposed_metadata() {
+    let project = tempdir().unwrap();
+    let metadata = project.path().join("pyproject.toml");
+    let original = "[project]\nname = 'example'\nversion = '1.0.0'\n\n[tool]\npyfaro = {}\n\n[tool.ruff]\nline-length = 100\n";
+    fs::write(&metadata, original).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["init", "--uv", "missing-uv"])
+        .arg(project.path())
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    let preview = String::from_utf8(output.stdout).unwrap();
+    assert!(preview.contains("pyfaro = { schema-version = 1 }"));
+    assert!(preview.contains("line-length = 100"));
+    assert!(!preview.contains("\n[tool.pyfaro]\n"));
+    assert_eq!(fs::read_to_string(metadata).unwrap(), original);
+}
+
+#[test]
+fn invalid_init_configuration_names_the_project_metadata() {
+    let project = tempdir().unwrap();
+    let metadata = project.path().join("pyproject.toml");
+    fs::write(
+        &metadata,
+        "[project]\nname='example'\n[tool.pyfaro]\nschema-version=2\n",
+    )
+    .unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["init", "--uv", "missing-uv"])
+        .arg(project.path())
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    let diagnostic = String::from_utf8_lossy(&output.stderr);
+    let resolved = fs::canonicalize(&metadata).unwrap();
+    assert!(
+        diagnostic.contains(&resolved.display().to_string()),
+        "{diagnostic}"
+    );
+    assert!(diagnostic.contains("schema-version"), "{diagnostic}");
+}
+
+#[test]
 #[cfg(target_os = "linux")]
 fn applying_an_existing_project_with_real_uv_is_preserving_and_idempotent() {
     let project = tempdir().unwrap();

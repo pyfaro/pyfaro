@@ -34,6 +34,9 @@ Without `--apply`, Pyfaro validates the existing configuration and displays
 the proposed metadata changes and the uv operations. It creates no files
 or directories and does not require or invoke uv. Dependency resolution
 is not simulated, so the preview cannot promise that `uv lock` will succeed.
+When `[tool]` or its `pyfaro` entry is an inline table, the preview displays
+the full proposed `pyproject.toml` so the inline entry appears in its actual
+form.
 
 With `--apply`, Pyfaro:
 
