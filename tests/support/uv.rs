@@ -26,6 +26,12 @@ fn main() {
     {
         return;
     }
+    if args.len() == 8
+        && args[0..3] == ["--no-cache", "--no-config", "--directory"]
+        && args[4..] == ["--offline", "version", "--output-format", "json"]
+    {
+        return;
+    }
     if args == ["--heartbeat"] {
         fs::write("uv-descendant.pid", process::id().to_string()).unwrap();
         let start = Instant::now();

@@ -76,6 +76,10 @@ A non-table `[tool.uv]` value is invalid project metadata and blocks even when
 standalone uv configuration is selected.
 Doctor also checks required `[project]` name and version metadata, including
 the shape of `dynamic`, independently of uv configuration discovery.
+When uv is available, an offline, no-cache `uv version` probe validates the
+full project metadata schema without resolving dependencies or creating an
+environment. A dynamic version is valid even though `uv version` cannot
+display it.
 
 Doctor parses `[project].dependencies` and uv's default dependency groups
 with PyPA's PEP 508 implementation available to the project interpreter

@@ -478,3 +478,41 @@ fn probe_effective_uv_configuration(
     report.line(Severity::Error, format!("dependencies: uv rejected effective configuration for {}: {diagnostic}; correct the uv configuration", root.display()))?;
     Ok(false)
 }
+
+pub(super) fn validate_project_metadata(
+    root: &Path,
+    binary: &Path,
+    cancelled: &AtomicBool,
+    report: &mut Report,
+) -> Result<bool> {
+    let stderr = tempfile::NamedTempFile::new()
+        .map_err(|error| Error::io("create uv metadata output", root, error))?;
+    let mut command = Command::new(binary);
+    command
+        .arg("--no-cache")
+        .arg("--no-config")
+        .arg("--directory")
+        .arg(root)
+        .arg("--offline")
+        .arg("version")
+        .args(["--output-format", "json"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .env_remove("UV_WORKING_DIR")
+        .env_remove("UV_PROJECT")
+        .env_remove("UV_CONFIG_FILE")
+        .stderr(
+            stderr
+                .reopen()
+                .map_err(|error| Error::io("open", stderr.path(), error))?,
+        );
+    if process::run(command, cancelled)?.success() {
+        return Ok(true);
+    }
+    let diagnostic = process::read_diagnostic(stderr.path())?;
+    if diagnostic.contains("We cannot get or set dynamic project versions") {
+        return Ok(true);
+    }
+    report.line(Severity::Error, format!("configuration: uv rejected project metadata in {}: {diagnostic}; correct pyproject.toml", root.display()))?;
+    Ok(false)
+}

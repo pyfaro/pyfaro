@@ -98,13 +98,25 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
                 inspect_project_metadata(&document, &mut report)?;
                 pytest_9_only = uses_pytest_9_configuration(root, &document);
                 if !inspect_workspace(root, &document, &mut report)? {
-                    dependencies = declared_dependencies(
+                    let declared = declared_dependencies(
                         root,
                         &document,
                         uv_binary,
                         &cancelled,
                         &mut report,
                     )?;
+                    let valid_metadata = match uv_binary {
+                        Some(binary) => uv_config::validate_project_metadata(
+                            root,
+                            binary,
+                            &cancelled,
+                            &mut report,
+                        )?,
+                        None => true,
+                    };
+                    if valid_metadata {
+                        dependencies = declared;
+                    }
                 }
                 requires_python = document
                     .get("project")

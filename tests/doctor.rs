@@ -515,6 +515,36 @@ fn missing_project_metadata_and_invalid_package_are_blocking() {
 }
 
 #[test]
+fn real_uv_validates_project_metadata_with_no_config() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    install(&bin, "python");
+    let uv = which::which("uv").unwrap();
+    let metadata = project.join("pyproject.toml");
+
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '0.1.0'\noptional-dependencies = 123\n").unwrap();
+    let invalid = doctor_command(&project, &bin, &uv)
+        .env("UV_NO_CONFIG", "1")
+        .output()
+        .unwrap();
+    assert_eq!(invalid.status.code(), Some(1), "{invalid:?}");
+    assert!(text(&invalid).contains("uv rejected project metadata"));
+    assert!(!text(&invalid).contains("OK: dependencies:"));
+
+    fs::write(&metadata, "[project]\nname = 'sample'\ndynamic = ['version']\n")
+        .unwrap();
+    let dynamic = doctor_command(&project, &bin, &uv)
+        .env("UV_NO_CONFIG", "1")
+        .output()
+        .unwrap();
+    assert_eq!(dynamic.status.code(), Some(0), "{dynamic:?}");
+    assert!(!project.join("uv.lock").exists());
+    assert!(!project.join(".venv").exists());
+}
+
+#[test]
 fn real_uv_rejects_unknown_standalone_settings() {
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("project");
@@ -2223,14 +2253,9 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         .unwrap();
     assert_eq!(malformed_legacy.status.code(), Some(1), "{malformed_legacy:?}");
     let report = text(&malformed_legacy);
-    assert!(report.contains("invalid requirement \"broken =>1\""), "{report}");
-    assert!(
-        report.contains(&format!(
-            "correct {}",
-            fs::canonicalize(&metadata).unwrap().display()
-        )),
-        "{report}"
-    );
+    assert!(report.contains("uv rejected project metadata"), "{report}");
+    assert!(report.contains("broken =>1"), "{report}");
+    assert!(report.contains("correct pyproject.toml"), "{report}");
 
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\ndev-dependencies = ['missing-doctor-legacy-package==1.0']\n").unwrap();
     let unselected_legacy = isolated_command(&project)
