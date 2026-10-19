@@ -102,6 +102,12 @@ The development version also adds `pyfaro python list`, `python install`, and
 an explicit `install` may do so unless `--offline` is set. See the
 [Python guide](docs/python.md) for project selection and pin behavior.
 
+`pyfaro doctor` is also available in the development version. It reports
+project configuration, interpreter and tool versions, layout conflicts, and
+missing runtime distributions without changing project files. Blocking
+findings return a non-zero exit code. See the [doctor guide](docs/doctor.md)
+for scope, diagnostics, and fixes.
+
 ## Planned experience
 
 - Create and initialize Python projects with opinionated, editable defaults.
@@ -112,10 +118,10 @@ an explicit `install` may do so unless `--offline` is set. See the
 - Build Python distributions through uv; later add workspaces and task graphs.
 
 Remaining planned commands: `dev`,
-`lint`, `fmt`, `type`, `check`, `test`, `build`, and `doctor`.
+`lint`, `fmt`, `type`, `check`, `test`, and `build`.
 These commands are roadmap items, not working functionality. The published
 `alpha.2` includes `init`, `sync`, `run`, and `tools`; the development version
-also includes `create`, `add`, `remove`, and `python`.
+also includes `create`, `add`, `remove`, `python`, and `doctor`.
 
 ## Integration over reimplementation
 

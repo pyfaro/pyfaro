@@ -12,6 +12,8 @@ This version has not been published.
   command names.
 - Add uv-backed `pyfaro python list|install|pin`. Only explicit installation
   permits interpreter downloads; pinning follows uv's project constraints.
+- Add a read-only `pyfaro doctor` report for project configuration, Python and
+  tool versions, layout conflicts, and missing runtime distributions.
 
 ## 0.1.0-alpha.2 — 2026-10-19
 
