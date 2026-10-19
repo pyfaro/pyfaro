@@ -1,8 +1,8 @@
 # Running in the project environment
 
 `pyfaro run [OPTIONS] -- <program> [args...]` delegates to `uv run` with an
-explicit project directory. It is in the unreleased `0.1.0-alpha.2`
-development build, not the published `0.1.0-alpha.1` crate.
+explicit project directory. It is in the unpublished `0.1.0-alpha.2`
+release candidate, not the published `0.1.0-alpha.1` crate.
 
 ```sh
 pyfaro run -- python -m pytest

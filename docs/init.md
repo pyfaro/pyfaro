@@ -64,7 +64,7 @@ Reapplying to an unchanged project is idempotent. uv rechecks its lockfile
 without `--upgrade`; external metadata or index changes may still require
 uv to update a stale lockfile. Commit `pyproject.toml` and `uv.lock` together.
 
-After initialization, the unreleased development build can synchronize the
+After initialization, the unpublished `alpha.2` candidate can synchronize the
 environment with `pyfaro sync --locked` and execute through it with
 `pyfaro run --locked -- python --version`. In the published `alpha.1`, use uv
 directly for workflows not yet implemented there:
@@ -115,8 +115,8 @@ another metadata/lockfile writer concurrently with initialization.
 - Dynamic/source dependencies that require a build to determine metadata
   may fail with `--no-build`; the previous project files are then restored.
 - There is no preset selection or automatic quality-tool dependency setup.
-  The published `alpha.1` has no `sync` or `run`; both are in the unreleased
-  development build.
+  The published `alpha.1` has no `sync` or `run`; both are in the unpublished
+  `alpha.2` candidate.
 
 ## Verification
 
