@@ -254,6 +254,30 @@ fn named_pipe_ancestor_metadata_is_blocking() {
 
 #[cfg(unix)]
 #[test]
+fn dangling_ancestor_metadata_is_blocking() {
+    use std::os::unix::fs::symlink;
+
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("parent/project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(&project).unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
+        .unwrap();
+    symlink("missing", sandbox.path().join("parent/pyproject.toml")).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    let output = doctor(&project, &bin, &uv);
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(
+        report.contains("parent/pyproject.toml")
+            && report.contains("dangling symlink"),
+        "{report}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
 fn python_pin_must_be_a_readable_regular_file() {
     use std::os::unix::fs::symlink;
 

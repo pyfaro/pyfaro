@@ -60,7 +60,8 @@ path and uv's glob defaults. Discovery stops at the first ancestor
 `pyproject.toml`: an intervening project or a workspace that does not include
 the selected project prevents an outer workspace from applying. Invalid globs
 and paths whose membership cannot be determined because of non-UTF-8 characters
-are blocking findings.
+are blocking findings. Dangling ancestor `pyproject.toml` symlinks are blocking
+rather than treated as absent.
 The selected project's `[tool.uv] managed = false` is also blocking because uv
 project management is disabled; doctor does not scan ancestor workspaces for it.
 An adjacent selected `uv.toml`, `UV_NO_CONFIG`, or `UV_CONFIG_FILE` masks this
@@ -129,8 +130,10 @@ default group names are validated even when environment switches exclude them.
 An include table must contain only `include-group`.
 Doctor evaluates environment markers and checks applicable distribution names
 in the project's existing environment using Python's standard
-`importlib.metadata`. A missing project interpreter or distribution is a
-blocking issue with a `pyfaro sync` action. If the parser is unavailable,
+`importlib.metadata`. When at least one selected distribution applies, a
+missing project interpreter or distribution is a blocking issue with a
+`pyfaro sync` action. Projects with no applicable distributions do not require
+an existing project environment for this check. If the parser is unavailable,
 cannot run, or rejects any requirement, doctor reports a blocking finding
 without an OK dependency summary. Doctor checks presence, not requirement
 version constraints, optional extras, or lockfile freshness. Use

@@ -87,6 +87,10 @@ pub(super) fn uv_configuration(
                     return Ok(None);
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    if metadata.is_symlink() {
+                        report.line(Severity::Error, format!("dependencies: cannot read {}: dangling symlink; repair the uv configuration", metadata.display()))?;
+                        return Ok(None);
+                    }
                     continue;
                 }
                 Err(error) => {
@@ -97,6 +101,10 @@ pub(super) fn uv_configuration(
             let contents = match fs::read_to_string(&metadata) {
                 Ok(contents) => contents,
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    if metadata.is_symlink() {
+                        report.line(Severity::Error, format!("dependencies: cannot read {}: dangling symlink; repair the uv configuration", metadata.display()))?;
+                        return Ok(None);
+                    }
                     continue;
                 }
                 Err(error) => {

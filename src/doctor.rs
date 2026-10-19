@@ -440,6 +440,10 @@ fn inspect_workspace(
                     return Ok(true);
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    if metadata.is_symlink() {
+                        report.line(Severity::Error, format!("configuration: cannot read {}: dangling symlink; repair workspace metadata", metadata.display()))?;
+                        return Ok(true);
+                    }
                     continue;
                 }
                 Err(error) => {
@@ -450,6 +454,10 @@ fn inspect_workspace(
             let source = match fs::read_to_string(&metadata) {
                 Ok(source) => source,
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    if metadata.is_symlink() {
+                        report.line(Severity::Error, format!("configuration: cannot read {}: dangling symlink; repair workspace metadata", metadata.display()))?;
+                        return Ok(true);
+                    }
                     continue;
                 }
                 Err(error) => {
