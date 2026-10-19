@@ -188,10 +188,36 @@ fn probe_version(
         .strip_prefix(tool)
         .and_then(|rest| rest.strip_prefix(' '))
         .and_then(|rest| rest.split_whitespace().next());
-    if number.is_none_or(|number| Version::parse(number).is_err()) {
+    let valid = number.is_some_and(|number| {
+        if tool == "pytest" {
+            pytest_version(number)
+        } else {
+            Version::parse(number).is_ok()
+        }
+    });
+    if !valid {
         return Err(Error::Project(format!(
             "unexpected {version_argument} output: {version:?}"
         )));
     }
     Ok(version.to_owned())
+}
+
+fn pytest_version(number: &str) -> bool {
+    let release = number
+        .split(|character: char| {
+            !character.is_ascii_digit() && character != '.'
+        })
+        .next()
+        .unwrap_or_default()
+        .trim_end_matches('.');
+    release.split('.').count() >= 2
+        && release.split('.').all(|component| {
+            !component.is_empty()
+                && component.chars().all(|character| character.is_ascii_digit())
+        })
+        && number.chars().all(|character| {
+            character.is_ascii_alphanumeric()
+                || matches!(character, '.' | '+' | '-' | '_' | '!')
+        })
 }

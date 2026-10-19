@@ -183,6 +183,25 @@ fn failed_version_probe_reports_its_stderr_and_selected_path() {
 }
 
 #[test]
+fn accepts_pytest_prerelease_versions_without_semver_rules() {
+    let sandbox = tempdir().unwrap();
+    let path = sandbox.path().join("path");
+    let pytest = install(&path, "pytest");
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["tools", "pytest"])
+        .current_dir(sandbox.path())
+        .env("PATH", &path)
+        .env("PYFARO_FIXTURE_VERSION", "pytest 9.0.0rc1")
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap().trim_end(),
+        format!("pytest: {} (pytest 9.0.0rc1)", resolved(&pytest))
+    );
+}
+
+#[test]
 fn explicit_project_requires_its_own_metadata() {
     let sandbox = tempdir().unwrap();
     fs::write(
