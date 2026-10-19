@@ -9,7 +9,7 @@ use crate::error::Result;
 mod linux;
 #[cfg(target_os = "macos")]
 mod macos;
-#[cfg(unix)]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 mod unix_input;
 #[cfg(target_os = "windows")]
 mod windows;
@@ -32,7 +32,8 @@ pub(crate) fn run_interactive(
     mut command: Command,
     cancelled: &AtomicBool,
 ) -> Result<ExitStatus> {
-    let relay = cfg!(unix) && std::io::stdin().is_terminal();
+    let relay = cfg!(any(target_os = "linux", target_os = "macos"))
+        && std::io::stdin().is_terminal();
     command.stdin(if relay { Stdio::piped() } else { Stdio::inherit() });
     run_with_input(command, cancelled, relay)
 }

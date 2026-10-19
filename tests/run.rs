@@ -100,6 +100,41 @@ fn run_uses_the_project_environment_for_inline_metadata_scripts() {
     );
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[test]
+fn run_preserves_path_lookup_for_python_named_executables() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let project = tempdir().unwrap();
+    fs::write(
+        project.path().join("pyproject.toml"),
+        "[project]\nname = 'path-example'\nversion = '1.0.0'\nrequires-python = '>=3.10'\ndependencies = []\n",
+    )
+    .unwrap();
+    let cache = project.path().join("uv-cache");
+    let setup = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["run", "--offline", "--project"])
+        .arg(project.path())
+        .args(["--", "python", "-c", "pass"])
+        .env("UV_CACHE_DIR", &cache)
+        .output()
+        .unwrap();
+    assert!(setup.status.success(), "{setup:?}");
+    let executable = project.path().join(".venv/bin/tool.py");
+    fs::write(&executable, "#!/bin/sh\nprintf 'PATH_OK\\n'\n").unwrap();
+    fs::set_permissions(&executable, fs::Permissions::from_mode(0o755))
+        .unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["run", "--locked", "--offline", "--project"])
+        .arg(project.path())
+        .args(["--", "tool.py"])
+        .env("UV_CACHE_DIR", &cache)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(String::from_utf8_lossy(&output.stdout).trim_end(), "PATH_OK");
+}
+
 #[test]
 fn run_requires_the_argument_separator() {
     let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
@@ -132,7 +167,7 @@ fn run_forwards_redirected_input() {
     assert_eq!(String::from_utf8_lossy(&output.stdout).trim_end(), "HELLO");
 }
 
-#[cfg(unix)]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 #[test]
 fn run_accepts_input_from_a_foreground_terminal() {
     use std::io::Read;

@@ -29,9 +29,11 @@ pub(crate) fn run(args: RunArgs) -> Result<()> {
         command.push(OsString::from("--frozen"));
     }
     command.push(OsString::from("--"));
-    if Path::new(&args.command[0]).extension().is_some_and(|extension| {
+    let program = Path::new(&args.command[0]);
+    if program.extension().is_some_and(|extension| {
         extension.eq_ignore_ascii_case(OsStr::new("py"))
-    }) {
+    }) && root.join(program).is_file()
+    {
         command.push(OsString::from("python"));
     }
     command.extend(args.command);
