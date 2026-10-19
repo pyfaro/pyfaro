@@ -107,9 +107,34 @@ impl Uv {
         args: &[A],
         cancelled: &AtomicBool,
     ) -> Result<()> {
+        self.execute_with_input(root, operation, args, cancelled, false)
+    }
+
+    pub(crate) fn execute_interactive<A: AsRef<OsStr>>(
+        &self,
+        root: &Path,
+        operation: &'static str,
+        args: &[A],
+        cancelled: &AtomicBool,
+    ) -> Result<()> {
+        self.execute_with_input(root, operation, args, cancelled, true)
+    }
+
+    fn execute_with_input<A: AsRef<OsStr>>(
+        &self,
+        root: &Path,
+        operation: &'static str,
+        args: &[A],
+        cancelled: &AtomicBool,
+        interactive: bool,
+    ) -> Result<()> {
         let mut command = self.command(root);
         command.args(args);
-        let status = process::run(command, cancelled)?;
+        let status = if interactive {
+            process::run_interactive(command, cancelled)?
+        } else {
+            process::run(command, cancelled)?
+        };
         if status.success() {
             Ok(())
         } else {
@@ -127,6 +152,7 @@ impl Uv {
             .env_remove("UV_FROZEN")
             .env_remove("UV_LOCKED")
             .env_remove("UV_NO_SYNC")
+            .env_remove("UV_ISOLATED")
             .env_remove("UV_INIT_BUILD_BACKEND")
             .args(["--no-python-downloads", "--no-progress"]);
         if self.offline {

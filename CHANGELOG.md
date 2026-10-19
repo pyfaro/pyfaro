@@ -8,6 +8,8 @@
   workflows. `init --apply` remains Linux-only in this alpha series.
 - Add `pyfaro sync [PATH]` with uv-owned environment/lockfile updates,
   `--locked` stale-lock rejection, and `--frozen` lockfile reuse.
+- Add `pyfaro run -- <program> [args...]` with OS-native passthrough, project
+  environment selection, terminal-input relay, and delegated exit status.
 
 ## 0.1.0-alpha.1 — 2026-10-19
 

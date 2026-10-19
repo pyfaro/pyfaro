@@ -18,6 +18,7 @@ const POLL: Duration = Duration::from_millis(20);
 pub(super) fn run(
     command: Command,
     cancelled: &AtomicBool,
+    relay: bool,
 ) -> Result<ExitStatus> {
     if cancelled.load(Ordering::SeqCst) {
         return Err(Error::Cancelled);
@@ -28,6 +29,11 @@ pub(super) fn run(
     let mut child = wrapped
         .spawn()
         .map_err(|source| Error::UvStart { path: program.clone(), source })?;
+    let input = if relay {
+        child.stdin().take().map(super::unix_input::Relay::start)
+    } else {
+        None
+    };
     drop(wrapped);
     let group = Pid::from_raw(child.id() as i32);
     let leader = RustixPid::from_raw(child.id() as i32).ok_or_else(|| {
@@ -38,16 +44,24 @@ pub(super) fn run(
             let _ = child.signal(Signal::SIGINT as i32);
             let deadline = Instant::now() + Duration::from_millis(250);
             while Instant::now() < deadline {
-                if matches!(leader_exited(leader), Ok(true)) {
+                if matches!(
+                    leader_state(leader),
+                    Ok(super::LeaderState::Exited)
+                ) {
                     break;
                 }
                 thread::sleep(POLL);
             }
             break Err(Error::Cancelled);
         }
-        match leader_exited(leader) {
-            Ok(true) => break Ok(()),
-            Ok(false) => thread::sleep(POLL),
+        match leader_state(leader) {
+            Ok(super::LeaderState::Exited) => break Ok(()),
+            Ok(super::LeaderState::Running) => thread::sleep(POLL),
+            Ok(super::LeaderState::Stopped) => {
+                break Err(Error::Project(
+                    "delegated command stopped while accessing the terminal; run uv directly for commands requiring a TTY".into(),
+                ));
+            }
             Err(source) => {
                 break Err(Error::io(
                     "observe delegated process",
@@ -57,21 +71,22 @@ pub(super) fn run(
             }
         }
     };
-    match (result, cleanup(child.as_mut(), group, &program)) {
-        (Ok(()), status) => status,
-        (Err(error), Ok(_)) => Err(error),
-        (Err(operation), Err(source)) => Err(Error::OperationCleanup {
-            operation: Box::new(operation),
-            source: Box::new(source),
-        }),
-    }
+    let cleanup = cleanup(child.as_mut(), group, &program);
+    let relay_result = input.map(super::unix_input::Relay::finish).transpose();
+    super::finish_with_relay(result, cleanup, relay_result, &program)
 }
 
-fn leader_exited(leader: RustixPid) -> io::Result<bool> {
-    let flags =
-        WaitIdOptions::EXITED | WaitIdOptions::NOHANG | WaitIdOptions::NOWAIT;
+fn leader_state(leader: RustixPid) -> io::Result<super::LeaderState> {
+    let flags = WaitIdOptions::EXITED
+        | WaitIdOptions::STOPPED
+        | WaitIdOptions::NOHANG
+        | WaitIdOptions::NOWAIT;
     waitid(WaitId::Pid(leader), flags)
-        .map(|status| status.is_some())
+        .map(|status| match status {
+            None => super::LeaderState::Running,
+            Some(status) if status.stopped() => super::LeaderState::Stopped,
+            Some(_) => super::LeaderState::Exited,
+        })
         .map_err(|error| io::Error::from_raw_os_error(error.raw_os_error()))
 }
 

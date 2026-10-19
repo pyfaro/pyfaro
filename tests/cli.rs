@@ -14,6 +14,7 @@ fn help_describes_the_current_development_status() {
     assert!(stdout.contains("Experimental alpha"));
     assert!(stdout.contains("init"));
     assert!(stdout.contains("sync"));
+    assert!(stdout.contains("run"));
     assert!(output.stderr.is_empty());
 }
 

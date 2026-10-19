@@ -8,16 +8,20 @@ Newer versions are accepted but not claimed as tested.
 
 The shared adapter passes OS-native arguments and a per-command working
 directory to uv. Delegated operations inherit stdout and stderr for streamed
-output. They use null stdin until interactive execution is implemented for
-`run`; the version probe also uses null stdin and a temporary stdout file.
+output. `init` and `sync` use null stdin; `run` passes redirected input
+through and relays foreground-terminal input on Unix, where the delegated
+process group cannot read directly from the parent's foreground terminal.
+Terminal-specific child features that require stdin itself to be a TTY are
+not emulated. The version probe uses null stdin and a temporary stdout file.
 Pyfaro returns uv's numeric failure status and reports its
 own discovery, version, spawn, and process-cleanup errors separately. It never
 installs uv or downloads Python; uv receives `--no-python-downloads`.
 
-`UV_PROJECT`, `UV_WORKING_DIR`, `UV_FROZEN`, `UV_LOCKED`, and `UV_NO_SYNC`
-environment overrides are removed before delegation so they cannot redirect
-the project or change an explicit locking or syncing mode. Pyfaro leaves the
-project's uv indexes, sources, and dependency settings to uv.
+`UV_PROJECT`, `UV_WORKING_DIR`, `UV_FROZEN`, `UV_LOCKED`, `UV_NO_SYNC`, and
+`UV_ISOLATED` environment overrides are removed before delegation so they
+cannot redirect the project, isolate the run environment, or change an
+explicit locking or syncing mode. Pyfaro leaves the project's uv indexes,
+sources, and dependency settings to uv.
 
 Linux keeps the existing process-group and child-subreaper cleanup used by
 `init`. macOS uses a process group and sends SIGINT before forcing cleanup.

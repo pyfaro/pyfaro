@@ -7,7 +7,7 @@ description = "Experimental Python project workflows powered by uv"
 license = "Apache-2.0"
 repository = "https://github.com/pyfaro/pyfaro"
 readme = "README.md"
-documentation = "https://github.com/pyfaro/pyfaro/blob/main/docs/init.md"
+documentation = "https://github.com/pyfaro/pyfaro#readme"
 keywords = ["python", "uv", "cli", "developer-tools"]
 categories = ["command-line-utilities", "development-tools"]
 publish = ["crates-io"]
@@ -24,6 +24,7 @@ include = [
     "/SECURITY.md",
     "/docs/init.md",
     "/docs/sync.md",
+    "/docs/run.md",
     "/docs/uv-adapter.md",
     "/docs/releasing.md",
     "/docs/architecture/0001-project-architecture.md",
@@ -39,15 +40,18 @@ toml_edit = "0.23.7"
 which = "8.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-nix = { version = "0.31", features = ["signal", "process"] }
+nix = { version = "0.31", features = ["signal", "process", "poll"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-nix = { version = "0.31", features = ["signal", "process"] }
+nix = { version = "0.31", features = ["signal", "process", "poll"] }
 process-wrap = { version = "10.0.1", default-features = false, features = ["std", "process-group"] }
 rustix = { version = "1.1", features = ["process"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 subc-jobobject = "0.2.1"
+
+[target.'cfg(unix)'.dev-dependencies]
+portable-pty = "0.9.0"
 
 [lints.rust]
 unsafe_code = "forbid"

@@ -1,15 +1,32 @@
-use std::process::{Command, ExitStatus};
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use std::io;
+use std::io::IsTerminal;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use std::path::Path;
+use std::process::{Command, ExitStatus, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+use crate::error::Error;
 use crate::error::Result;
 
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(target_os = "macos")]
 mod macos;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod unix_input;
 #[cfg(target_os = "windows")]
 mod windows;
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum LeaderState {
+    Running,
+    Exited,
+    Stopped,
+}
 
 pub(crate) fn cancellation() -> Result<Arc<AtomicBool>> {
     let cancelled = Arc::new(AtomicBool::new(false));
@@ -22,17 +39,36 @@ pub(crate) fn run(
     command: Command,
     cancelled: &AtomicBool,
 ) -> Result<ExitStatus> {
+    run_with_input(command, cancelled, false)
+}
+
+pub(crate) fn run_interactive(
+    mut command: Command,
+    cancelled: &AtomicBool,
+) -> Result<ExitStatus> {
+    let relay = cfg!(any(target_os = "linux", target_os = "macos"))
+        && std::io::stdin().is_terminal();
+    command.stdin(if relay { Stdio::piped() } else { Stdio::inherit() });
+    run_with_input(command, cancelled, relay)
+}
+
+fn run_with_input(
+    command: Command,
+    cancelled: &AtomicBool,
+    relay: bool,
+) -> Result<ExitStatus> {
     #[cfg(target_os = "linux")]
     {
         let mut command = command;
-        linux::run(&mut command, cancelled)
+        linux::run(&mut command, cancelled, relay)
     }
     #[cfg(target_os = "macos")]
     {
-        macos::run(command, cancelled)
+        macos::run(command, cancelled, relay)
     }
     #[cfg(target_os = "windows")]
     {
+        let _ = relay;
         windows::run(command, cancelled)
     }
     #[cfg(not(any(
@@ -41,11 +77,34 @@ pub(crate) fn run(
         target_os = "windows"
     )))]
     {
-        let _ = (command, cancelled);
+        let _ = (command, cancelled, relay);
         Err(crate::error::Error::Project(
             "delegated commands are unavailable on this platform".into(),
         ))
     }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn finish_with_relay(
+    operation: Result<()>,
+    cleanup: Result<ExitStatus>,
+    relay: io::Result<Option<()>>,
+    program: &Path,
+) -> Result<ExitStatus> {
+    let outcome = match (operation, cleanup) {
+        (Ok(()), status) => status,
+        (Err(error), Ok(_)) => Err(error),
+        (Err(operation), Err(source)) => Err(Error::OperationCleanup {
+            operation: Box::new(operation),
+            source: Box::new(source),
+        }),
+    };
+    if let Err(source) = relay
+        && matches!(&outcome, Ok(status) if status.success())
+    {
+        return Err(Error::io("relay terminal input", program, source));
+    }
+    outcome
 }
 
 #[cfg(all(test, target_os = "linux"))]
@@ -53,11 +112,24 @@ mod tests {
     use crate::error::Error;
     use crate::test_support;
     use std::fs;
+    use std::os::unix::process::ExitStatusExt;
     use std::process::Stdio;
     use std::thread;
     use std::time::{Duration, Instant};
 
     use super::*;
+
+    #[test]
+    fn relay_failure_preserves_a_failed_command_status() {
+        let failed = ExitStatus::from_raw(23 << 8);
+        let result = finish_with_relay(
+            Ok(()),
+            Ok(failed),
+            Err(io::Error::other("relay failed")),
+            Path::new("uv"),
+        );
+        assert_eq!(result.unwrap().code(), Some(23));
+    }
 
     #[test]
     fn cancellation_stops_and_reaps_the_entire_process_tree() {

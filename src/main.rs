@@ -2,6 +2,7 @@ mod cli;
 mod error;
 mod init;
 mod process;
+mod run;
 mod sync;
 mod uv;
 
@@ -17,6 +18,7 @@ fn main() {
     let result = match cli.command {
         cli::Command::Init(args) => init::run(args),
         cli::Command::Sync(args) => sync::run(args),
+        cli::Command::Run(args) => run::run(args),
     };
     if let Err(error) = result {
         // Diagnostics must not panic if stderr is closed or unavailable.
