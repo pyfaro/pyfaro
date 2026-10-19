@@ -190,6 +190,19 @@ pub(crate) fn project_environment(root: &Path) -> PathBuf {
     }
 }
 
+pub(crate) fn project_python(root: &Path) -> PathBuf {
+    let scripts = project_environment(root).join(scripts_directory());
+    let python =
+        scripts.join(if cfg!(windows) { "python.exe" } else { "python" });
+    if !cfg!(windows) && !python.is_file() {
+        let python3 = scripts.join("python3");
+        if python3.is_file() {
+            return python3;
+        }
+    }
+    python
+}
+
 fn lookup_failure(
     tool: &'static str,
     path: PathBuf,

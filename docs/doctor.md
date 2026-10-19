@@ -25,6 +25,8 @@ when doctor cannot compare them.
 `UV_PROJECT_ENVIRONMENT` selects the project environment instead of `.venv`.
 Absolute paths are used directly; relative paths are resolved from the
 selected project root. For standalone projects, this is uv's workspace root.
+On Unix, an environment with `bin/python3` but no `bin/python` is valid; doctor
+uses that interpreter for layout and dependency checks.
 
 uv follows the normal Pyfaro executable selection and requires stable uv
 0.9.26 or newer. Ruff, ty, and pytest use the same discovery and version rules
@@ -41,14 +43,23 @@ project interpreter without executable permission also blocks, even if another
 Python is available on `PATH` and the project has no dependencies. For pytest,
 `pytest.ini`, `.pytest.ini`, `pytest.toml`, and `.pytest.toml` conflict with
 `[tool.pytest.ini_options]` or native `[tool.pytest]` settings. The TOML files
-are supported by pytest 9. `tox.ini` counts only when it has `[pytest]`, and
+are supported by pytest 9. When doctor finds pytest earlier than 9 with either
+TOML file or native `[tool.pytest]` settings, it reports a blocking compatibility finding:
+upgrade to pytest 9 or move the settings to an INI format. `tox.ini` counts
+only when it has `[pytest]`, and
 `setup.cfg` counts only when it has `[tool:pytest]`. Any key other than
 `ini_options` under `[tool.pytest]`, including a nested table, counts as native
 pytest configuration. Multiple pytest configuration files also conflict.
 Native `[tool.pytest]` settings cannot be
 combined with nonempty `[tool.pytest.ini_options]` in the same file. Doctor
-reports uv workspace roots and projects matched by `members` globs and not by
-`exclude` globs as unsupported. Other descendants remain standalone projects.
+reports uv workspace roots and projects matched by normalized `members` globs
+and not by `exclude` globs as unsupported. Matching uses the absolute project
+path and uv's glob defaults. Discovery stops at the first ancestor
+`pyproject.toml`: an intervening project or a workspace that does not include
+the selected project prevents an outer workspace from applying. Invalid globs
+and paths whose membership cannot be determined because of non-UTF-8 characters
+are blocking findings.
+
 For uv, a project `uv.toml` takes precedence over `[tool.uv]` in
 `pyproject.toml`; doctor reports their
 coexistence as a warning. A non-table `[tool.uv]` value is an error only when

@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::AtomicBool;
 
-use glob::{MatchOptions, Pattern};
+use glob::Pattern;
 use pep440_rs::{Version, VersionSpecifiers};
 use toml_edit::{DocumentMut, Table};
 
@@ -78,6 +78,7 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
 
     let mut dependencies = None;
     let mut requires_python = None;
+    let mut pytest_9_only = false;
     if let Some(root) = root.as_deref() {
         match Config::load_document(root) {
             Ok(document) => {
@@ -86,6 +87,7 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
                     "pyproject.toml: valid Pyfaro configuration",
                 )?;
                 inspect_configuration(root, &document, &mut report)?;
+                pytest_9_only = uses_pytest_9_configuration(root, &document);
                 if !inspect_workspace(root, &document, &mut report)? {
                     dependencies =
                         declared_dependencies(root, &document, &mut report)?;
@@ -136,7 +138,7 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
         true,
     )?;
     for tool in [Tool::Ruff, Tool::Ty, Tool::Pytest] {
-        inspect_tool(
+        let version = inspect_tool(
             tool,
             root.as_deref(),
             args.uv.as_ref(),
@@ -144,6 +146,19 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
             &mut report,
             false,
         )?;
+        if let Some(version) =
+            version.filter(|_| matches!(tool, Tool::Pytest) && pytest_9_only)
+        {
+            let number = version.split_whitespace().nth(1).unwrap_or_default();
+            let old = number
+                .parse::<Version>()
+                .ok()
+                .and_then(|found| found.release().first().copied())
+                .is_some_and(|major| major < 9);
+            if old {
+                report.line(Severity::Error, format!("configuration: pytest {number} cannot use pytest 9 configuration; upgrade to pytest >=9 or use INI configuration"))?;
+            }
+        }
     }
     if let (Some(root), Some(dependencies)) =
         (root.as_deref(), dependencies.as_ref())
@@ -170,19 +185,37 @@ fn inspect_tool(
     cancelled: &AtomicBool,
     report: &mut Report,
     required: bool,
-) -> Result<()> {
+) -> Result<Option<String>> {
     let name = tools::name(tool);
     match tools::inspect(tool, root, uv, cancelled) {
-        Ok((path, version)) => report.line(
-            Severity::Ok,
-            format!("{name}: {} ({version})", path.display()),
-        ),
+        Ok((path, version)) => {
+            report.line(
+                Severity::Ok,
+                format!("{name}: {} ({version})", path.display()),
+            )?;
+            Ok(Some(version))
+        }
         Err(Error::Cancelled) => Err(Error::Cancelled),
-        Err(error) => report.line(
-            if required { Severity::Error } else { Severity::Warn },
-            format!("{name}: {error}"),
-        ),
+        Err(error) => {
+            report.line(
+                if required { Severity::Error } else { Severity::Warn },
+                format!("{name}: {error}"),
+            )?;
+            Ok(None)
+        }
     }
+}
+
+fn uses_pytest_9_configuration(root: &Path, document: &DocumentMut) -> bool {
+    root.join("pytest.toml").exists()
+        || root.join(".pytest.toml").exists()
+        || document
+            .get("tool")
+            .and_then(|tool| tool.get("pytest"))
+            .and_then(|pytest| pytest.as_table_like())
+            .is_some_and(|pytest| {
+                pytest.iter().any(|(key, _)| key != "ini_options")
+            })
 }
 
 fn inspect_configuration(
@@ -319,47 +352,108 @@ fn inspect_workspace(
             };
             match source.parse::<DocumentMut>() {
                 Ok(candidate) => candidate,
-                Err(_) => continue,
+                Err(error) => {
+                    report.line(Severity::Error, format!("configuration: cannot parse {}: {error}; check workspace metadata", metadata.display()))?;
+                    return Ok(true);
+                }
             }
         };
         let workspace = candidate
             .get("tool")
             .and_then(|tool| tool.get("uv"))
             .and_then(|uv| uv.get("workspace"));
-        let Some(workspace) = workspace else { continue };
+        let Some(workspace) = workspace else {
+            if directory == root {
+                continue;
+            }
+            return Ok(false);
+        };
         let member = if directory == root {
             true
         } else {
-            let Ok(relative) = root.strip_prefix(directory) else { continue };
-            let matches = |key: &str| {
-                workspace
-                    .get(key)
-                    .and_then(|value| value.as_array())
-                    .is_some_and(|patterns| {
-                        patterns
-                            .iter()
-                            .filter_map(|value| value.as_str())
-                            .filter_map(|value| Pattern::new(value).ok())
-                            .any(|pattern| {
-                                pattern.matches_path_with(
-                                    relative,
-                                    MatchOptions {
-                                        case_sensitive: true,
-                                        require_literal_separator: true,
-                                        require_literal_leading_dot: false,
-                                    },
-                                )
-                            })
-                    })
+            let included = match workspace_matches(
+                root, directory, workspace, "members", report,
+            )? {
+                Some(included) => included,
+                None => return Ok(true),
             };
-            matches("members") && !matches("exclude")
+            let excluded = match workspace_matches(
+                root, directory, workspace, "exclude", report,
+            )? {
+                Some(excluded) => excluded,
+                None => return Ok(true),
+            };
+            included && !excluded
         };
         if member {
             report.line(Severity::Error, format!("configuration: uv workspace at {} is not supported by pyfaro doctor; use a standalone project", metadata.display()))?;
             return Ok(true);
         }
+        return Ok(false);
     }
     Ok(false)
+}
+
+fn workspace_matches(
+    project: &Path,
+    workspace_root: &Path,
+    workspace: &toml_edit::Item,
+    key: &str,
+    report: &mut Report,
+) -> Result<Option<bool>> {
+    if project.to_str().is_none() {
+        report.line(Severity::Error, format!("configuration: cannot determine uv workspace membership for {}: path is not UTF-8", project.display()))?;
+        return Ok(None);
+    }
+    let Some(workspace_text) = workspace_root.to_str() else {
+        report.line(Severity::Error, format!("configuration: cannot determine uv workspace membership for {}: path is not UTF-8", workspace_root.display()))?;
+        return Ok(None);
+    };
+    let mut matched = false;
+    if let Some(value) = workspace.get(key) {
+        let Some(patterns) = value.as_array() else {
+            report.line(Severity::Error, format!("configuration: invalid workspace glob in {}: [tool.uv.workspace].{key} must be an array of strings", workspace_root.join("pyproject.toml").display()))?;
+            return Ok(None);
+        };
+        for value in patterns {
+            let Some(raw) = value.as_str() else {
+                report.line(Severity::Error, format!("configuration: invalid workspace glob in {}: [tool.uv.workspace].{key} must be an array of strings", workspace_root.join("pyproject.toml").display()))?;
+                return Ok(None);
+            };
+            let mut normalized = PathBuf::new();
+            for component in Path::new(raw).components() {
+                match component {
+                    std::path::Component::CurDir => {}
+                    std::path::Component::ParentDir => {
+                        if normalized
+                            .file_name()
+                            .is_some_and(|part| part != "..")
+                        {
+                            normalized.pop();
+                        } else {
+                            normalized.push("..");
+                        }
+                    }
+                    other => normalized.push(other.as_os_str()),
+                }
+            }
+            let absolute =
+                PathBuf::from(Pattern::escape(workspace_text)).join(normalized);
+            let Some(absolute_glob) = absolute.to_str() else {
+                report.line(Severity::Error, format!("configuration: cannot determine uv workspace membership for {}: glob path is not UTF-8", absolute.display()))?;
+                return Ok(None);
+            };
+            let pattern = match Pattern::new(absolute_glob) {
+                Ok(pattern) => pattern,
+                Err(error) => {
+                    report.line(Severity::Error, format!("configuration: invalid workspace glob {raw:?} in {}: {error}; correct [tool.uv.workspace].{key}", workspace_root.join("pyproject.toml").display()))?;
+                    return Ok(None);
+                }
+            };
+            matched |= pattern.matches_path(project);
+        }
+    }
+    Ok(Some(matched))
 }
 
 fn inspect_layout(root: &Path, report: &mut Report) -> Result<()> {
@@ -376,11 +470,7 @@ fn inspect_layout(root: &Path, report: &mut Report) -> Result<()> {
     if venv.exists() && !venv.is_dir() {
         report.line(Severity::Error, format!("layout: {} must be a directory; move or remove the conflicting file", venv.display()))?;
     }
-    let interpreter = venv.join(if cfg!(windows) {
-        "Scripts/python.exe"
-    } else {
-        "bin/python"
-    });
+    let interpreter = tools::project_python(root);
     if venv.is_dir() && !interpreter.is_file() {
         report.line(
             Severity::Error,
@@ -1286,11 +1376,7 @@ fn inspect_dependencies(
     } else {
         environment.display().to_string()
     };
-    let local = environment.join(if cfg!(windows) {
-        "Scripts/python.exe"
-    } else {
-        "bin/python"
-    });
+    let local = tools::project_python(root);
     let parser_python = if local.is_file() { &local } else { python };
     let declared_count = dependencies.selected_count;
     let Some(dependencies) = active_dependencies(

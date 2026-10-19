@@ -47,8 +47,13 @@ fn main() {
             "pytest" => "pytest 8.4.2",
             _ => "uv 0.9.26",
         };
-        println!("{}", env::var("PYFARO_FIXTURE_VERSION")
-            .unwrap_or_else(|_| default.into()));
+        let version = if stem == "pytest" {
+            env::var("PYFARO_FIXTURE_PYTEST_VERSION")
+                .or_else(|_| env::var("PYFARO_FIXTURE_VERSION"))
+        } else {
+            env::var("PYFARO_FIXTURE_VERSION")
+        };
+        println!("{}", version.unwrap_or_else(|_| default.into()));
         if env::var_os("PYFARO_FIXTURE_VERSION_EXTRA").is_some() {
             println!("plugin printed another line");
         }

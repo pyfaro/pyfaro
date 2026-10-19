@@ -142,6 +142,122 @@ fn workspace_ancestor_only_blocks_matching_nonexcluded_members() {
 }
 
 #[test]
+fn workspace_globs_normalize_dot_and_match_parent_directories() {
+    let sandbox = tempdir().unwrap();
+    let workspace = sandbox.path().join("workspace");
+    let project = workspace.join("packages/group/member");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'member'\n")
+        .unwrap();
+    fs::write(
+        workspace.join("pyproject.toml"),
+        "[tool.uv.workspace]\nmembers = ['./packages/*/member']\n",
+    )
+    .unwrap();
+    let included = doctor(&project, &bin, &uv);
+    assert_eq!(included.status.code(), Some(1), "{included:?}");
+    assert!(text(&included).contains("uv workspace"));
+
+    fs::write(workspace.join("pyproject.toml"), "[tool.uv.workspace]\nmembers = ['./packages/*/member']\nexclude = ['./packages/*']\n").unwrap();
+    let excluded = doctor(&project, &bin, &uv);
+    assert_eq!(excluded.status.code(), Some(0), "{excluded:?}");
+    assert!(!text(&excluded).contains("uv workspace"));
+}
+
+#[test]
+fn nearest_project_or_nonmatching_workspace_stops_workspace_discovery() {
+    let sandbox = tempdir().unwrap();
+    let outer = sandbox.path().join("outer");
+    let middle = outer.join("middle");
+    let project = middle.join("member");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(
+        outer.join("pyproject.toml"),
+        "[tool.uv.workspace]\nmembers = ['**']\n",
+    )
+    .unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'member'\n")
+        .unwrap();
+
+    fs::write(middle.join("pyproject.toml"), "[project]\nname = 'middle'\n")
+        .unwrap();
+    let intervening = doctor(&project, &bin, &uv);
+    assert_eq!(intervening.status.code(), Some(0), "{intervening:?}");
+    assert!(!text(&intervening).contains("uv workspace"));
+
+    fs::write(
+        middle.join("pyproject.toml"),
+        "[tool.uv.workspace]\nmembers = ['other']\n",
+    )
+    .unwrap();
+    let nonmember = doctor(&project, &bin, &uv);
+    assert_eq!(nonmember.status.code(), Some(0), "{nonmember:?}");
+    assert!(!text(&nonmember).contains("uv workspace"));
+}
+
+#[test]
+fn invalid_workspace_glob_is_blocking() {
+    let sandbox = tempdir().unwrap();
+    let workspace = sandbox.path().join("workspace");
+    let project = workspace.join("member");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'member'\n")
+        .unwrap();
+    fs::write(
+        workspace.join("pyproject.toml"),
+        "[tool.uv.workspace]\nmembers = ['[']\n",
+    )
+    .unwrap();
+    let output = doctor(&project, &bin, &uv);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(text(&output).contains("invalid workspace glob"));
+    assert!(!text(&output).contains("OK: dependencies:"));
+
+    fs::write(
+        workspace.join("pyproject.toml"),
+        "[tool.uv.workspace]\nmembers = ['other']\nexclude = ['[']\n",
+    )
+    .unwrap();
+    let excluded = doctor(&project, &bin, &uv);
+    assert_eq!(excluded.status.code(), Some(1), "{excluded:?}");
+    assert!(text(&excluded).contains("invalid workspace glob"));
+}
+
+#[cfg(unix)]
+#[test]
+fn non_utf8_workspace_path_cannot_be_classified_silently() {
+    use std::os::unix::ffi::OsStringExt;
+    let sandbox = tempdir().unwrap();
+    let workspace = sandbox.path().join("workspace");
+    let project =
+        workspace.join(std::ffi::OsString::from_vec(b"member-\xff".to_vec()));
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'member'\n")
+        .unwrap();
+    fs::write(
+        workspace.join("pyproject.toml"),
+        "[tool.uv.workspace]\nmembers = ['member-*']\n",
+    )
+    .unwrap();
+    let output = doctor(&project, &bin, &uv);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(text(&output).contains("cannot determine uv workspace membership"));
+    assert!(!text(&output).contains("OK: dependencies:"));
+}
+
+#[test]
 fn user_uv_configuration_accepts_valid_settings_and_reports_invalid_fields() {
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("project");
@@ -978,6 +1094,64 @@ fn pytest_conflicts_require_pytest_sections_in_shared_ini_files() {
 }
 
 #[test]
+fn pytest_nine_only_configuration_requires_pytest_nine() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    install(&bin, "pytest");
+
+    for config in ["pytest.toml", ".pytest.toml", "native"] {
+        fs::write(
+            project.join("pyproject.toml"),
+            if config == "native" {
+                "[project]\nname = 'sample'\n[tool.pytest]\naddopts = ['-q']\n"
+            } else {
+                "[project]\nname = 'sample'\n"
+            },
+        )
+        .unwrap();
+        if config != "native" {
+            fs::write(project.join(config), "").unwrap();
+        }
+        let old = doctor(&project, &bin, &uv);
+        let report = text(&old);
+        assert_eq!(old.status.code(), Some(1), "{old:?}");
+        assert!(
+            report.contains("pytest >=9")
+                && report.contains("INI configuration"),
+            "{report}"
+        );
+
+        let recent = doctor_command(&project, &bin, &uv)
+            .env("PYFARO_FIXTURE_PYTEST_VERSION", "pytest 9.0.0")
+            .output()
+            .unwrap();
+        assert_eq!(recent.status.code(), Some(0), "{recent:?}");
+        assert!(!text(&recent).contains("pytest >=9"));
+        if config != "native" {
+            fs::remove_file(project.join(config)).unwrap();
+        }
+    }
+}
+
+#[test]
+fn pytest_ini_configuration_remains_compatible_with_pytest_eight() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    install(&bin, "pytest");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
+    let output = doctor(&project, &bin, &uv);
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+}
+
+#[test]
 fn nearest_parent_uv_configuration_selects_default_groups() {
     let sandbox = tempdir().unwrap();
     let parent = sandbox.path().join("parent");
@@ -1572,14 +1746,50 @@ fn project_environment_override_is_used_for_layout_and_dependency_probes() {
         );
         assert!(!report.contains("ERROR: layout:"), "{report}");
         assert!(
-            report.contains(&format!(
-                "is missing from {}",
-                environment.display()
-            )),
+            report.lines().any(|line| line.contains("is missing from")
+                && line.contains(
+                    environment.file_name().unwrap().to_str().unwrap()
+                )),
             "{report}"
         );
         assert!(!report.contains("project interpreter"), "{report}");
 
         fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '1.0.0'\nrequires-python = '>=3.10'\ndependencies = []\n").unwrap();
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn system_prefix_python3_is_used_for_layout_and_dependencies() {
+    use std::os::unix::fs::symlink;
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let prefix = sandbox.path().join("system-prefix");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(prefix.join("bin")).unwrap();
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    symlink(which::which("python3").unwrap(), prefix.join("bin/python3"))
+        .unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\ndependencies = ['missing-doctor-fixture-package==1.0']\n").unwrap();
+    let output = doctor_command(&project, &bin, &uv)
+        .env("UV_PROJECT_ENVIRONMENT", &prefix)
+        .output()
+        .unwrap();
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(
+        report.contains("OK: Python:") && report.contains("system-prefix"),
+        "{report}"
+    );
+    assert!(
+        !report.contains("ERROR: layout:")
+            && !report.contains("project interpreter"),
+        "{report}"
+    );
+    assert!(
+        report.contains("missing-doctor-fixture-package is missing from")
+            && report.contains("system-prefix"),
+        "{report}"
+    );
 }
