@@ -36,13 +36,15 @@ Doctor validates `pyproject.toml` with the same Pyfaro config loader used by
 Python interpreter is a blocking layout issue. On Unix, an existing
 `.venv/bin/python` without executable permission also blocks, even if another
 Python is available on `PATH` and the project has no dependencies. For pytest,
-`pytest.ini` and `.pytest.ini` conflict with `[tool.pytest.ini_options]`;
-`tox.ini` counts only when it has `[pytest]`, and `setup.cfg` counts only when
-it has `[tool:pytest]`. Other `[tool.pytest]` tables without `ini_options` do
-not count as pytest configuration. Multiple pytest configuration files also
-conflict. For uv, a project `uv.toml`
+`pytest.ini`, `.pytest.ini`, `pytest.toml`, and `.pytest.toml` conflict with
+`[tool.pytest.ini_options]` or native `[tool.pytest]` settings. The TOML files
+are supported by pytest 9. `tox.ini` counts only when it has `[pytest]`, and
+`setup.cfg` counts only when it has `[tool:pytest]`. Unrelated nested
+`[tool.pytest]` tables do not count as pytest configuration. Multiple pytest
+configuration files also conflict. For uv, a project `uv.toml`
 takes precedence over `[tool.uv]` in `pyproject.toml`; doctor reports their
-coexistence as a warning. A non-table `[tool.uv]` value is an error.
+coexistence as a warning. A non-table `[tool.uv]` value is an error only when
+that pyproject configuration is selected.
 
 Doctor parses `[project].dependencies` and uv's default dependency groups
 with PyPA's PEP 508 implementation available to the project interpreter
@@ -59,7 +61,9 @@ system configuration from the first available `$XDG_CONFIG_DIRS/uv/uv.toml`
 (defaulting to `/etc/xdg/uv/uv.toml`) or `/etc/uv/uv.toml` on Unix, or
 `%PROGRAMDATA%\uv\uv.toml` on Windows. Project settings take precedence over
 user settings, which take precedence over system settings; array settings,
-including `default-groups` and `dev-dependencies`, concatenate in that order.
+including `default-groups` and `dev-dependencies`, concatenate in that order
+when both layers provide arrays. For a scalar/array mismatch, the
+higher-priority setting wins.
 `UV_CONFIG_FILE` selects an explicit standalone uv configuration file instead
 of discovery; relative paths are resolved from the selected project directory,
 as they are for uv commands run by Pyfaro. `UV_NO_CONFIG` disables discovery

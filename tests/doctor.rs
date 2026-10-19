@@ -77,7 +77,10 @@ fn user_uv_configuration_falls_back_and_reports_its_source() {
     let malformed = doctor(&project, &bin, &uv);
     let report = text(&malformed);
     assert_eq!(malformed.status.code(), Some(1), "{malformed:?}");
-    assert!(report.contains(&user_file.display().to_string()), "{report}");
+    assert!(
+        report.contains(".doctor-user-config") && report.contains("uv.toml"),
+        "{report}"
+    );
     assert!(
         report
             .contains("dev-dependencies must contain only requirement strings"),
@@ -162,12 +165,40 @@ fn uv_configuration_arrays_merge_across_project_user_and_system() {
             "{report}"
         );
     }
-    assert!(report.contains(&system_file.display().to_string()), "{report}");
+    assert!(
+        report.contains(".doctor-system-config") && report.contains("uv.toml"),
+        "{report}"
+    );
     assert!(
         report
             .contains("dev-dependencies must contain only requirement strings"),
         "{report}"
     );
+}
+
+#[test]
+fn project_default_groups_override_lower_priority_all() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\n[dependency-groups]\nqa = []\ndev = []\n",
+    )
+    .unwrap();
+    fs::write(project.join("uv.toml"), "default-groups = ['qa']\n").unwrap();
+    let user_file = sandbox.path().join(".doctor-user-config/uv/uv.toml");
+    fs::create_dir_all(user_file.parent().unwrap()).unwrap();
+    fs::write(&user_file, "default-groups = 'all'\n").unwrap();
+
+    let output = doctor(&project, &bin, &uv);
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    assert!(report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(!report.contains("group \"qa\" is not checked"), "{report}");
 }
 
 #[test]
@@ -191,7 +222,10 @@ fn malformed_user_configuration_blocks_even_with_project_settings() {
     let malformed = doctor(&project, &bin, &uv);
     let report = text(&malformed);
     assert_eq!(malformed.status.code(), Some(1), "{malformed:?}");
-    assert!(report.contains(&user_file.display().to_string()), "{report}");
+    assert!(
+        report.contains(".doctor-user-config") && report.contains("uv.toml"),
+        "{report}"
+    );
     assert!(!report.contains("OK: dependencies:"), "{report}");
 
     fs::remove_file(&user_file).unwrap();
@@ -199,7 +233,10 @@ fn malformed_user_configuration_blocks_even_with_project_settings() {
     let unreadable = doctor(&project, &bin, &uv);
     let report = text(&unreadable);
     assert_eq!(unreadable.status.code(), Some(1), "{unreadable:?}");
-    assert!(report.contains(&user_file.display().to_string()), "{report}");
+    assert!(
+        report.contains(".doctor-user-config") && report.contains("uv.toml"),
+        "{report}"
+    );
     assert!(report.contains("cannot read"), "{report}");
 }
 
@@ -426,17 +463,27 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
     .unwrap();
     let malformed_uv = doctor(&project, &bin, &uv);
     assert_eq!(malformed_uv.status.code(), Some(1), "{malformed_uv:?}");
-    assert!(text(&malformed_uv).contains("[tool.uv] must be a table"));
+    assert!(
+        text(&malformed_uv).contains("[tool.uv]")
+            && text(&malformed_uv).contains("must be a table"),
+        "{malformed_uv:?}"
+    );
     assert!(!text(&malformed_uv).contains("OK: dependencies:"));
     fs::write(project.join("uv.toml"), "default-groups = []\n").unwrap();
     let malformed_ignored_uv = doctor(&project, &bin, &uv);
     assert_eq!(
         malformed_ignored_uv.status.code(),
-        Some(1),
+        Some(0),
         "{malformed_ignored_uv:?}"
     );
-    assert!(text(&malformed_ignored_uv).contains("[tool.uv] must be a table"));
+    assert!(!text(&malformed_ignored_uv).contains("must be a table"));
     fs::remove_file(project.join("uv.toml")).unwrap();
+    let no_config = doctor_command(&project, &bin, &uv)
+        .env("UV_NO_CONFIG", "1")
+        .output()
+        .unwrap();
+    assert_eq!(no_config.status.code(), Some(0), "{no_config:?}");
+    assert!(!text(&no_config).contains("must be a table"));
 
     fs::write(&metadata, "[project]\nname = 'sample'\n").unwrap();
     fs::write(project.join(".python-version"), "3.11\n").unwrap();
@@ -680,7 +727,28 @@ fn pytest_conflicts_require_pytest_sections_in_shared_ini_files() {
     let unrelated = doctor(&project, &bin, &uv);
     assert_eq!(unrelated.status.code(), Some(0), "{unrelated:?}");
     assert!(!text(&unrelated).contains("ERROR: configuration:"));
+
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\n[tool.pytest]\naddopts = ['-q']\n",
+    )
+    .unwrap();
+    let native_toml = doctor(&project, &bin, &uv);
+    assert_eq!(native_toml.status.code(), Some(1), "{native_toml:?}");
+    assert!(text(&native_toml).contains("[tool.pytest] and .pytest.ini"));
     fs::remove_file(project.join(".pytest.ini")).unwrap();
+
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
+    fs::write(project.join("pytest.toml"), "").unwrap();
+    let pytest_toml = doctor(&project, &bin, &uv);
+    assert_eq!(pytest_toml.status.code(), Some(1), "{pytest_toml:?}");
+    assert!(text(&pytest_toml).contains("[tool.pytest] and pytest.toml"));
+    fs::remove_file(project.join("pytest.toml")).unwrap();
+    fs::write(project.join(".pytest.toml"), "").unwrap();
+    let hidden_toml = doctor(&project, &bin, &uv);
+    assert_eq!(hidden_toml.status.code(), Some(1), "{hidden_toml:?}");
+    assert!(text(&hidden_toml).contains("[tool.pytest] and .pytest.toml"));
+    fs::remove_file(project.join(".pytest.toml")).unwrap();
 
     fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n")
         .unwrap();

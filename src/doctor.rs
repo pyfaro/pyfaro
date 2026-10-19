@@ -190,13 +190,30 @@ fn inspect_configuration(
     for (section, files) in [
         ("ruff", &["ruff.toml", ".ruff.toml"][..]),
         ("ty", &["ty.toml"][..]),
-        ("pytest", &["pytest.ini", ".pytest.ini", "tox.ini", "setup.cfg"][..]),
+        (
+            "pytest",
+            &[
+                "pytest.toml",
+                ".pytest.toml",
+                "pytest.ini",
+                ".pytest.ini",
+                "tox.ini",
+                "setup.cfg",
+            ][..],
+        ),
     ] {
         let configured = document
             .get("tool")
             .and_then(|tool| tool.get(section))
             .is_some_and(|config| {
-                section != "pytest" || config.get("ini_options").is_some()
+                section != "pytest"
+                    || config.get("ini_options").is_some()
+                    || config.as_table_like().is_some_and(|table| {
+                        table.iter().any(|(name, value)| {
+                            name != "ini_options"
+                                && value.as_table_like().is_none()
+                        })
+                    })
             });
         let mut present = Vec::new();
         for file in files {
@@ -795,15 +812,6 @@ fn declared_dependencies(
         report.line(Severity::Error, "dependencies: dynamic project dependencies cannot be checked from pyproject.toml; inspect the build backend output and sync the environment")?;
         invalid = true;
     }
-    if document
-        .get("tool")
-        .and_then(|tool| tool.get("uv"))
-        .is_some_and(|uv| uv.as_table_like().is_none())
-    {
-        report
-            .line(Severity::Error, "dependencies: [tool.uv] must be a table")?;
-        return Ok(None);
-    }
     let Some(uv_configuration) = uv_configuration(root, document, report)?
     else {
         return Ok(None);
@@ -834,7 +842,7 @@ fn declared_dependencies(
                             invalid = true;
                         }
                     }
-                } else {
+                } else if value.as_str() != Some("all") {
                     report.line(
                         Severity::Error,
                         format!(
