@@ -202,6 +202,50 @@ fn accepts_pytest_prerelease_versions_without_semver_rules() {
 }
 
 #[test]
+fn uv_probe_failure_is_actionable_without_forwarding_the_probe_status() {
+    let sandbox = tempdir().unwrap();
+    let uv = install(&sandbox.path().join("bin"), "uv");
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["tools", "uv", "--uv"])
+        .arg(&uv)
+        .current_dir(sandbox.path())
+        .env("PYFARO_FIXTURE_VERSION_FAIL", "1")
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    let diagnostic = String::from_utf8_lossy(&output.stderr);
+    assert!(diagnostic.contains(&resolved(&uv)), "{diagnostic}");
+    assert!(
+        diagnostic.contains("fixture interpreter is broken"),
+        "{diagnostic}"
+    );
+}
+
+#[test]
+fn version_reports_remain_one_line_when_tools_print_extra_output() {
+    let sandbox = tempdir().unwrap();
+    let path = sandbox.path().join("bin");
+    let uv = install(&path, "uv");
+    let ruff = install(&path, "ruff");
+    for (tool, binary, version) in
+        [("uv", &uv, "uv 0.9.26"), ("ruff", &ruff, "ruff 0.14.0")]
+    {
+        let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+            .args(["tools", tool])
+            .current_dir(sandbox.path())
+            .env("PATH", &path)
+            .env("PYFARO_FIXTURE_VERSION_EXTRA", "1")
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        assert_eq!(
+            String::from_utf8(output.stdout).unwrap(),
+            format!("{tool}: {} ({version})\n", resolved(binary))
+        );
+    }
+}
+
+#[test]
 fn explicit_project_requires_its_own_metadata() {
     let sandbox = tempdir().unwrap();
     fs::write(

@@ -14,8 +14,10 @@ pyfaro tools uv --uv /path/to/uv
 
 Select a name to require that tool: a missing executable, failed version
 command, or unrecognized version produces an error and exit code 1. Failed
-probes include the selected path and bounded standard error. uv must be
-a stable version >=0.9.26; CI tests 0.9.26. Ruff, ty, and pytest must identify
+probes include the selected path and up to 4096 bytes of standard error. A
+strict tools check returns 1 even if its version probe exits with another
+code; delegated uv workflow exit codes are unchanged. uv must be a stable
+version >=0.9.26; CI tests 0.9.26. Ruff, ty, and pytest must identify
 themselves with a recognizable numeric version, including pytest's
 prerelease notation, but this command does not claim a tested compatibility
 range for them.

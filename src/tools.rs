@@ -1,7 +1,6 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs;
-use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -68,10 +67,19 @@ fn inspect(
     cancelled: &AtomicBool,
 ) -> Result<(PathBuf, String)> {
     if matches!(tool, Tool::Uv) {
-        return uv::Uv::inspect(
-            explicit_uv.cloned().unwrap_or_else(|| OsString::from("uv")),
-            cancelled,
-        );
+        let selected =
+            explicit_uv.cloned().unwrap_or_else(|| OsString::from("uv"));
+        return uv::Uv::inspect(selected.clone(), cancelled).map_err(|error| {
+            if matches!(error, Error::Cancelled) {
+                error
+            } else {
+                Error::ToolProbe {
+                    tool: "uv",
+                    path: PathBuf::from(selected),
+                    source: Box::new(error),
+                }
+            }
+        });
     }
     let tool_name = name(tool);
     let binary = resolve(tool_name, root)
@@ -169,21 +177,15 @@ fn probe_version(
         .stderr(error_file);
     let status = process::run(command, cancelled)?;
     if !status.success() {
-        let mut captured = Vec::new();
-        fs::File::open(stderr.path())
-            .map_err(|error| Error::io("read", stderr.path(), error))?
-            .take(4096)
-            .read_to_end(&mut captured)
-            .map_err(|error| Error::io("read", stderr.path(), error))?;
-        let detail = String::from_utf8_lossy(&captured);
+        let detail = process::read_diagnostic(stderr.path())?;
         return Err(Error::Project(format!(
             "{version_argument} exited with {status}: {}",
-            detail.trim()
+            detail
         )));
     }
     let output = fs::read_to_string(output.path())
         .map_err(|error| Error::io("read", output.path(), error))?;
-    let version = output.trim();
+    let version = output.lines().next().unwrap_or_default().trim();
     let number = version
         .strip_prefix(tool)
         .and_then(|rest| rest.strip_prefix(' '))

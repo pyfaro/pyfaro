@@ -54,6 +54,16 @@ impl Uv {
         let file = output
             .reopen()
             .map_err(|error| Error::io("open", output.path(), error))?;
+        let stderr = tempfile::NamedTempFile::new().map_err(|error| {
+            Error::io(
+                "create uv error output",
+                Path::new("temporary file"),
+                error,
+            )
+        })?;
+        let error_file = stderr
+            .reopen()
+            .map_err(|error| Error::io("open", stderr.path(), error))?;
         let mut command = Command::new(&binary);
         let cwd = std::env::current_dir().map_err(|error| {
             Error::io("resolve", Path::new("current directory"), error)
@@ -62,15 +72,21 @@ impl Uv {
             .current_dir(cwd)
             .arg("--version")
             .stdin(Stdio::null())
-            .stdout(file);
+            .stdout(file)
+            .stderr(error_file);
         let status = process::run(command, cancelled)?;
         if !status.success() {
-            return Err(Error::UvStatus { operation: "--version", status });
+            return Err(Error::UvProbe {
+                path: binary,
+                status,
+                stderr: process::read_diagnostic(stderr.path())?,
+            });
         }
         let version = fs::read_to_string(output.path())
             .map_err(|error| Error::io("read", output.path(), error))?;
-        validate_version(&version)?;
-        Ok((binary, version.trim().to_owned()))
+        let version = version.lines().next().unwrap_or_default().trim();
+        validate_version(version)?;
+        Ok((binary, version.to_owned()))
     }
 
     pub(crate) fn lock(

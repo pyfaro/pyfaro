@@ -48,6 +48,8 @@ pub(crate) enum Error {
     },
     #[error("uv {operation} failed ({status}); see uv's output above")]
     UvStatus { operation: &'static str, status: ExitStatus },
+    #[error("uv --version failed for {path} ({status}): {stderr}")]
+    UvProbe { path: PathBuf, status: ExitStatus, stderr: String },
     #[error("unsupported uv version: {0}; use uv >=0.9.26 (tested: 0.9.26)")]
     UvVersion(String),
     #[error("{tool}: {reason}")]
@@ -135,7 +137,9 @@ impl Error {
 
     pub fn exit_code(&self) -> i32 {
         match self {
-            Self::UvStatus { status, .. } => status.code().unwrap_or(1),
+            Self::UvStatus { status, .. } | Self::UvProbe { status, .. } => {
+                status.code().unwrap_or(1)
+            }
             Self::Cancelled => 130,
             _ => 1,
         }

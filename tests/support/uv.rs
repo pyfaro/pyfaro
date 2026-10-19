@@ -28,6 +28,9 @@ fn main() {
         };
         println!("{}", env::var("PYFARO_FIXTURE_VERSION")
             .unwrap_or_else(|_| default.into()));
+        if env::var_os("PYFARO_FIXTURE_VERSION_EXTRA").is_some() {
+            println!("plugin printed another line");
+        }
         return;
     }
     if args.iter().any(|arg| arg == "record") {
