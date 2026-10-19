@@ -50,7 +50,8 @@ fn assert_success(output: Output) -> String {
 
 fn assert_pinned_uv() {
     let output = Command::new("uv").arg("--version").output().unwrap();
-    assert_eq!(assert_success(output).trim(), "uv 0.9.26");
+    let version = assert_success(output);
+    assert_eq!(version.split_whitespace().nth(1), Some("0.9.26"));
 }
 
 #[test]
