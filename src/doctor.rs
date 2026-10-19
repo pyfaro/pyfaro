@@ -16,7 +16,7 @@ use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::{process, project, tools};
 mod uv_config;
-use uv_config::uv_configuration;
+use uv_config::{UvConfiguration, uv_configuration};
 
 #[derive(Clone, Copy)]
 enum Severity {
@@ -404,6 +404,17 @@ fn inspect_workspace(
     document: &DocumentMut,
     report: &mut Report,
 ) -> Result<bool> {
+    if document
+        .get("tool")
+        .and_then(|tool| tool.get("uv"))
+        .is_some_and(|uv| uv.as_table_like().is_none())
+    {
+        report.line(
+            Severity::Error,
+            "configuration: [tool.uv] in pyproject.toml must be a table",
+        )?;
+        return Ok(true);
+    }
     if let Some(managed) = document
         .get("tool")
         .and_then(|tool| tool.get("uv"))
@@ -893,18 +904,24 @@ fn declared_dependencies(
         report.line(Severity::Error, "dependencies: dynamic project dependencies cannot be checked from pyproject.toml; inspect the build backend output and sync the environment")?;
         invalid = true;
     }
-    let Some(uv_configuration) =
-        uv_configuration(root, document, uv_binary, cancelled, report)?
-    else {
+    if uv_configuration(root, document, uv_binary, cancelled, report)?.is_none()
+    {
         return Ok(None);
-    };
-    let project_settings =
-        uv_configuration.iter().find(|config| !config.standalone);
-    let default_setting = project_settings.and_then(|config| {
+    }
+    let project_settings = document
+        .get("tool")
+        .and_then(|tool| tool.get("uv"))
+        .map(|_| UvConfiguration {
+            document: document.clone(),
+            path: metadata.clone(),
+            standalone: false,
+        });
+    let default_setting = project_settings.as_ref().and_then(|config| {
         config.setting("default-groups").map(|value| (config, value))
     });
     let explicit_defaults = default_setting.is_some();
     let has_legacy_dev = project_settings
+        .as_ref()
         .is_some_and(|config| config.setting("dev-dependencies").is_some());
     let selected_groups = match default_setting {
         None => Some(vec!["dev".to_owned()]),
@@ -1040,7 +1057,7 @@ fn declared_dependencies(
             invalid = true;
         }
     }
-    for config in uv_configuration.iter().filter(|config| !config.standalone) {
+    for config in project_settings.iter() {
         let Some(legacy) = config.setting("dev-dependencies") else {
             continue;
         };

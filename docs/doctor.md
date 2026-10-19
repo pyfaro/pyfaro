@@ -72,13 +72,14 @@ For uv, a project `uv.toml` takes precedence over overlapping `[tool.uv]`
 configuration settings in `pyproject.toml`, not project metadata; doctor reports their
 coexistence as a warning when the project file is selected. `UV_CONFIG_FILE`
 and `UV_NO_CONFIG` suppress that warning because they override discovery.
-A non-table `[tool.uv]` value is an error only when
-that pyproject configuration is selected.
+A non-table `[tool.uv]` value is invalid project metadata and blocks even when
+standalone uv configuration is selected.
 
 Doctor parses `[project].dependencies` and uv's default dependency groups
 with PyPA's PEP 508 implementation available to the project interpreter
 (including pip's bundled copy or the copy in CPython's `ensurepip` wheel).
-The `dev` group is selected by default, unless uv's `default-groups` setting
+The `dev` group is selected by default, unless the selected project's
+`[tool.uv] default-groups` metadata
 changes that selection. `UV_NO_DEV`, `UV_NO_DEFAULT_GROUPS`, and the
 space-delimited `UV_NO_GROUP` environment variable remove top-level groups from installed
 distribution checks, as they do for uv. An included group remains selected when its parent is selected. Doctor discovers the nearest project
@@ -88,10 +89,10 @@ configuration from `$XDG_CONFIG_HOME/uv/uv.toml` (defaulting to
 `~/.config/uv/uv.toml`) on Unix or `%APPDATA%\uv\uv.toml` on Windows, and
 system configuration from the first available `$XDG_CONFIG_DIRS/uv/uv.toml`
 (defaulting to `/etc/xdg/uv/uv.toml`) or `/etc/uv/uv.toml` on Unix, or
-`%PROGRAMDATA%\uv\uv.toml` on Windows. The selected `[tool.uv]` in a
-`pyproject.toml` supplies `default-groups` and legacy `dev-dependencies`.
-A selected `uv.toml` cannot supply these project-only settings, so the `dev`
-group remains the default. Doctor rejects `conflicts`, `workspace`, `sources`,
+`%PROGRAMDATA%\uv\uv.toml` on Windows. The selected project's `pyproject.toml`
+supplies `default-groups` and legacy `dev-dependencies` independently of uv
+configuration discovery. An adjacent `uv.toml`, `UV_NO_CONFIG`, and
+`UV_CONFIG_FILE` do not remove this project metadata. Doctor rejects `conflicts`, `workspace`, `sources`,
 `dev-dependencies`, `default-groups`, `dependency-groups`, `managed`, `package`,
 `build-backend`, `environments`, `required-environments`,
 `build-constraint-dependencies`, `constraint-dependencies`,

@@ -1202,17 +1202,17 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
     let malformed_ignored_uv = doctor(&project, &bin, &uv);
     assert_eq!(
         malformed_ignored_uv.status.code(),
-        Some(0),
+        Some(1),
         "{malformed_ignored_uv:?}"
     );
-    assert!(!text(&malformed_ignored_uv).contains("must be a table"));
+    assert!(text(&malformed_ignored_uv).contains("must be a table"));
     fs::remove_file(project.join("uv.toml")).unwrap();
     let no_config = doctor_command(&project, &bin, &uv)
         .env("UV_NO_CONFIG", "1")
         .output()
         .unwrap();
-    assert_eq!(no_config.status.code(), Some(0), "{no_config:?}");
-    assert!(!text(&no_config).contains("must be a table"));
+    assert_eq!(no_config.status.code(), Some(1), "{no_config:?}");
+    assert!(text(&no_config).contains("must be a table"));
 
     fs::write(&metadata, "[project]\nname = 'sample'\n").unwrap();
     fs::write(project.join(".python-version"), "3.11\n").unwrap();
@@ -1271,27 +1271,35 @@ fn group_names_are_normalized_for_defaults_and_includes() {
 }
 
 #[test]
-fn project_uv_toml_masks_pyproject_settings() {
+fn project_uv_toml_preserves_project_dependency_metadata() {
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
     fs::create_dir(&project).unwrap();
     let uv = install(&bin, "uv");
     install(&bin, "python");
-    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\ndev-dependencies = ['missing-doctor-masked-package==1.0']\n").unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\ndev-dependencies = []\n").unwrap();
     fs::write(project.join("uv.toml"), "offline = true\n").unwrap();
 
     let output = doctor(&project, &bin, &uv);
     let report = text(&output);
     assert_eq!(output.status.code(), Some(0), "{output:?}");
     assert!(!report.contains("ERROR: configuration:"), "{report}");
-    assert!(report.contains("group \"quality\" is not checked"), "{report}");
-    assert!(!report.contains("group \"dev\" is not checked"), "{report}");
-    assert!(!report.contains("missing-doctor-masked-package"), "{report}");
+    assert!(report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['quality']\ndev-dependencies = [42]\n").unwrap();
+    let invalid_legacy = doctor(&project, &bin, &uv);
+    assert_eq!(invalid_legacy.status.code(), Some(1), "{invalid_legacy:?}");
+    assert!(
+        text(&invalid_legacy).contains("[tool.uv].dev-dependencies")
+            && text(&invalid_legacy)
+                .contains("must contain only requirement strings"),
+        "{invalid_legacy:?}"
+    );
 }
 
 #[test]
-fn explicit_and_no_config_override_discovery_without_project_only_settings() {
+fn explicit_and_no_config_override_discovery_but_not_project_metadata() {
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("project");
     let bin = sandbox.path().join("bin");
@@ -1320,8 +1328,8 @@ fn explicit_and_no_config_override_discovery_without_project_only_settings() {
         .unwrap();
     let report = text(&override_output);
     assert_eq!(override_output.status.code(), Some(0), "{override_output:?}");
-    assert!(report.contains("group \"quality\" is not checked"), "{report}");
-    assert!(!report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
     assert!(!report.contains("uv.toml takes precedence"), "{report}");
 
     let no_config = doctor_command(&project, &bin, &uv)
@@ -1330,8 +1338,8 @@ fn explicit_and_no_config_override_discovery_without_project_only_settings() {
         .unwrap();
     let report = text(&no_config);
     assert_eq!(no_config.status.code(), Some(0), "{no_config:?}");
-    assert!(report.contains("group \"quality\" is not checked"), "{report}");
-    assert!(!report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(report.contains("group \"dev\" is not checked"), "{report}");
+    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
     assert!(!report.contains("uv.toml takes precedence"), "{report}");
 
     let both = doctor_command(&project, &bin, &uv)
@@ -1341,10 +1349,7 @@ fn explicit_and_no_config_override_discovery_without_project_only_settings() {
         .output()
         .unwrap();
     assert_eq!(both.status.code(), Some(0), "{both:?}");
-    assert!(
-        text(&both).contains("group \"quality\" is not checked"),
-        "{both:?}"
-    );
+    assert!(text(&both).contains("group \"dev\" is not checked"), "{both:?}");
 }
 
 #[test]
@@ -1572,7 +1577,7 @@ fn pytest_ini_configuration_remains_compatible_with_pytest_eight() {
 }
 
 #[test]
-fn nearest_parent_uv_configuration_selects_default_groups() {
+fn ancestor_uv_configuration_does_not_override_project_default_groups() {
     let sandbox = tempdir().unwrap();
     let parent = sandbox.path().join("parent");
     let project = parent.join("project");
@@ -1603,8 +1608,8 @@ fn nearest_parent_uv_configuration_selects_default_groups() {
     let inherited = doctor(&project, &bin, &uv);
     let report = text(&inherited);
     assert_eq!(inherited.status.code(), Some(0), "{inherited:?}");
-    assert!(report.contains("group \"dev\" is not checked"), "{report}");
-    assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(report.contains("group \"quality\" is not checked"), "{report}");
+    assert!(!report.contains("group \"dev\" is not checked"), "{report}");
 
     fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\nquality = []\n[tool.uv]\ndefault-groups = ['dev']\n").unwrap();
     let nearer = doctor(&project, &bin, &uv);
