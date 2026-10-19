@@ -16,12 +16,15 @@ finding stays on one line. Doctor exits 1 if it reports any `ERROR`; warnings
 alone leave exit status 0. Cancellation exits 130. A failed tool version probe
 is a doctor finding, so its child process exit code is not forwarded.
 
-Python and uv are required. Python is searched in the project's `.venv`, then
+Python and uv are required. Python is searched in the project's environment, then
 `VIRTUAL_ENV`, then `PATH` (`python3` is a fallback on Unix). The reported
 Python version is checked against `[project].requires-python`, when present.
 Doctor also compares numeric `.python-version` pins (such as `3.12` or
 `3.12.4`) with the selected interpreter. Other pin forms produce a warning
 when doctor cannot compare them.
+`UV_PROJECT_ENVIRONMENT` selects the project environment instead of `.venv`.
+Absolute paths are used directly; relative paths are resolved from the
+selected project root. For standalone projects, this is uv's workspace root.
 
 uv follows the normal Pyfaro executable selection and requires stable uv
 0.9.26 or newer. Ruff, ty, and pytest use the same discovery and version rules
@@ -32,20 +35,22 @@ missing executable, install it in the intended environment or put it on
 Doctor validates `pyproject.toml` with the same Pyfaro config loader used by
 `sync` and `run`. It reports conflicting per-tool files alongside
 `[tool.ruff]`, `[tool.ty]`, or `[tool.pytest]`, and detects files where `src`,
-`tests`, or `.venv` directories are expected. A `.venv` directory without its
-Python interpreter is a blocking layout issue. On Unix, an existing
-`.venv/bin/python` without executable permission also blocks, even if another
+`tests`, or project environment directories are expected. A project environment
+without its Python interpreter is a blocking layout issue. On Unix, an existing
+project interpreter without executable permission also blocks, even if another
 Python is available on `PATH` and the project has no dependencies. For pytest,
 `pytest.ini`, `.pytest.ini`, `pytest.toml`, and `.pytest.toml` conflict with
 `[tool.pytest.ini_options]` or native `[tool.pytest]` settings. The TOML files
 are supported by pytest 9. `tox.ini` counts only when it has `[pytest]`, and
-`setup.cfg` counts only when it has `[tool:pytest]`. Unrelated nested
-`[tool.pytest]` tables do not count as pytest configuration. Multiple pytest
-configuration files also conflict. Native `[tool.pytest]` settings cannot be
+`setup.cfg` counts only when it has `[tool:pytest]`. Any key other than
+`ini_options` under `[tool.pytest]`, including a nested table, counts as native
+pytest configuration. Multiple pytest configuration files also conflict.
+Native `[tool.pytest]` settings cannot be
 combined with nonempty `[tool.pytest.ini_options]` in the same file. Doctor
-reports uv workspace members and roots as unsupported instead of claiming a
-standalone dependency check covers the entire workspace. For uv, a project `uv.toml`
-takes precedence over `[tool.uv]` in `pyproject.toml`; doctor reports their
+reports uv workspace roots and projects matched by `members` globs and not by
+`exclude` globs as unsupported. Other descendants remain standalone projects.
+For uv, a project `uv.toml` takes precedence over `[tool.uv]` in
+`pyproject.toml`; doctor reports their
 coexistence as a warning. A non-table `[tool.uv]` value is an error only when
 that pyproject configuration is selected.
 
@@ -67,7 +72,9 @@ system configuration from the first available `$XDG_CONFIG_DIRS/uv/uv.toml`
 A selected `uv.toml` cannot supply these project-only settings, so the `dev`
 group remains the default. Doctor rejects `conflicts`, `workspace`, `sources`,
 `dev-dependencies`, `default-groups`, `dependency-groups`, `managed`, `package`,
-`build-backend`, `environments`, and `required-environments` in any `uv.toml`
+`build-backend`, `environments`, `required-environments`,
+`build-constraint-dependencies`, `constraint-dependencies`,
+`exclude-dependencies`, and `override-dependencies` in any `uv.toml`
 with a blocking finding that identifies the file and the pyproject destination.
 `UV_CONFIG_FILE` selects an explicit standalone uv configuration file instead
 of discovery; relative paths are resolved from the selected project directory,
@@ -92,7 +99,7 @@ findings, even when a static dependencies array is also present. Explicit
 default group names are validated even when environment switches exclude them.
 An include table must contain only `include-group`.
 Doctor evaluates environment markers and checks applicable distribution names
-in the project's existing `.venv` using Python's standard
+in the project's existing environment using Python's standard
 `importlib.metadata`. A missing project interpreter or distribution is a
 blocking issue with a `pyfaro sync` action. If the parser is unavailable,
 cannot run, or rejects any requirement, doctor reports a blocking finding

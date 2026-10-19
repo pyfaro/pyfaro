@@ -25,8 +25,10 @@ themselves with a parseable version; pytest is checked using its
 version scheme, including prereleases. This command does not claim a tested
 compatibility range for them.
 
-For Ruff, ty, and pytest, resolution checks the nearest project's `.venv`
-first, then the environment named by `VIRTUAL_ENV`, then `PATH`. `--project`
+For Ruff, ty, and pytest, resolution checks the nearest project's environment
+first, then the environment named by `VIRTUAL_ENV`, then `PATH`. By default the
+project environment is `.venv`; `UV_PROJECT_ENVIRONMENT` can select another
+absolute path or a path relative to the project root. `--project`
 selects an exact project directory with `pyproject.toml`. Without a project,
 the activated environment and `PATH` are still checked. uv is resolved from
 `PATH` unless `--uv` names an executable or path; it is validated using the

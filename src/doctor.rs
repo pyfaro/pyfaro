@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::AtomicBool;
 
+use glob::{MatchOptions, Pattern};
 use pep440_rs::{Version, VersionSpecifiers};
 use toml_edit::{DocumentMut, Table};
 
@@ -211,10 +212,7 @@ fn inspect_configuration(
                 section != "pytest"
                     || config.get("ini_options").is_some()
                     || config.as_table_like().is_some_and(|table| {
-                        table.iter().any(|(name, value)| {
-                            name != "ini_options"
-                                && value.as_table_like().is_none()
-                        })
+                        table.iter().any(|(name, _)| name != "ini_options")
                     })
             });
         let mut present = Vec::new();
@@ -324,12 +322,39 @@ fn inspect_workspace(
                 Err(_) => continue,
             }
         };
-        if candidate
+        let workspace = candidate
             .get("tool")
             .and_then(|tool| tool.get("uv"))
-            .and_then(|uv| uv.get("workspace"))
-            .is_some()
-        {
+            .and_then(|uv| uv.get("workspace"));
+        let Some(workspace) = workspace else { continue };
+        let member = if directory == root {
+            true
+        } else {
+            let Ok(relative) = root.strip_prefix(directory) else { continue };
+            let matches = |key: &str| {
+                workspace
+                    .get(key)
+                    .and_then(|value| value.as_array())
+                    .is_some_and(|patterns| {
+                        patterns
+                            .iter()
+                            .filter_map(|value| value.as_str())
+                            .filter_map(|value| Pattern::new(value).ok())
+                            .any(|pattern| {
+                                pattern.matches_path_with(
+                                    relative,
+                                    MatchOptions {
+                                        case_sensitive: true,
+                                        require_literal_separator: true,
+                                        require_literal_leading_dot: false,
+                                    },
+                                )
+                            })
+                    })
+            };
+            matches("members") && !matches("exclude")
+        };
+        if member {
             report.line(Severity::Error, format!("configuration: uv workspace at {} is not supported by pyfaro doctor; use a standalone project", metadata.display()))?;
             return Ok(true);
         }
@@ -338,7 +363,7 @@ fn inspect_workspace(
 }
 
 fn inspect_layout(root: &Path, report: &mut Report) -> Result<()> {
-    for directory in ["src", "tests", ".venv"] {
+    for directory in ["src", "tests"] {
         let path = root.join(directory);
         if path.exists() && !path.is_dir() {
             report.line(
@@ -347,7 +372,10 @@ fn inspect_layout(root: &Path, report: &mut Report) -> Result<()> {
             )?;
         }
     }
-    let venv = root.join(".venv");
+    let venv = tools::project_environment(root);
+    if venv.exists() && !venv.is_dir() {
+        report.line(Severity::Error, format!("layout: {} must be a directory; move or remove the conflicting file", venv.display()))?;
+    }
     let interpreter = venv.join(if cfg!(windows) {
         "Scripts/python.exe"
     } else {
@@ -833,6 +861,10 @@ fn read_uv_configuration_file(
         "build-backend",
         "environments",
         "required-environments",
+        "build-constraint-dependencies",
+        "constraint-dependencies",
+        "exclude-dependencies",
+        "override-dependencies",
     ] {
         if document.get(field).is_some() {
             let destination = if field == "dependency-groups" {
@@ -919,9 +951,9 @@ fn declared_dependencies(
     let selected_groups = match default_setting {
         None => Some(vec!["dev".to_owned()]),
         Some((_, value)) if value.as_str() == Some("all") => None,
-        Some((config, value)) if value.as_array().is_some() => {
+        Some((config, value)) if let Some(values) = value.as_array() => {
             let mut names = Vec::new();
-            for entry in value.as_array().expect("checked above").iter() {
+            for entry in values.iter() {
                 if let Some(name) = entry.as_str() {
                     names.push(normalize_group_name(name));
                 } else {
@@ -1246,7 +1278,13 @@ fn inspect_dependencies(
     let Some(python) = python else {
         return Ok(());
     };
-    let local = root.join(".venv").join(if cfg!(windows) {
+    let environment = tools::project_environment(root);
+    let environment_name = if environment == root.join(".venv") {
+        ".venv".to_owned()
+    } else {
+        environment.display().to_string()
+    };
+    let local = environment.join(if cfg!(windows) {
         "Scripts/python.exe"
     } else {
         "bin/python"
@@ -1324,13 +1362,14 @@ fn inspect_dependencies(
         report.line(
             Severity::Ok,
             format!(
-                "dependencies: {} runtime distribution(s) installed in .venv",
-                dependencies.len()
+                "dependencies: {} runtime distribution(s) installed in {}",
+                dependencies.len(),
+                environment_name
             ),
         )
     } else {
         for name in missing.lines() {
-            report.line(Severity::Error, format!("dependencies: {name} is missing from .venv; run pyfaro sync"))?;
+            report.line(Severity::Error, format!("dependencies: {name} is missing from {environment_name}; run pyfaro sync"))?;
         }
         Ok(())
     }

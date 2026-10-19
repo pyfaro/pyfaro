@@ -124,7 +124,7 @@ pub(crate) fn inspect_python(
             resolve("python3", root).map_err(|error| match error {
                 Error::Tool { .. } => Error::Tool {
                     tool: "python",
-                    reason: "not found; install Python or make it available in the project .venv, active environment, or PATH".into(),
+                    reason: "not found; install Python or make it available in the project environment (.venv by default), active environment, or PATH".into(),
                 },
                 error => error,
             })?
@@ -149,7 +149,7 @@ pub(crate) fn inspect_python(
 fn resolve(tool: &'static str, root: Option<&Path>) -> Result<PathBuf> {
     let mut directories = Vec::new();
     if let Some(root) = root {
-        directories.push(root.join(".venv").join(scripts_directory()));
+        directories.push(project_environment(root).join(scripts_directory()));
     }
     if let Some(active) =
         env::var_os("VIRTUAL_ENV").filter(|value| !value.is_empty())
@@ -178,6 +178,18 @@ fn resolve(tool: &'static str, root: Option<&Path>) -> Result<PathBuf> {
         .and_then(|binary| native_binary(tool, binary))
 }
 
+pub(crate) fn project_environment(root: &Path) -> PathBuf {
+    match env::var_os("UV_PROJECT_ENVIRONMENT")
+        .filter(|value| !value.is_empty())
+    {
+        Some(value) => {
+            let path = PathBuf::from(value);
+            if path.is_absolute() { path } else { root.join(path) }
+        }
+        None => root.join(".venv"),
+    }
+}
+
 fn lookup_failure(
     tool: &'static str,
     path: PathBuf,
@@ -187,7 +199,7 @@ fn lookup_failure(
         which::Error::CannotFindBinaryPath => Error::Tool {
             tool,
             reason: format!(
-                "not found; install {tool} in the project .venv, activate an environment, or add it to PATH"
+                "not found; install {tool} in the project environment (.venv by default), activate an environment, or add it to PATH"
             ),
         },
         source => Error::ToolLookup { tool, path, source },

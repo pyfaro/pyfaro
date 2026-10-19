@@ -50,7 +50,8 @@ fn isolated_command(project: &Path) -> Command {
         .env("XDG_CONFIG_HOME", &user_config)
         .env("XDG_CONFIG_DIRS", &system_config)
         .env("APPDATA", &user_config)
-        .env("PROGRAMDATA", &system_config);
+        .env("PROGRAMDATA", &system_config)
+        .env_remove("UV_PROJECT_ENVIRONMENT");
     command
 }
 
@@ -82,6 +83,62 @@ fn workspace_member_reports_unsupported_layout() {
         "{report}"
     );
     assert!(!report.contains("OK: dependencies:"), "{report}");
+}
+
+#[test]
+fn workspace_root_reports_unsupported_layout() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("workspace");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'workspace'\n[tool.uv.workspace]\nmembers = []\n",
+    )
+    .unwrap();
+
+    let output = doctor(&project, &bin, &uv);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(text(&output).contains("uv workspace"));
+}
+
+#[test]
+fn workspace_ancestor_only_blocks_matching_nonexcluded_members() {
+    let sandbox = tempdir().unwrap();
+    let workspace = sandbox.path().join("workspace");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(workspace.join("packages/member")).unwrap();
+    fs::create_dir_all(workspace.join("packages/member/standalone")).unwrap();
+    fs::create_dir_all(workspace.join("packages/excluded")).unwrap();
+    fs::create_dir_all(workspace.join("other")).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(workspace.join("pyproject.toml"), "[project]\nname = 'workspace'\n[tool.uv.workspace]\nmembers = ['packages/*']\nexclude = ['packages/ex*']\n").unwrap();
+    for relative in [
+        "packages/member",
+        "packages/member/standalone",
+        "packages/excluded",
+        "other",
+    ] {
+        let project = workspace.join(relative);
+        fs::write(
+            project.join("pyproject.toml"),
+            "[project]\nname = 'sample'\n[dependency-groups]\ndev = []\n",
+        )
+        .unwrap();
+        let output = doctor(&project, &bin, &uv);
+        let report = text(&output);
+        let member = relative == "packages/member";
+        assert_eq!(
+            output.status.code(),
+            Some(if member { 1 } else { 0 }),
+            "{output:?}"
+        );
+        assert_eq!(report.contains("uv workspace"), member, "{report}");
+        assert_eq!(report.contains("OK: dependencies:"), !member, "{report}");
+    }
 }
 
 #[test]
@@ -175,6 +232,10 @@ fn project_only_uv_fields_are_rejected_in_all_configuration_locations() {
         "build-backend",
         "environments",
         "required-environments",
+        "build-constraint-dependencies",
+        "constraint-dependencies",
+        "exclude-dependencies",
+        "override-dependencies",
     ] {
         fs::write(&project_file, format!("{field} = true\n")).unwrap();
         let output = doctor(&project, &bin, &uv);
@@ -656,7 +717,6 @@ fn non_executable_project_python_is_blocking_without_dependencies() {
     let report = text(&output);
     assert_eq!(output.status.code(), Some(1), "{output:?}");
     assert!(report.contains(".venv/bin/python is not executable"), "{report}");
-    assert!(report.contains("OK: Python:"), "{report}");
 }
 
 #[test]
@@ -863,9 +923,17 @@ fn pytest_conflicts_require_pytest_sections_in_shared_ini_files() {
         "[project]\nname = 'sample'\n[tool.pytest.other]\nvalue = 1\n",
     )
     .unwrap();
-    let unrelated = doctor(&project, &bin, &uv);
-    assert_eq!(unrelated.status.code(), Some(0), "{unrelated:?}");
-    assert!(!text(&unrelated).contains("ERROR: configuration:"));
+    let nested = doctor(&project, &bin, &uv);
+    assert_eq!(nested.status.code(), Some(1), "{nested:?}");
+    assert!(text(&nested).contains("[tool.pytest] and .pytest.ini"));
+
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\n[tool.pytest.other]\nvalue = 1\n[tool.pytest.ini_options]\naddopts = '-q'\n").unwrap();
+    let mixed_nested = doctor(&project, &bin, &uv);
+    assert_eq!(mixed_nested.status.code(), Some(1), "{mixed_nested:?}");
+    assert!(
+        text(&mixed_nested)
+            .contains("[tool.pytest] and [tool.pytest.ini_options]")
+    );
 
     fs::write(
         project.join("pyproject.toml"),
@@ -1444,4 +1512,74 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         "{report}"
     );
     assert!(!report.contains("group \"dev\" is missing"), "{report}");
+}
+
+#[test]
+fn project_environment_override_is_used_for_layout_and_dependency_probes() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    fs::create_dir(&project).unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '1.0.0'\nrequires-python = '>=3.10'\ndependencies = []\n").unwrap();
+    for override_path in
+        [PathBuf::from("custom-env"), sandbox.path().join("absolute-env")]
+    {
+        let environment = if override_path.is_absolute() {
+            override_path.clone()
+        } else {
+            project.join(&override_path)
+        };
+        let sync = isolated_command(&project)
+            .arg("sync")
+            .arg("--offline")
+            .arg("--project")
+            .arg(&project)
+            .env("UV_PROJECT_ENVIRONMENT", &override_path)
+            .env("UV_CACHE_DIR", sandbox.path().join("cache"))
+            .output()
+            .unwrap();
+        assert!(sync.status.success(), "{sync:?}");
+        assert!(environment.is_dir());
+        let scripts =
+            environment.join(if cfg!(windows) { "Scripts" } else { "bin" });
+        install(&scripts, "ruff");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let stale = project.join(".venv/bin/python");
+            fs::create_dir_all(stale.parent().unwrap()).unwrap();
+            fs::write(&stale, "#!/bin/sh\nexit 44\n").unwrap();
+            fs::set_permissions(&stale, fs::Permissions::from_mode(0o755))
+                .unwrap();
+        }
+
+        fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '1.0.0'\nrequires-python = '>=3.10'\ndependencies = ['missing-doctor-fixture-package==1.0']\n").unwrap();
+        let output = isolated_command(&project)
+            .arg("doctor")
+            .arg("--project")
+            .arg(&project)
+            .env("UV_PROJECT_ENVIRONMENT", &override_path)
+            .output()
+            .unwrap();
+        let report = text(&output);
+        assert_eq!(output.status.code(), Some(1), "{output:?}");
+        assert!(report.contains("OK: Python:"), "{report}");
+        let ruff_line =
+            report.lines().find(|line| line.starts_with("OK: ruff:")).unwrap();
+        assert!(
+            ruff_line
+                .contains(environment.file_name().unwrap().to_str().unwrap()),
+            "{report}"
+        );
+        assert!(!report.contains("ERROR: layout:"), "{report}");
+        assert!(
+            report.contains(&format!(
+                "is missing from {}",
+                environment.display()
+            )),
+            "{report}"
+        );
+        assert!(!report.contains("project interpreter"), "{report}");
+
+        fs::write(project.join("pyproject.toml"), "[project]\nname = 'sample'\nversion = '1.0.0'\nrequires-python = '>=3.10'\ndependencies = []\n").unwrap();
+    }
 }
