@@ -60,7 +60,9 @@ Reapplying to an unchanged project is idempotent. uv rechecks its lockfile
 without `--upgrade`; external metadata or index changes may still require
 uv to update a stale lockfile. Commit `pyproject.toml` and `uv.lock` together.
 
-After initialization, use uv directly for the workflows not yet implemented:
+After initialization, the unreleased development build can synchronize the
+environment with `pyfaro sync --locked`. In the published `alpha.1`, use uv
+directly for workflows not yet implemented there:
 
 ```sh
 cd my-project

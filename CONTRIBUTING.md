@@ -7,10 +7,10 @@ Thank you for helping build Pyfaro. Please follow our
 
 - Git and Rust through rustup. `rust-toolchain.toml` pins Rust 1.90.0 with
   rustfmt and Clippy; the package's minimum supported Rust version is 1.90.
-- Python 3.10+ and uv **0.9.26** for the initialization integration tests.
-  CI pins Python 3.12 and uv 0.9.26 for the Linux workflow tests. macOS and
-  Windows verify builds, previews, explicit rejection of `init --apply`, and
-  the portable uv adapter and process cancellation tests. Successful uv
+- Python 3.10+ and uv **0.9.26** for workflow integration tests.
+  CI pins Python 3.12 and uv 0.9.26 on all three platforms. macOS and
+  Windows run `sync` as well as builds, previews, explicit rejection of
+  `init --apply`, and portable process tests. Successful uv
   scenarios run offline in disposable directories; no Python packages are
   installed. Failure scenarios use a portable Rust executable fixture.
 - Authenticated GitHub CLI for backlog maintenance.
@@ -57,7 +57,8 @@ version pinned in `.github/workflows/security.yml`, then run `cargo audit`.
 The CLI uses Clap's help/version status 0 and usage-error status 2. Initialization
 errors use status 1; delegated uv failures preserve their numeric exit code;
 cancellation uses 130. Test both preservation and idempotence when changing
-initialization. See the [init guide](docs/init.md) and the ADR for the contract.
+initialization. See the [init guide](docs/init.md), [sync guide](docs/sync.md),
+and the ADR for the contract.
 The [uv adapter guide](docs/uv-adapter.md) records delegation and platform
 behavior for new workflows.
 
