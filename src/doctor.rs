@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ffi::OsString;
 use std::fs;
 use std::io::Write;
@@ -83,7 +84,8 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
                     "pyproject.toml: valid Pyfaro configuration",
                 )?;
                 inspect_configuration(root, &document, &mut report)?;
-                dependencies = declared_dependencies(&document, &mut report)?;
+                dependencies =
+                    declared_dependencies(root, &document, &mut report)?;
                 requires_python = document
                     .get("project")
                     .and_then(|project| project.get("requires-python"))
@@ -140,7 +142,7 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
         )?;
     }
     if let (Some(root), Some(dependencies)) =
-        (root.as_deref(), dependencies.as_deref())
+        (root.as_deref(), dependencies.as_ref())
     {
         inspect_dependencies(
             root,
@@ -329,69 +331,123 @@ fn inspect_python_pin(
     Ok(())
 }
 
-fn collect_group(
-    name: &str,
-    groups: &Table,
-    requirements: &mut Vec<String>,
-    checked: &mut Vec<String>,
-    active: &mut Vec<String>,
-    report: &mut Report,
-) -> Result<bool> {
-    if checked.iter().any(|entry| entry == name) {
-        return Ok(true);
-    }
-    if active.iter().any(|entry| entry == name) {
-        report.line(
-            Severity::Error,
-            format!("dependencies: dependency group cycle includes {name:?}"),
-        )?;
-        return Ok(false);
-    }
-    let Some(group) = groups.get(name).and_then(|group| group.as_array())
-    else {
-        report.line(
-            Severity::Error,
-            format!("dependencies: group {name:?} is missing or not an array"),
-        )?;
-        return Ok(false);
-    };
-    active.push(name.to_owned());
-    let mut valid = true;
-    for entry in group.iter() {
-        if let Some(requirement) = entry.as_str() {
-            requirements.push(requirement.to_owned());
-        } else if let Some(included) = entry
-            .as_inline_table()
-            .and_then(|table| table.get("include-group"))
-            .and_then(|value| value.as_str())
-        {
-            valid &= collect_group(
-                included,
-                groups,
-                requirements,
-                checked,
-                active,
-                report,
-            )?;
+fn normalize_group_name(name: &str) -> String {
+    let mut normalized = String::with_capacity(name.len());
+    let mut separator = false;
+    for character in name.chars() {
+        if matches!(character, '-' | '_' | '.') {
+            if !separator {
+                normalized.push('-');
+            }
+            separator = true;
         } else {
+            normalized.push(character.to_ascii_lowercase());
+            separator = false;
+        }
+    }
+    normalized
+}
+
+fn valid_group_name(name: &str) -> bool {
+    let bytes = name.as_bytes();
+    bytes.first().is_some_and(u8::is_ascii_alphanumeric)
+        && bytes.last().is_some_and(u8::is_ascii_alphanumeric)
+        && bytes.iter().all(|byte| {
+            byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.')
+        })
+}
+
+struct GroupCollector<'a> {
+    groups: &'a Table,
+    names: &'a HashMap<String, String>,
+    checked: Vec<String>,
+    selected: Vec<String>,
+    active: Vec<String>,
+}
+
+impl GroupCollector<'_> {
+    fn collect(
+        &mut self,
+        name: &str,
+        requirements: &mut Vec<String>,
+        selected_group: bool,
+        report: &mut Report,
+    ) -> Result<bool> {
+        if self.active.iter().any(|entry| entry == name) {
             report.line(
                 Severity::Error,
                 format!(
-                    "dependencies: group {name:?} contains an invalid entry"
+                    "dependencies: dependency group cycle includes {name:?}"
                 ),
             )?;
-            valid = false;
+            return Ok(false);
         }
+        if self.checked.iter().any(|entry| entry == name) {
+            return Ok(true);
+        }
+        let Some(original) = self.names.get(name).cloned() else {
+            report.line(
+                Severity::Error,
+                format!("dependencies: group {name:?} is missing; define it in [dependency-groups]"),
+            )?;
+            return Ok(false);
+        };
+        let groups = self.groups;
+        let Some(group) =
+            groups.get(&original).and_then(|group| group.as_array())
+        else {
+            report.line(
+                Severity::Error,
+                format!("dependencies: group {original:?} must be an array"),
+            )?;
+            return Ok(false);
+        };
+        self.active.push(name.to_owned());
+        let mut valid = true;
+        for entry in group.iter() {
+            if let Some(requirement) = entry.as_str() {
+                requirements.push(requirement.to_owned());
+            } else {
+                let included = entry
+                    .as_inline_table()
+                    .filter(|table| table.len() == 1)
+                    .and_then(|table| table.get("include-group"))
+                    .and_then(|value| value.as_str());
+                if let Some(included) = included {
+                    valid &= self.collect(
+                        &normalize_group_name(included),
+                        requirements,
+                        selected_group,
+                        report,
+                    )?;
+                } else {
+                    report.line(
+                        Severity::Error,
+                        format!("dependencies: group {original:?} contains an invalid entry; use a requirement string or an include-group table with no extra keys"),
+                    )?;
+                    valid = false;
+                }
+            }
+        }
+        self.active.pop();
+        self.checked.push(name.to_owned());
+        if selected_group {
+            self.selected.push(name.to_owned());
+        }
+        Ok(valid)
     }
-    active.pop();
-    checked.push(name.to_owned());
-    Ok(valid)
+}
+
+struct DeclaredDependencies {
+    requirements: Vec<String>,
+    selected_count: usize,
 }
 
 fn declared_dependencies(
+    root: &Path,
     document: &DocumentMut,
     report: &mut Report,
-) -> Result<Option<Vec<String>>> {
+) -> Result<Option<DeclaredDependencies>> {
     let mut requirements = Vec::new();
     let mut invalid = false;
     if let Some(dependencies) =
@@ -421,10 +477,38 @@ fn declared_dependencies(
         report.line(Severity::Error, "dependencies: dynamic project dependencies cannot be checked from pyproject.toml; inspect the build backend output and sync the environment")?;
         invalid = true;
     }
-    let default_groups = document
-        .get("tool")
-        .and_then(|tool| tool.get("uv"))
-        .and_then(|uv| uv.get("default-groups"));
+    let uv_path = root.join("uv.toml");
+    let uv_document = match fs::read_to_string(&uv_path) {
+        Ok(contents) => {
+            match contents.parse::<DocumentMut>() {
+                Ok(document) => Some(document),
+                Err(error) => {
+                    report.line(Severity::Error, format!("dependencies: invalid {}: {error}; correct uv.toml", uv_path.display()))?;
+                    return Ok(None);
+                }
+            }
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) => {
+            report.line(
+                Severity::Error,
+                format!(
+                    "dependencies: cannot read {}: {error}; repair uv.toml",
+                    uv_path.display()
+                ),
+            )?;
+            return Ok(None);
+        }
+    };
+    let default_groups = if let Some(uv_document) = uv_document.as_ref() {
+        uv_document.get("default-groups")
+    } else {
+        document
+            .get("tool")
+            .and_then(|tool| tool.get("uv"))
+            .and_then(|uv| uv.get("default-groups"))
+    };
+    let explicit_defaults = default_groups.is_some();
     let selected_groups = match default_groups {
         None => Some(vec!["dev".to_owned()]),
         Some(value) if value.as_str() == Some("all") => None,
@@ -433,7 +517,7 @@ fn declared_dependencies(
                 let mut names = Vec::new();
                 for entry in entries.iter() {
                     if let Some(name) = entry.as_str() {
-                        names.push(name.to_owned());
+                        names.push(normalize_group_name(name));
                     } else {
                         report.line(Severity::Error, "dependencies: [tool.uv].default-groups must contain only group names")?;
                         invalid = true;
@@ -447,31 +531,66 @@ fn declared_dependencies(
             }
         }
     };
-    let mut checked_groups = Vec::new();
+    let mut unselected_requirements = Vec::new();
     if let Some(groups) = document.get("dependency-groups") {
-        if let Some(groups) = groups.as_table() {
-            let names: Vec<String> = match &selected_groups {
-                Some(selected) => selected
-                    .iter()
-                    .filter(|name| groups.contains_key(name.as_str()))
-                    .cloned()
-                    .collect(),
-                None => {
-                    groups.iter().map(|(name, _)| name.to_owned()).collect()
+        let groups = groups.as_table().cloned().or_else(|| {
+            groups.as_inline_table().map(|inline| inline.clone().into_table())
+        });
+        if let Some(groups) = groups {
+            let mut group_names = HashMap::new();
+            for (name, _) in groups.iter() {
+                if !valid_group_name(name) {
+                    report.line(Severity::Error, format!("dependencies: group name {name:?} is invalid; use an ASCII name starting and ending with a letter or digit"))?;
+                    invalid = true;
                 }
+                let normalized = normalize_group_name(name);
+                if let Some(previous) =
+                    group_names.insert(normalized.clone(), name.to_owned())
+                {
+                    report.line(Severity::Error, format!("dependencies: duplicate dependency group names {previous:?} and {name:?} normalize to {normalized:?}; rename one group"))?;
+                    invalid = true;
+                }
+            }
+            let mut collector = GroupCollector {
+                groups: &groups,
+                names: &group_names,
+                checked: Vec::new(),
+                selected: Vec::new(),
+                active: Vec::new(),
             };
-            for name in names {
-                invalid |= !collect_group(
+            let selected_names: Vec<String> = match &selected_groups {
+                Some(selected) => selected.clone(),
+                None => groups
+                    .iter()
+                    .map(|(name, _)| normalize_group_name(name))
+                    .collect(),
+            };
+            for name in selected_names {
+                if !explicit_defaults
+                    && name == "dev"
+                    && !group_names.contains_key(&name)
+                {
+                    continue;
+                }
+                invalid |= !collector.collect(
                     &name,
-                    groups,
                     &mut requirements,
-                    &mut checked_groups,
-                    &mut Vec::new(),
+                    true,
                     report,
                 )?;
             }
             for (name, _) in groups.iter() {
-                if !checked_groups.iter().any(|entry| entry == name) {
+                let normalized = normalize_group_name(name);
+                if !collector.checked.iter().any(|entry| entry == &normalized) {
+                    invalid |= !collector.collect(
+                        &normalized,
+                        &mut unselected_requirements,
+                        false,
+                        report,
+                    )?;
+                }
+                if !collector.selected.iter().any(|entry| entry == &normalized)
+                {
                     report.line(Severity::Warn, format!("dependencies: group {name:?} is not checked because pyfaro sync does not select it by default; sync it explicitly if needed"))?;
                 }
             }
@@ -482,14 +601,24 @@ fn declared_dependencies(
             )?;
             invalid = true;
         }
+    } else if explicit_defaults && let Some(selected) = &selected_groups {
+        for name in selected {
+            report.line(Severity::Error, format!("dependencies: group {name:?} is missing; define it in [dependency-groups]"))?;
+            invalid = true;
+        }
     }
-    if selected_groups
-        .as_ref()
-        .is_none_or(|selected| selected.iter().any(|name| name == "dev"))
-        && let Some(legacy) = document
+    let legacy = if let Some(uv_document) = uv_document.as_ref() {
+        uv_document.get("dev-dependencies")
+    } else {
+        document
             .get("tool")
             .and_then(|tool| tool.get("uv"))
             .and_then(|uv| uv.get("dev-dependencies"))
+    };
+    if selected_groups
+        .as_ref()
+        .is_none_or(|selected| selected.iter().any(|name| name == "dev"))
+        && let Some(legacy) = legacy
     {
         if let Some(legacy) = legacy.as_array() {
             for entry in legacy.iter() {
@@ -508,7 +637,10 @@ fn declared_dependencies(
             invalid = true;
         }
     }
-    Ok((!invalid).then_some(requirements))
+    let selected_count = requirements.len();
+    requirements.extend(unselected_requirements);
+    Ok((!invalid)
+        .then_some(DeclaredDependencies { requirements, selected_count }))
 }
 
 const REQUIREMENT_PROBE: &str = r#"
@@ -546,7 +678,7 @@ fn active_dependencies(
     requirements: &[String],
     cancelled: &AtomicBool,
     report: &mut Report,
-) -> Result<Option<Vec<String>>> {
+) -> Result<Option<Vec<(usize, String)>>> {
     let output = tempfile::NamedTempFile::new().map_err(|error| {
         Error::io(
             "create requirement output",
@@ -584,9 +716,19 @@ fn active_dependencies(
                 .reopen()
                 .map_err(|error| Error::io("open", errors.path(), error))?,
         );
-    let status = process::run(command, cancelled)?;
+    let status = match process::run(command, cancelled) {
+        Ok(status) => status,
+        Err(Error::Cancelled) => return Err(Error::Cancelled),
+        Err(error) => {
+            report.line(
+                Severity::Error,
+                format!("dependencies: could not run requirement parser with {}: {error}; repair the selected Python interpreter or run pyfaro sync", python.display()),
+            )?;
+            return Ok(None);
+        }
+    };
     if !status.success() {
-        report.line(Severity::Error, format!("dependencies: could not parse requirements with {} ({status}): {}", python.display(), process::read_diagnostic(errors.path())?))?;
+        report.line(Severity::Error, format!("dependencies: could not parse requirements with {} ({status}): {}; repair the selected Python interpreter or install packaging", python.display(), process::read_diagnostic(errors.path())?))?;
         return Ok(None);
     }
     let output = fs::read_to_string(output.path())
@@ -597,8 +739,9 @@ fn active_dependencies(
         let mut fields = line.split('\t');
         let kind = fields.next();
         let index = fields.next().and_then(|value| value.parse::<usize>().ok());
-        let Some(requirement) = index.and_then(|index| requirements.get(index))
-        else {
+        let Some((index, requirement)) = index.and_then(|index| {
+            requirements.get(index).map(|requirement| (index, requirement))
+        }) else {
             report.line(
                 Severity::Error,
                 "dependencies: invalid requirement probe output",
@@ -607,7 +750,7 @@ fn active_dependencies(
         };
         match (kind, fields.next(), fields.next()) {
             (Some("A"), Some(name), None) if !name.is_empty() => {
-                names.push(name.to_owned())
+                names.push((index, name.to_owned()))
             }
             (Some("E"), None, None) => {
                 report.line(Severity::Error, format!("dependencies: invalid requirement {requirement:?}; correct pyproject.toml"))?;
@@ -622,9 +765,7 @@ fn active_dependencies(
             }
         }
     }
-    names.sort_unstable();
-    names.dedup();
-    if names.is_empty() && invalid {
+    if invalid {
         return Ok(None);
     }
     Ok(Some(names))
@@ -633,11 +774,11 @@ fn active_dependencies(
 fn inspect_dependencies(
     root: &Path,
     python: Option<&Path>,
-    dependencies: &[String],
+    dependencies: &DeclaredDependencies,
     cancelled: &AtomicBool,
     report: &mut Report,
 ) -> Result<()> {
-    if dependencies.is_empty() {
+    if dependencies.requirements.is_empty() {
         return report.line(
             Severity::Ok,
             "dependencies: no runtime dependencies to check",
@@ -652,11 +793,23 @@ fn inspect_dependencies(
         "bin/python"
     });
     let parser_python = if local.is_file() { &local } else { python };
-    let Some(dependencies) =
-        active_dependencies(parser_python, dependencies, cancelled, report)?
+    let declared_count = dependencies.selected_count;
+    let Some(dependencies) = active_dependencies(
+        parser_python,
+        &dependencies.requirements,
+        cancelled,
+        report,
+    )?
     else {
         return Ok(());
     };
+    let mut dependencies: Vec<String> = dependencies
+        .into_iter()
+        .filter(|(index, _)| *index < declared_count)
+        .map(|(_, name)| name)
+        .collect();
+    dependencies.sort_unstable();
+    dependencies.dedup();
     if dependencies.is_empty() {
         return report.line(
             Severity::Ok,
@@ -721,5 +874,27 @@ fn inspect_dependencies(
             report.line(Severity::Error, format!("dependencies: {name} is missing from .venv; run pyfaro sync"))?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Report, active_dependencies};
+    use std::sync::atomic::AtomicBool;
+
+    #[test]
+    fn requirement_parser_spawn_failure_is_a_blocking_finding() {
+        let sandbox = tempfile::tempdir().unwrap();
+        let missing_python = sandbox.path().join("missing-python");
+        let mut report = Report { blocking: 0 };
+        let result = active_dependencies(
+            &missing_python,
+            &["example>=1".to_owned()],
+            &AtomicBool::new(false),
+            &mut report,
+        )
+        .unwrap();
+        assert!(result.is_none());
+        assert_eq!(report.blocking, 1);
     }
 }

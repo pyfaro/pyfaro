@@ -201,6 +201,77 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
 }
 
 #[test]
+fn group_names_are_normalized_for_defaults_and_includes() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    let metadata = project.join("pyproject.toml");
+    fs::write(&metadata, "[project]\nname = 'sample'\n[dependency-groups]\nQA__Test = [{include-group = 'other..test'}]\nOther-Test = []\n[tool.uv]\ndefault-groups = ['qa.test']\n").unwrap();
+    let output = doctor(&project, &bin, &uv);
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    let report = text(&output);
+    assert!(!report.contains("is not checked"), "{report}");
+    assert!(report.contains("no blocking issues"), "{report}");
+}
+
+#[test]
+fn invalid_and_unselected_groups_are_blocking_without_distribution_checks() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    let metadata = project.join("pyproject.toml");
+    let cases = [
+        (
+            "[tool.uv]\ndefault-groups = ['missing']\n",
+            "group \"missing\" is missing",
+        ),
+        (
+            "[dependency-groups]\nqa = []\n[tool.uv]\ndefault-groups = ['missing']\n",
+            "group \"missing\" is missing",
+        ),
+        (
+            "[dependency-groups]\ndev = []\nQA_Test = []\nqa-test = []\n",
+            "duplicate dependency group names",
+        ),
+        (
+            "[dependency-groups]\ndev = []\n'bad_' = []\n",
+            "group name \"bad_\" is invalid",
+        ),
+        (
+            "[dependency-groups]\ndev = []\nother = [42]\n",
+            "group \"other\" contains an invalid entry",
+        ),
+        (
+            "[dependency-groups]\ndev = []\nother = [{include-group = 'cycle'}]\ncycle = [{include-group = 'OTHER'}]\n",
+            "dependency group cycle",
+        ),
+        (
+            "[dependency-groups]\ndev = []\nother = [{include-group = 'missing'}]\n",
+            "group \"missing\" is missing",
+        ),
+        (
+            "[dependency-groups]\ndev = []\nother = [{include-group = 'dev', extra = true}]\n",
+            "group \"other\" contains an invalid entry",
+        ),
+    ];
+    for (groups, expected) in cases {
+        fs::write(&metadata, format!("[project]\nname = 'sample'\n{groups}"))
+            .unwrap();
+        let output = doctor(&project, &bin, &uv);
+        let report = text(&output);
+        assert_eq!(output.status.code(), Some(1), "{output:?}");
+        assert!(report.contains(expected), "{report}");
+        assert!(!report.contains("OK: dependencies:"), "{report}");
+    }
+}
+
+#[test]
 fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("project");
@@ -285,7 +356,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     );
     assert_eq!(fs::read(project.join("uv.lock")).unwrap(), before);
 
-    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\ndependencies = ['broken =>1']\n").unwrap();
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\ndependencies = ['missing-doctor-valid-package==1.0', 'broken =>1']\n").unwrap();
     let malformed = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
         .arg("doctor")
         .arg("--project")
@@ -296,6 +367,24 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         .unwrap();
     assert_eq!(malformed.status.code(), Some(1), "{malformed:?}");
     assert!(text(&malformed).contains("invalid requirement"), "{malformed:?}");
+    assert!(!text(&malformed).contains("OK: dependencies:"));
+
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = []\nother = ['broken =>1']\n").unwrap();
+    let malformed_unselected = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("doctor")
+        .arg("--project")
+        .arg(&project)
+        .env("PATH", &path)
+        .env_remove("VIRTUAL_ENV")
+        .output()
+        .unwrap();
+    assert_eq!(
+        malformed_unselected.status.code(),
+        Some(1),
+        "{malformed_unselected:?}"
+    );
+    assert!(text(&malformed_unselected).contains("invalid requirement"));
+    assert!(!text(&malformed_unselected).contains("OK: dependencies:"));
 
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = ['missing-doctor-dev-package==1.0']\nquality = ['missing-doctor-quality-package==1.0']\n").unwrap();
     let grouped = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
@@ -354,4 +443,61 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         "{report}"
     );
     assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\nQA__Test = [{include-group = 'other..test'}]\nOther-Test = ['missing-doctor-normalized-package==1.0']\n[tool.uv]\ndefault-groups = ['qa.test']\n").unwrap();
+    let normalized = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("doctor")
+        .arg("--project")
+        .arg(&project)
+        .env("PATH", &path)
+        .env_remove("VIRTUAL_ENV")
+        .output()
+        .unwrap();
+    assert_eq!(normalized.status.code(), Some(1), "{normalized:?}");
+    let report = text(&normalized);
+    assert!(
+        report.contains(
+            "missing-doctor-normalized-package is missing from .venv"
+        ),
+        "{report}"
+    );
+    assert!(!report.contains("is not checked"), "{report}");
+
+    fs::write(&metadata, "dependency-groups = { dev = ['missing-doctor-inline-package==1.0'] }\n[project]\nname = 'sample'\nversion = '1.0.0'\n").unwrap();
+    let inline = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("doctor")
+        .arg("--project")
+        .arg(&project)
+        .env("PATH", &path)
+        .env_remove("VIRTUAL_ENV")
+        .output()
+        .unwrap();
+    assert_eq!(inline.status.code(), Some(1), "{inline:?}");
+    assert!(
+        text(&inline)
+            .contains("missing-doctor-inline-package is missing from .venv"),
+        "{inline:?}"
+    );
+
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = ['missing-doctor-dev-package==1.0']\nquality = ['missing-doctor-uvtoml-package==1.0']\n").unwrap();
+    fs::write(project.join("uv.toml"), "default-groups = ['quality']\n")
+        .unwrap();
+    let configured = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("doctor")
+        .arg("--project")
+        .arg(&project)
+        .env("PATH", &path)
+        .env_remove("VIRTUAL_ENV")
+        .output()
+        .unwrap();
+    assert_eq!(configured.status.code(), Some(1), "{configured:?}");
+    let report = text(&configured);
+    assert!(
+        report.contains("missing-doctor-uvtoml-package is missing from .venv"),
+        "{report}"
+    );
+    assert!(
+        !report.contains("missing-doctor-dev-package is missing"),
+        "{report}"
+    );
 }

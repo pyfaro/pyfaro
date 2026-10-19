@@ -40,17 +40,26 @@ Doctor parses `[project].dependencies` and uv's default dependency groups
 with PyPA's PEP 508 implementation available to the project interpreter
 (including pip's bundled copy or the copy in CPython's `ensurepip` wheel).
 The `dev` group is selected by default, unless `[tool.uv].default-groups`
-changes that selection. Included groups are followed. Legacy
-`[tool.uv].dev-dependencies` are also checked when `dev` is selected.
+or the project `uv.toml` changes that selection. Project `uv.toml` takes
+precedence over `[tool.uv]`. Both table and inline-table group declarations
+are accepted. Group names in defaults and includes match according
+to PEP 735: case is ignored and runs of `-`, `_`, or `.` are equivalent.
+Invalid group names, duplicate names after normalization, and explicitly
+selected groups that are missing are blocking findings. Included groups are
+followed. Legacy uv
+`dev-dependencies` are also checked when `dev` is selected.
 Non-default groups not included by a selected group are reported as unchecked
-warnings, since `pyfaro sync` does not install them by default. Invalid group
+warnings, since `pyfaro sync` does not install them by default. Doctor still
+validates their requirement strings, entry structure, and inclusion cycles,
+without checking whether their distributions are installed. Invalid group
 entries, inclusion cycles, and dynamic project dependencies are blocking
-findings.
+findings. An include table must contain only `include-group`.
 Doctor evaluates environment markers and checks applicable distribution names
 in the project's existing `.venv` using Python's standard
 `importlib.metadata`. A missing project interpreter or distribution is a
 blocking issue with a `pyfaro sync` action. If the parser is unavailable,
-doctor reports a blocking finding. Doctor checks presence, not requirement
+cannot run, or rejects any requirement, doctor reports a blocking finding
+without an OK dependency summary. Doctor checks presence, not requirement
 version constraints, optional extras, or lockfile freshness. Use
 `pyfaro sync --locked` when a fresh, reproducible installation check is needed.
 
