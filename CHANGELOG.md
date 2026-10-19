@@ -10,6 +10,8 @@ This version has not been published.
 - Add `pyfaro create lib` and `pyfaro create cli` with packaged source layouts,
   a uv build backend, smoke tests, and independent distribution, package, and
   command names.
+- Add uv-backed `pyfaro python list|install|pin`. Only explicit installation
+  permits interpreter downloads; pinning follows uv's project constraints.
 
 ## 0.1.0-alpha.2 — 2026-10-19
 

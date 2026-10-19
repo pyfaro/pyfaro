@@ -8,7 +8,7 @@ use clap::{Args, Parser, Subcommand};
 #[command(version, about, long_about = None)]
 #[command(arg_required_else_help = true)]
 #[command(
-    after_help = "Experimental alpha: create, init, sync, run, add, remove, and tools are implemented; other workflow commands are not implemented yet."
+    after_help = "Experimental alpha: create, init, sync, run, add, remove, python, and tools are implemented; other workflow commands are not implemented yet."
 )]
 pub(crate) struct Cli {
     #[command(subcommand)]
@@ -29,6 +29,8 @@ pub(crate) enum Command {
     Remove(DependencyArgs),
     /// Run a command in the project environment through uv
     Run(RunArgs),
+    /// List, install, or pin Python versions through uv
+    Python(PythonArgs),
     /// Show resolved paths and versions of external tools
     Tools(ToolsArgs),
 }
@@ -100,6 +102,52 @@ pub(crate) struct CreateCliArgs {
     /// Installed command name (defaults to the distribution name)
     #[arg(long)]
     pub command: Option<String>,
+}
+
+#[derive(Args)]
+pub(crate) struct PythonArgs {
+    #[command(subcommand)]
+    pub command: PythonCommand,
+
+    /// Exact project directory; otherwise use the current directory
+    #[arg(long, global = true)]
+    pub project: Option<PathBuf>,
+
+    /// uv executable (a path or a name found on PATH)
+    #[arg(long, global = true, default_value = "uv")]
+    pub uv: OsString,
+
+    /// Disable network access in uv
+    #[arg(long, global = true)]
+    pub offline: bool,
+}
+
+#[derive(Subcommand)]
+pub(crate) enum PythonCommand {
+    /// List installed and available Python versions
+    List {
+        /// Python request to filter by
+        request: Option<OsString>,
+        /// Show installed versions only
+        #[arg(long)]
+        only_installed: bool,
+        /// Include old patch versions
+        #[arg(long)]
+        all_versions: bool,
+    },
+    /// Explicitly download and install Python versions
+    Install {
+        /// Python version requests; without targets uv uses .python-version
+        targets: Vec<OsString>,
+    },
+    /// Write or display the local .python-version pin
+    Pin {
+        /// Python version request; omit to display the current pin
+        request: Option<OsString>,
+        /// Remove the local pin
+        #[arg(long, conflicts_with = "request")]
+        rm: bool,
+    },
 }
 
 #[derive(Args)]

@@ -18,6 +18,7 @@ fn help_describes_the_current_development_status() {
     assert!(stdout.contains("add"));
     assert!(stdout.contains("remove"));
     assert!(stdout.contains("run"));
+    assert!(stdout.contains("python"));
     assert!(stdout.contains("tools"));
     assert!(output.stderr.is_empty());
 }

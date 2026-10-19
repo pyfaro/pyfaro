@@ -97,6 +97,11 @@ test; the CLI variant also creates a console entry point. Creation itself
 does not invoke uv or download Python. See the [create guide](docs/create.md)
 for naming, interpreter, and build details.
 
+The development version also adds `pyfaro python list`, `python install`, and
+`python pin` as thin uv wrappers. Listing and pinning do not download Python;
+an explicit `install` may do so unless `--offline` is set. See the
+[Python guide](docs/python.md) for project selection and pin behavior.
+
 ## Planned experience
 
 - Create and initialize Python projects with opinionated, editable defaults.
@@ -110,7 +115,7 @@ Remaining planned commands: `dev`,
 `lint`, `fmt`, `type`, `check`, `test`, `build`, and `doctor`.
 These commands are roadmap items, not working functionality. The published
 `alpha.2` includes `init`, `sync`, `run`, and `tools`; the development version
-also includes `create`, `add`, and `remove`.
+also includes `create`, `add`, `remove`, and `python`.
 
 ## Integration over reimplementation
 
