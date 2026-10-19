@@ -142,6 +142,23 @@ impl Uv {
         self.execute_with_input(root, operation, args, cancelled, false, true)
     }
 
+    pub(crate) fn execute_python<A: AsRef<OsStr>>(
+        &self,
+        root: &Path,
+        operation: &'static str,
+        args: &[A],
+        install: bool,
+        cancelled: &AtomicBool,
+    ) -> Result<()> {
+        let mut command = self.command(root, !install);
+        command
+            .env_remove("UV_NO_PROJECT")
+            .env_remove("UV_NO_CONFIG")
+            .env_remove("UV_PYTHON")
+            .args(args);
+        self.run_command(command, operation, cancelled, false)
+    }
+
     pub(crate) fn execute_interactive<A: AsRef<OsStr>>(
         &self,
         root: &Path,
@@ -161,11 +178,21 @@ impl Uv {
         interactive: bool,
         ignore_dev_env: bool,
     ) -> Result<()> {
-        let mut command = self.command(root);
+        let mut command = self.command(root, true);
         if ignore_dev_env {
             command.env_remove("UV_DEV");
         }
         command.args(args);
+        self.run_command(command, operation, cancelled, interactive)
+    }
+
+    fn run_command(
+        &self,
+        command: Command,
+        operation: &'static str,
+        cancelled: &AtomicBool,
+        interactive: bool,
+    ) -> Result<()> {
         let status = if interactive {
             process::run_interactive(command, cancelled)?
         } else {
@@ -178,7 +205,7 @@ impl Uv {
         }
     }
 
-    fn command(&self, root: &Path) -> Command {
+    fn command(&self, root: &Path, no_python_downloads: bool) -> Command {
         let mut command = Command::new(&self.binary);
         command
             .current_dir(root)
@@ -189,8 +216,11 @@ impl Uv {
             .env_remove("UV_LOCKED")
             .env_remove("UV_NO_SYNC")
             .env_remove("UV_ISOLATED")
-            .env_remove("UV_INIT_BUILD_BACKEND")
-            .args(["--no-python-downloads", "--no-progress"]);
+            .env_remove("UV_INIT_BUILD_BACKEND");
+        if no_python_downloads {
+            command.arg("--no-python-downloads");
+        }
+        command.arg("--no-progress");
         if self.offline {
             command.arg("--offline");
         }

@@ -1,6 +1,23 @@
 use std::{env, fs, process, thread, time::{Duration, Instant}};
 
 fn main() {
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStrExt;
+        let raw: Vec<_> = env::args_os().skip(1).collect();
+        if env::var_os("PYFARO_FIXTURE_MODE").as_deref()
+            == Some(std::ffi::OsStr::new("python-install-os"))
+            && raw.windows(2).any(|pair| pair == ["python", "install"])
+        {
+            let mut bytes = Vec::new();
+            for arg in raw {
+                bytes.extend_from_slice(arg.as_bytes());
+                bytes.push(0);
+            }
+            fs::write("uv-arguments.bin", bytes).unwrap();
+            return;
+        }
+    }
     let args: Vec<_> = env::args().skip(1).collect();
     if args == ["--heartbeat"] {
         fs::write("uv-descendant.pid", process::id().to_string()).unwrap();
@@ -43,6 +60,17 @@ fn main() {
         process::exit(37);
     }
     let mode = env::var("PYFARO_FIXTURE_MODE").unwrap_or_default();
+    if args.windows(2).any(|pair| pair == ["python", "install"])
+        && mode.starts_with("python-install")
+    {
+        fs::write("uv-arguments.txt", args.join("\n")).unwrap();
+        if mode == "python-install-fail" {
+            eprintln!("fixture: Python download failed");
+            process::exit(37);
+        }
+        println!("fixture: Python installed");
+        return;
+    }
     if args.iter().any(|arg| arg == "lock") && mode == "fail-restore" {
         for file in ["pyproject.toml", "uv.lock"] {
             fs::remove_file(file).unwrap();

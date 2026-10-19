@@ -6,6 +6,7 @@ mod error;
 mod init;
 mod process;
 mod project;
+mod python;
 mod run;
 mod sync;
 mod tools;
@@ -28,6 +29,7 @@ fn main() {
         cli::Command::Add(args) => deps::run(deps::Action::Add, args),
         cli::Command::Remove(args) => deps::run(deps::Action::Remove, args),
         cli::Command::Run(args) => run::run(args),
+        cli::Command::Python(args) => python::run(args),
         cli::Command::Tools(args) => tools::run(args),
     };
     if let Err(error) = result {
