@@ -196,6 +196,19 @@ fn run_rejects_a_directory_without_project_metadata() {
     assert!(output.stdout.is_empty());
     assert!(!parent.path().join("uv.lock").exists());
     assert!(!parent.path().join(".venv").exists());
+    fs::create_dir(child.join("pyproject.toml")).unwrap();
+    let invalid = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["run", "--offline", "--project"])
+        .arg(&child)
+        .args(["--", "python", "-c", "pass"])
+        .output()
+        .unwrap();
+    assert!(!invalid.status.success(), "{invalid:?}");
+    assert!(
+        String::from_utf8_lossy(&invalid.stderr)
+            .contains("project metadata is not a file"),
+        "{invalid:?}"
+    );
 }
 
 #[test]
