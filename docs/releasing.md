@@ -109,8 +109,13 @@ with uv. `init --apply` is intentionally unsupported on macOS and Windows:
 ```sh
 cargo run --locked -- init ../pyfaro-alpha2-init-smoke
 cargo run --locked -- init ../pyfaro-alpha2-init-smoke --apply --offline
+before=$(sha256sum ../pyfaro-alpha2-init-smoke/pyproject.toml ../pyfaro-alpha2-init-smoke/uv.lock)
 cargo run --locked -- init ../pyfaro-alpha2-init-smoke --apply --offline
+test "$before" = "$(sha256sum ../pyfaro-alpha2-init-smoke/pyproject.toml ../pyfaro-alpha2-init-smoke/uv.lock)"
 ```
+
+The final comparison must succeed: reapplying must leave both project files
+byte-for-byte unchanged.
 
 On every platform, start from a fresh disposable path and smoke-test the
 other commands against a dependency-free project:
