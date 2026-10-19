@@ -2,6 +2,11 @@ mod cli;
 mod error;
 mod init;
 mod process;
+mod uv;
+
+#[cfg(test)]
+#[path = "../tests/support/mod.rs"]
+mod test_support;
 
 use clap::Parser;
 use std::io::Write;

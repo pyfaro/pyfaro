@@ -16,7 +16,6 @@ pub(crate) enum Error {
     Toml(#[from] toml_edit::TomlError),
     #[error("{0}")]
     Project(String),
-    #[cfg(target_os = "linux")]
     #[error(
         "could not start uv at {path}: {source}; install uv or use --uv <path>"
     )]
@@ -39,19 +38,16 @@ pub(crate) enum Error {
     UvVersion(String),
     #[error("could not install the cancellation handler: {0}")]
     CancellationSetup(#[from] ctrlc::Error),
-    #[cfg(target_os = "linux")]
-    #[error("initialization cancelled")]
+    #[error("operation cancelled")]
     Cancelled,
     #[error("could not write command output: {0}")]
     Output(#[source] io::Error),
-    #[cfg(target_os = "linux")]
     #[error("uv process cleanup failed: {0}")]
     ProcessCleanup(#[source] Failures),
     #[error(
         "{0}; project files were left as-is because process cleanup could not be confirmed; inspect the project before retrying"
     )]
     RecoverySkipped(#[source] Box<Error>),
-    #[cfg(target_os = "linux")]
     #[error("{operation}; {source}")]
     OperationCleanup {
         operation: Box<Error>,
@@ -93,9 +89,7 @@ impl std::error::Error for Failures {
 impl Error {
     pub fn cleanup_incomplete(&self) -> bool {
         match self {
-            #[cfg(target_os = "linux")]
             Self::ProcessCleanup(_) => true,
-            #[cfg(target_os = "linux")]
             Self::OperationCleanup { source, .. } => {
                 source.cleanup_incomplete()
             }
@@ -113,7 +107,6 @@ impl Error {
     pub fn exit_code(&self) -> i32 {
         match self {
             Self::UvStatus { status, .. } => status.code().unwrap_or(1),
-            #[cfg(target_os = "linux")]
             Self::Cancelled => 130,
             _ => 1,
         }

@@ -16,6 +16,12 @@ fn main() {
             .unwrap_or_else(|_| "uv 0.9.26".into()));
         return;
     }
+    if args.iter().any(|arg| arg == "record") {
+        fs::write("uv-arguments.txt", args.join("\n")).unwrap();
+        println!("fixture stdout");
+        eprintln!("fixture stderr");
+        process::exit(37);
+    }
     let mode = env::var("PYFARO_FIXTURE_MODE").unwrap_or_default();
     if args.iter().any(|arg| arg == "lock") && mode == "fail-restore" {
         for file in ["pyproject.toml", "uv.lock"] {

@@ -1,6 +1,5 @@
 mod config;
 mod files;
-mod uv;
 
 use std::fs;
 use std::io;
@@ -10,6 +9,7 @@ use std::path::{Path, PathBuf};
 use crate::cli::InitArgs;
 use crate::error::{Error, Failures, Result};
 use crate::process;
+use crate::uv;
 use files::Snapshot;
 
 pub(crate) fn run(args: InitArgs) -> Result<()> {
