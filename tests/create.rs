@@ -166,3 +166,22 @@ fn default_target_is_the_named_directory() {
     assert_success(output);
     assert!(sandbox.path().join("demo-lib/src/demo_lib/__init__.py").is_file());
 }
+
+#[test]
+fn numeric_distribution_gets_an_importable_package() {
+    assert_pinned_uv();
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("numeric");
+    let cache = sandbox.path().join("uv-cache");
+    assert_success(pyfaro(&["lib", "1widget"], &project));
+    let metadata = fs::read_to_string(project.join("pyproject.toml")).unwrap();
+    assert!(metadata.contains("module-name = \"_1widget\""));
+    assert!(project.join("src/_1widget/__init__.py").is_file());
+    assert_success(sync(&project, &cache));
+    assert_success(run_project(
+        &project,
+        &cache,
+        &["python", "-m", "unittest", "discover", "-s", "tests"],
+    ));
+    assert_success(uv(&project, &cache, &["build"]));
+}

@@ -6,30 +6,38 @@ use crate::cli::{CreateArgs, CreateKind, CreateProjectArgs};
 use crate::error::{Error, Result};
 use crate::project;
 
+enum TemplateKind {
+    Library,
+    Cli(String),
+}
+
 pub(crate) fn run(args: CreateArgs) -> Result<()> {
-    let (project, package, command) = match args.kind {
-        CreateKind::Lib(project) => (project, None, None),
+    let (project, package, kind) = match args.kind {
+        CreateKind::Lib(project) => (project, None, TemplateKind::Library),
         CreateKind::Cli(args) => {
-            (args.project, args.package, Some(args.command))
+            let command =
+                args.command.unwrap_or_else(|| args.project.name.clone());
+            (args.project, args.package, TemplateKind::Cli(command))
         }
     };
-    create(project, package, command)
+    create(project, package, kind)
 }
 
 fn create(
     project: CreateProjectArgs,
     package: Option<String>,
-    command: Option<Option<String>>,
+    kind: TemplateKind,
 ) -> Result<()> {
     validate_distribution(&project.name)?;
     validate_python(&project.python)?;
-    let default_package =
+    let mut default_package =
         project.name.replace(['-', '.'], "_").to_ascii_lowercase();
+    if default_package.as_bytes()[0].is_ascii_digit() {
+        default_package.insert(0, '_');
+    }
     let package = package.unwrap_or(default_package);
     validate_package(&package)?;
-    let command =
-        command.map(|name| name.unwrap_or_else(|| project.name.clone()));
-    if let Some(command) = &command {
+    if let TemplateKind::Cli(command) = &kind {
         validate_command(command)?;
     }
 
@@ -44,22 +52,42 @@ fn create(
             parent.display()
         )));
     }
-    fs::create_dir(&root)
-        .map_err(|error| Error::io("create project directory", &root, error))?;
-    write_project(
-        &root,
-        &project.name,
-        &package,
-        &project.python,
-        command.as_deref(),
-    )?;
+    let command = match &kind {
+        TemplateKind::Library => None,
+        TemplateKind::Cli(command) => Some(command.as_str()),
+    };
+    create_directory(&root, |root| {
+        write_project(root, &project.name, &package, &project.python, command)
+    })?;
     writeln!(
         io::stdout().lock(),
         "Created {} at {}",
-        if command.is_some() { "CLI" } else { "library" },
+        if matches!(kind, TemplateKind::Cli(_)) { "CLI" } else { "library" },
         root.display()
     )
     .map_err(Error::Output)?;
+    Ok(())
+}
+
+fn create_directory(
+    root: &Path,
+    write: impl FnOnce(&Path) -> Result<()>,
+) -> Result<()> {
+    fs::create_dir(root)
+        .map_err(|error| Error::io("create project directory", root, error))?;
+    if let Err(operation) = write(root) {
+        return match fs::remove_dir_all(root) {
+            Ok(()) => Err(operation),
+            Err(source) => Err(Error::OperationCleanup {
+                operation: Box::new(operation),
+                source: Box::new(Error::io(
+                    "remove incomplete project",
+                    root,
+                    source,
+                )),
+            }),
+        };
+    }
     Ok(())
 }
 
@@ -220,3 +248,23 @@ const PYTHON_KEYWORDS: &[&str] = &[
     "not", "or", "pass", "raise", "return", "try", "while", "with", "yield",
     "match", "case", "type",
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn failed_write_removes_only_the_new_project() {
+        let sandbox = tempfile::tempdir().unwrap();
+        let parent_marker = sandbox.path().join("keep.txt");
+        fs::write(&parent_marker, "keep").unwrap();
+        let root = sandbox.path().join("new-project");
+        let result = create_directory(&root, |root| {
+            fs::write(root.join("partial.txt"), "partial").unwrap();
+            Err(Error::Project("injected write failure".into()))
+        });
+        assert!(matches!(result, Err(Error::Project(_))));
+        assert!(!root.exists());
+        assert_eq!(fs::read_to_string(parent_marker).unwrap(), "keep");
+    }
+}

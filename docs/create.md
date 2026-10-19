@@ -16,7 +16,9 @@ name under the current directory. `--python` defaults to `3.10` and sets the
 minimum `requires-python` version; it does not choose or install an interpreter.
 Use a name made of ASCII letters, digits, dots, underscores, and hyphens. The
 import package is the lowercased name with dots and hyphens replaced by
-underscores, so `acme-widget` creates `src/acme_widget/`.
+underscores, so `acme-widget` creates `src/acme_widget/`. If the distribution
+name begins with a digit, the import package gets a leading underscore:
+`1widget` creates `src/_1widget/`.
 
 The template contains `pyproject.toml`, `README.md`, a typed package under
 `src/`, and a `unittest` smoke test under `tests/`. It uses the uv build backend
