@@ -18,9 +18,7 @@ impl Config {
         let document: DocumentMut = source.parse().map_err(|source| {
             Error::ConfigToml { path: metadata.clone(), source }
         })?;
-        validate(&document).map_err(|error| {
-            Error::Project(format!("invalid {}: {error}", metadata.display()))
-        })?;
+        validate(&document).map_err(|error| Error::config(&metadata, error))?;
         Ok(Self::V1 { root: root.to_owned() })
     }
 
@@ -38,6 +36,11 @@ pub(crate) fn is_workspace(source: &str) -> Result<bool> {
         .and_then(|tool| tool.get("uv"))
         .and_then(|uv| uv.get("workspace"))
         .is_some())
+}
+
+pub(crate) fn has_inline_tool(source: &str) -> Result<bool> {
+    let document: DocumentMut = source.parse()?;
+    Ok(document.get("tool").is_some_and(Item::is_inline_table))
 }
 
 /// Plan the opt-in change while preserving unrelated TOML formatting.

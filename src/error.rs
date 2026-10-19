@@ -20,6 +20,12 @@ pub(crate) enum Error {
         #[source]
         source: toml_edit::TomlError,
     },
+    #[error("invalid {path}: {source}")]
+    Config {
+        path: PathBuf,
+        #[source]
+        source: Box<Error>,
+    },
     #[error("{0}")]
     Project(String),
     #[error(
@@ -108,6 +114,10 @@ impl Error {
         source: io::Error,
     ) -> Self {
         Self::Io { action, path: path.to_owned(), source }
+    }
+
+    pub fn config(path: &std::path::Path, source: Error) -> Self {
+        Self::Config { path: path.to_owned(), source: Box::new(source) }
     }
 
     pub fn exit_code(&self) -> i32 {

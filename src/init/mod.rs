@@ -22,7 +22,10 @@ pub(crate) fn run(args: InitArgs) -> Result<()> {
     for ancestor in root.ancestors() {
         let metadata = ancestor.join("pyproject.toml");
         match fs::read_to_string(&metadata) {
-            Ok(source) if config::is_workspace(&source)? => {
+            Ok(source)
+                if config::is_workspace(&source)
+                    .map_err(|error| Error::config(&metadata, error))? =>
+            {
                 return Err(Error::Project(format!(
                     "uv workspaces are not supported by this alpha (found {}); initialize a standalone project",
                     metadata.display()
@@ -35,9 +38,21 @@ pub(crate) fn run(args: InitArgs) -> Result<()> {
     }
     let path = root.join("pyproject.toml");
     let original = metadata.text()?;
-    let proposed = original.map(config::prepare).transpose()?;
+    let proposed = original
+        .map(|source| {
+            config::prepare(source).map_err(|error| Error::config(&path, error))
+        })
+        .transpose()?;
+    let inline_tool = original
+        .map(|source| {
+            config::has_inline_tool(source)
+                .map_err(|error| Error::config(&path, error))
+        })
+        .transpose()?
+        .unwrap_or(false);
 
-    print_plan(&args, original, proposed.as_deref()).map_err(Error::Output)?;
+    print_plan(&args, original, proposed.as_deref(), inline_tool)
+        .map_err(Error::Output)?;
     if !args.apply {
         return Ok(());
     }
@@ -63,7 +78,8 @@ pub(crate) fn run(args: InitArgs) -> Result<()> {
         let current = current_metadata.text()?.ok_or_else(|| {
             Error::Project("uv init did not create pyproject.toml".into())
         })?;
-        let proposed = config::prepare(current)?;
+        let proposed = config::prepare(current)
+            .map_err(|error| Error::config(&path, error))?;
         if proposed != current {
             current_metadata.write(proposed.as_bytes())?;
         }
@@ -98,6 +114,7 @@ fn print_plan(
     args: &InitArgs,
     original: Option<&str>,
     proposed: Option<&str>,
+    inline_tool: bool,
 ) -> io::Result<()> {
     let mut output = io::stdout().lock();
     writeln!(output, "Initialization plan for {}:", args.path.display())?;
@@ -109,6 +126,12 @@ fn print_plan(
     }
     if original.is_some() && proposed == original {
         writeln!(output, "  [tool.pyfaro] is already configured.")?;
+    } else if inline_tool {
+        writeln!(
+            output,
+            "  Proposed pyproject.toml:\n{}",
+            proposed.unwrap_or_default()
+        )?;
     } else {
         writeln!(
             output,
