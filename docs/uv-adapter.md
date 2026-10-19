@@ -22,8 +22,9 @@ project's uv indexes, sources, and dependency settings to uv.
 Linux keeps the existing process-group and child-subreaper cleanup used by
 `init`. macOS uses a process group and sends SIGINT before forcing cleanup.
 Windows assigns a suspended child to a kill-on-close Job Object before it
-runs, terminates the job after the leader exits, and confirms the active
-process count reaches zero. macOS checks process states when Darwin reports
+runs while preserving the caller's console. It terminates the job after the
+leader exits and confirms the active process count reaches zero. macOS checks
+process states when Darwin reports
 `EPERM` for a group that may contain only zombies.
 Windows batch wrappers are rejected because Rust would invoke a shell for
 them. Cancellation stops the owned process tree and returns `130`; an unconfirmed cleanup is

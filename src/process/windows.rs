@@ -1,11 +1,12 @@
 use std::io;
+use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use subc_jobobject::{JobObject, spawn_contained};
+use subc_jobobject::{CREATE_SUSPENDED_FLAG, ContainedChild, JobObject};
 
 use crate::error::{Error, Failures, Result};
 
@@ -19,7 +20,15 @@ pub(super) fn run(
         return Err(Error::Cancelled);
     }
     let program = PathBuf::from(command.get_program());
-    let mut contained = spawn_contained(&mut command)
+    command.creation_flags(CREATE_SUSPENDED_FLAG);
+    let job = JobObject::new().map_err(|source| {
+        Error::io("create delegated process job", &program, source)
+    })?;
+    let child = command
+        .spawn()
+        .map_err(|source| Error::UvStart { path: program.clone(), source })?;
+    let pid = child.id();
+    let mut contained = ContainedChild::contain(child, job, pid)
         .map_err(|source| Error::UvStart { path: program.clone(), source })?;
     let operation = loop {
         if cancelled.load(Ordering::SeqCst) {
