@@ -626,7 +626,7 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
     assert!(
         report.contains(&format!(
             "correct {}",
-            project.join("uv.toml").display()
+            fs::canonicalize(project.join("uv.toml")).unwrap().display()
         )),
         "{report}"
     );
