@@ -71,7 +71,7 @@ positional `PATH` starts discovery elsewhere, while `--project <PATH>`
 selects an exact project instead.
 See the [sync guide](docs/sync.md) for the mode differences.
 
-In the unpublished development version, `pyfaro add 'requests>=2'` and
+In the unpublished development version, `pyfaro add "requests>=2"` and
 `pyfaro remove requests` delegate dependency and lockfile edits to uv.
 Use `--dev` or `--group <NAME>` for dependency groups, then run `pyfaro sync`
 to update the environment. These commands are not in the published `alpha.2`.

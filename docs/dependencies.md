@@ -6,13 +6,13 @@ uv. Run them in a project directory or a descendant. Pyfaro finds the nearest
 its own `pyproject.toml`.
 
 ```sh
-pyfaro add 'requests>=2,<3'
-pyfaro add --dev 'pytest>=8'
-pyfaro add --group quality 'ruff==0.14.0'
+pyfaro add "requests>=2,<3"
+pyfaro add --dev "pytest>=8"
+pyfaro add --group quality "ruff==0.14.0"
 pyfaro remove requests
 pyfaro remove --dev pytest
 pyfaro remove --group quality ruff
-pyfaro add --project ./app --offline 'local-package>=1'
+pyfaro add --project ./app --offline "local-package>=1"
 ```
 
 `add` accepts uv's PEP 508 requirement specifiers; `remove` accepts dependency
