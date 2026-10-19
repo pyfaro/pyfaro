@@ -335,6 +335,16 @@ fn inspect_workspace(
     document: &DocumentMut,
     report: &mut Report,
 ) -> Result<bool> {
+    if document
+        .get("tool")
+        .and_then(|tool| tool.get("uv"))
+        .and_then(|uv| uv.get("managed"))
+        .and_then(toml_edit::Item::as_bool)
+        == Some(false)
+    {
+        report.line(Severity::Error, "configuration: [tool.uv] managed = false disables uv project management; remove it before using pyfaro project workflows")?;
+        return Ok(true);
+    }
     for directory in root.ancestors() {
         let metadata = directory.join("pyproject.toml");
         let candidate = if directory == root {
@@ -377,13 +387,16 @@ fn inspect_workspace(
                 Some(included) => included,
                 None => return Ok(true),
             };
+            if !included {
+                return Ok(false);
+            }
             let excluded = match workspace_matches(
                 root, directory, workspace, "exclude", report,
             )? {
                 Some(excluded) => excluded,
                 None => return Ok(true),
             };
-            included && !excluded
+            !excluded
         };
         if member {
             report.line(Severity::Error, format!("configuration: uv workspace at {} is not supported by pyfaro doctor; use a standalone project", metadata.display()))?;

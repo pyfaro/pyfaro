@@ -59,6 +59,8 @@ path and uv's glob defaults. Discovery stops at the first ancestor
 the selected project prevents an outer workspace from applying. Invalid globs
 and paths whose membership cannot be determined because of non-UTF-8 characters
 are blocking findings.
+The selected project's `[tool.uv] managed = false` is also blocking because uv
+project management is disabled; doctor does not scan ancestor workspaces for it.
 
 For uv, a project `uv.toml` takes precedence over `[tool.uv]` in
 `pyproject.toml`; doctor reports their

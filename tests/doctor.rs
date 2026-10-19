@@ -227,9 +227,46 @@ fn invalid_workspace_glob_is_blocking() {
         "[tool.uv.workspace]\nmembers = ['other']\nexclude = ['[']\n",
     )
     .unwrap();
+    let unmatched = doctor(&project, &bin, &uv);
+    assert_eq!(unmatched.status.code(), Some(0), "{unmatched:?}");
+    assert!(!text(&unmatched).contains("invalid workspace glob"));
+
+    fs::write(
+        workspace.join("pyproject.toml"),
+        "[tool.uv.workspace]\nmembers = ['member']\nexclude = ['[']\n",
+    )
+    .unwrap();
     let excluded = doctor(&project, &bin, &uv);
     assert_eq!(excluded.status.code(), Some(1), "{excluded:?}");
     assert!(text(&excluded).contains("invalid workspace glob"));
+}
+
+#[test]
+fn unmanaged_project_does_not_inherit_an_ancestor_workspace() {
+    let sandbox = tempdir().unwrap();
+    let workspace = sandbox.path().join("workspace");
+    let project = workspace.join("member");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(&project).unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+    fs::write(
+        workspace.join("pyproject.toml"),
+        "[tool.uv.workspace]\nmembers = ['member']\n",
+    )
+    .unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'member'\n[tool.uv]\nmanaged = false\n",
+    )
+    .unwrap();
+
+    let output = doctor(&project, &bin, &uv);
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(report.contains("managed = false"), "{report}");
+    assert!(!report.contains("uv workspace"), "{report}");
+    assert!(!report.contains("OK: dependencies:"), "{report}");
 }
 
 #[cfg(unix)]
