@@ -294,6 +294,7 @@ dependencies = [
  "ctrlc",
  "nix",
  "process-wrap",
+ "rustix",
  "semver",
  "tempfile",
  "thiserror",

@@ -6,8 +6,10 @@ use crate::error::Result;
 
 #[cfg(target_os = "linux")]
 mod linux;
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-mod portable;
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(target_os = "windows")]
+mod windows;
 
 pub(crate) fn cancellation() -> Result<Arc<AtomicBool>> {
     let cancelled = Arc::new(AtomicBool::new(false));
@@ -25,9 +27,13 @@ pub(crate) fn run(
         let mut command = command;
         linux::run(&mut command, cancelled)
     }
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    #[cfg(target_os = "macos")]
     {
-        portable::run(command, cancelled)
+        macos::run(command, cancelled)
+    }
+    #[cfg(target_os = "windows")]
+    {
+        windows::run(command, cancelled)
     }
     #[cfg(not(any(
         target_os = "linux",
@@ -129,6 +135,24 @@ mod portable_tests {
             matches!(result, Err(crate::error::Error::Cancelled)),
             "{result:?}"
         );
+        let before = fs::read(&heartbeat).unwrap();
+        thread::sleep(Duration::from_millis(150));
+        assert_eq!(fs::read(&heartbeat).unwrap(), before);
+    }
+
+    #[test]
+    fn an_exited_leader_does_not_leave_a_running_descendant() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut command = Command::new(test_support::fixture_uv());
+        command
+            .arg("lock")
+            .current_dir(directory.path())
+            .env("PYFARO_FIXTURE_MODE", "exit-with-child")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        let status = run(command, &AtomicBool::new(false)).unwrap();
+        assert_eq!(status.code(), Some(42));
+        let heartbeat = directory.path().join("heartbeat");
         let before = fs::read(&heartbeat).unwrap();
         thread::sleep(Duration::from_millis(150));
         assert_eq!(fs::read(&heartbeat).unwrap(), before);

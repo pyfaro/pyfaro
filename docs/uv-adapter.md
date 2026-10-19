@@ -7,8 +7,10 @@ version, and runs it directly without a shell. Stable uv versions at least
 Newer versions are accepted but not claimed as tested.
 
 The shared adapter passes OS-native arguments and a per-command working
-directory to uv. It inherits the caller's standard streams, so output appears
-as uv emits it, and returns uv's numeric failure status. Pyfaro reports its
+directory to uv. It inherits stdin, stdout, and stderr for delegated
+operations, so interactive commands and streamed output behave normally.
+The noninteractive version probe uses null stdin and a temporary stdout file.
+Pyfaro returns uv's numeric failure status and reports its
 own discovery, version, spawn, and process-cleanup errors separately. It never
 installs uv or downloads Python; uv receives `--no-python-downloads`.
 
@@ -18,8 +20,9 @@ the project or change an explicit locking or syncing mode. Pyfaro leaves the
 project's uv indexes, sources, and dependency settings to uv.
 
 Linux keeps the existing process-group and child-subreaper cleanup used by
-`init`. macOS uses a process group; Windows uses a Job Object. Cancellation
-stops the owned process tree and returns `130`; an unconfirmed cleanup is
+`init`. macOS uses a process group and sends SIGINT before forcing cleanup.
+Windows uses a Job Object for tree termination. Cancellation stops the owned
+process tree and returns `130`; an unconfirmed cleanup is
 reported as an error. The adapter is shared infrastructure for later commands.
 `init --apply` remains Linux-only because its file-restoration contract has
 only been validated there.

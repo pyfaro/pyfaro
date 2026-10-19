@@ -113,8 +113,7 @@ impl Uv {
             .env_remove("UV_LOCKED")
             .env_remove("UV_NO_SYNC")
             .env_remove("UV_INIT_BUILD_BACKEND")
-            .args(["--no-python-downloads", "--no-progress"])
-            .stdin(Stdio::null());
+            .args(["--no-python-downloads", "--no-progress"]);
         if self.offline {
             command.arg("--offline");
         }
