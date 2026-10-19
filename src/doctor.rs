@@ -752,10 +752,9 @@ fn declared_dependencies(
                     .collect(),
             };
             for name in &configured_names {
-                if !group_names.contains_key(name)
-                    && !(name == "dev" && has_legacy_dev)
-                    && (explicit_defaults || name != "dev")
-                {
+                let implicit_dev =
+                    name == "dev" && (has_legacy_dev || !explicit_defaults);
+                if !group_names.contains_key(name) && !implicit_dev {
                     report.line(Severity::Error, format!("dependencies: group {name:?} is missing; define it in [dependency-groups]"))?;
                     invalid = true;
                 }
