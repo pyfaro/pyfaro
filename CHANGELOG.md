@@ -2,7 +2,11 @@
 
 ## Unreleased — 0.1.0-alpha.3 development
 
-No changes yet. This version has not been published.
+This version has not been published.
+
+- Add `pyfaro add` and `pyfaro remove` for uv-owned dependency and lockfile
+  edits, including development and named dependency groups. Environment
+  synchronization remains an explicit `pyfaro sync` step.
 
 ## 0.1.0-alpha.2 — 2026-10-19
 

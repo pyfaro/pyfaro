@@ -129,7 +129,17 @@ impl Uv {
         args: &[A],
         cancelled: &AtomicBool,
     ) -> Result<()> {
-        self.execute_with_input(root, operation, args, cancelled, false)
+        self.execute_with_input(root, operation, args, cancelled, false, false)
+    }
+
+    pub(crate) fn execute_dependency<A: AsRef<OsStr>>(
+        &self,
+        root: &Path,
+        operation: &'static str,
+        args: &[A],
+        cancelled: &AtomicBool,
+    ) -> Result<()> {
+        self.execute_with_input(root, operation, args, cancelled, false, true)
     }
 
     pub(crate) fn execute_interactive<A: AsRef<OsStr>>(
@@ -139,7 +149,7 @@ impl Uv {
         args: &[A],
         cancelled: &AtomicBool,
     ) -> Result<()> {
-        self.execute_with_input(root, operation, args, cancelled, true)
+        self.execute_with_input(root, operation, args, cancelled, true, false)
     }
 
     fn execute_with_input<A: AsRef<OsStr>>(
@@ -149,8 +159,12 @@ impl Uv {
         args: &[A],
         cancelled: &AtomicBool,
         interactive: bool,
+        ignore_dev_env: bool,
     ) -> Result<()> {
         let mut command = self.command(root);
+        if ignore_dev_env {
+            command.env_remove("UV_DEV");
+        }
         command.args(args);
         let status = if interactive {
             process::run_interactive(command, cancelled)?
