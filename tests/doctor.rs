@@ -524,6 +524,15 @@ fn real_uv_validates_project_metadata_with_no_config() {
     let uv = which::which("uv").unwrap();
     let metadata = project.join("pyproject.toml");
 
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '0.1.0'\n")
+        .unwrap();
+    let frozen_static = doctor_command(&project, &bin, &uv)
+        .env("UV_NO_CONFIG", "1")
+        .env("UV_FROZEN", "1")
+        .output()
+        .unwrap();
+    assert_eq!(frozen_static.status.code(), Some(0), "{frozen_static:?}");
+
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '0.1.0'\noptional-dependencies = 123\n").unwrap();
     let invalid = doctor_command(&project, &bin, &uv)
         .env("UV_NO_CONFIG", "1")
@@ -537,6 +546,7 @@ fn real_uv_validates_project_metadata_with_no_config() {
         .unwrap();
     let dynamic = doctor_command(&project, &bin, &uv)
         .env("UV_NO_CONFIG", "1")
+        .env("UV_FROZEN", "1")
         .output()
         .unwrap();
     assert_eq!(dynamic.status.code(), Some(0), "{dynamic:?}");

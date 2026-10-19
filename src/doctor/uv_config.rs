@@ -501,6 +501,7 @@ pub(super) fn validate_project_metadata(
         .env_remove("UV_WORKING_DIR")
         .env_remove("UV_PROJECT")
         .env_remove("UV_CONFIG_FILE")
+        .env_remove("UV_FROZEN")
         .stderr(
             stderr
                 .reopen()
