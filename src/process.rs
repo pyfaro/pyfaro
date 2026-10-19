@@ -22,28 +22,18 @@ pub(crate) fn run(
     command: Command,
     cancelled: &AtomicBool,
 ) -> Result<ExitStatus> {
-    run_with_stdout(command, cancelled, None)
-}
-
-pub(crate) fn run_with_stdout(
-    command: Command,
-    cancelled: &AtomicBool,
-    stdout: Option<&std::fs::File>,
-) -> Result<ExitStatus> {
     #[cfg(target_os = "linux")]
     {
         let mut command = command;
-        let _ = stdout;
         linux::run(&mut command, cancelled)
     }
     #[cfg(target_os = "macos")]
     {
-        let _ = stdout;
         macos::run(command, cancelled)
     }
     #[cfg(target_os = "windows")]
     {
-        windows::run(command, cancelled, stdout)
+        windows::run(command, cancelled)
     }
     #[cfg(not(any(
         target_os = "linux",
@@ -51,7 +41,7 @@ pub(crate) fn run_with_stdout(
         target_os = "windows"
     )))]
     {
-        let _ = (command, cancelled, stdout);
+        let _ = (command, cancelled);
         Err(crate::error::Error::Project(
             "delegated commands are unavailable on this platform".into(),
         ))

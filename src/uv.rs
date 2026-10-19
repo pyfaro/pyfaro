@@ -48,11 +48,12 @@ impl Uv {
         let cwd = std::env::current_dir().map_err(|error| {
             Error::io("resolve", Path::new("current directory"), error)
         })?;
-        command.current_dir(cwd).arg("--version").stdin(Stdio::null()).stdout(
-            file.try_clone()
-                .map_err(|error| Error::io("clone", output.path(), error))?,
-        );
-        let status = process::run_with_stdout(command, cancelled, Some(&file))?;
+        command
+            .current_dir(cwd)
+            .arg("--version")
+            .stdin(Stdio::null())
+            .stdout(file);
+        let status = process::run(command, cancelled)?;
         if !status.success() {
             return Err(Error::UvStatus { operation: "--version", status });
         }

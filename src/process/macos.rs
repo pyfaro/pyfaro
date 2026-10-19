@@ -109,10 +109,26 @@ fn cleanup(
         }
         if let Some(status) = leader {
             match killpg(group, None) {
-                Err(Errno::ESRCH | Errno::EPERM) if failures.is_empty() => {
-                    return Ok(status);
+                Err(Errno::ESRCH) if failures.is_empty() => return Ok(status),
+                Err(Errno::ESRCH) => break,
+                Err(Errno::EPERM) => {
+                    match group_has_live_members(group, program) {
+                        Ok(false) if failures.is_empty() => return Ok(status),
+                        Ok(false) => break,
+                        Ok(true) => {
+                            failures.push(Error::io(
+                                "confirm delegated process group exit",
+                                program,
+                                io::Error::from(Errno::EPERM),
+                            ));
+                            break;
+                        }
+                        Err(error) => {
+                            failures.push(error);
+                            break;
+                        }
+                    }
                 }
-                Err(Errno::ESRCH | Errno::EPERM) => break,
                 Ok(()) => {}
                 Err(source) => {
                     failures.push(Error::io(
@@ -138,4 +154,40 @@ fn cleanup(
         thread::sleep(POLL);
     }
     Err(Error::ProcessCleanup(Failures(failures)))
+}
+
+fn group_has_live_members(group: Pid, program: &Path) -> Result<bool> {
+    let output = Command::new("/bin/ps")
+        .args(["-A", "-o", "pgid=", "-o", "stat="])
+        .output()
+        .map_err(|source| {
+            Error::io("inspect delegated process group", program, source)
+        })?;
+    if !output.status.success() {
+        return Err(Error::io(
+            "inspect delegated process group",
+            program,
+            io::Error::other("ps could not enumerate process states"),
+        ));
+    }
+    let listing = std::str::from_utf8(&output.stdout).map_err(|source| {
+        Error::io("parse process states", program, io::Error::other(source))
+    })?;
+    for line in listing.lines() {
+        let mut fields = line.split_whitespace();
+        let process_group =
+            fields.next().and_then(|field| field.parse::<i32>().ok());
+        let state = fields.next();
+        let (Some(process_group), Some(state)) = (process_group, state) else {
+            return Err(Error::io(
+                "parse process states",
+                program,
+                io::Error::new(io::ErrorKind::InvalidData, "invalid ps output"),
+            ));
+        };
+        if process_group == group.as_raw() && !state.starts_with('Z') {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
