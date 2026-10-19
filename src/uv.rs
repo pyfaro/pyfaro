@@ -20,6 +20,14 @@ impl Uv {
         offline: bool,
         cancelled: &AtomicBool,
     ) -> Result<Self> {
+        let (binary, _) = Self::inspect(binary, cancelled)?;
+        Ok(Self { binary, offline })
+    }
+
+    pub(crate) fn inspect(
+        binary: OsString,
+        cancelled: &AtomicBool,
+    ) -> Result<(PathBuf, String)> {
         let selected = PathBuf::from(binary);
         let binary = which::which(&selected)
             .map_err(|source| Error::UvLookup { path: selected, source })?;
@@ -37,7 +45,6 @@ impl Uv {
                     .into(),
             ));
         }
-        let uv = Self { binary, offline };
         let output = tempfile::NamedTempFile::new().map_err(|error| {
             Error::io(
                 "create uv version output",
@@ -48,7 +55,7 @@ impl Uv {
         let file = output
             .reopen()
             .map_err(|error| Error::io("open", output.path(), error))?;
-        let mut command = Command::new(&uv.binary);
+        let mut command = Command::new(&binary);
         let cwd = std::env::current_dir().map_err(|error| {
             Error::io("resolve", Path::new("current directory"), error)
         })?;
@@ -64,7 +71,7 @@ impl Uv {
         let version = fs::read_to_string(output.path())
             .map_err(|error| Error::io("read", output.path(), error))?;
         validate_version(&version)?;
-        Ok(uv)
+        Ok((binary, version.trim().to_owned()))
     }
 
     pub(crate) fn lock(

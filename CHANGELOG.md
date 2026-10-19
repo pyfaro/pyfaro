@@ -4,6 +4,8 @@
 
 - Load and validate typed Pyfaro configuration from the selected project's
   `pyproject.toml`, with a non-writing schema default and path-aware errors.
+- Add `pyfaro tools [uv|ruff|ty|pytest]` to inspect resolved executables and
+  versions, with project environment precedence and actionable strict checks.
 - Discover the nearest project for `sync` and `run` from nested directories,
   with explicit project selection and deterministic symlink resolution.
 - Extract a shared, version-gated uv adapter from `init`, preserving OS-native

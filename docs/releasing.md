@@ -4,6 +4,14 @@
 The record below describes the already published `alpha.1`; a future upload
 requires its own reviewed commit and explicit maintainer approval.
 
+Completing the `v0.1.0 — Foundation` backlog milestone means its source-work
+criteria are met, not that a stable `0.1.0` crate has shipped. The current
+package version remains `0.1.0-alpha.2` until a separately approved release
+preparation chooses and verifies the exact artifact. CI package and publish
+dry-runs do not upload the crate. Before any later upload, rerun the checklist
+below against the approved version and commit, inspect that version's archive,
+and update the publication record, README, and changelog afterward.
+
 ## First manual alpha: 0.1.0-alpha.1
 
 The first crates.io alpha was published on **2026-10-19**, ahead of the public-beta

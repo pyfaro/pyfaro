@@ -28,10 +28,12 @@ pub(crate) enum Error {
     },
     #[error("{0}")]
     Project(String),
+    #[error("no pyproject.toml found from {}; use --project <PATH>", directory.display())]
+    NoProject { directory: PathBuf },
     #[error(
-        "could not start uv at {path}: {source}; install uv or use --uv <path>"
+        "could not start executable at {path}: {source}; check installation and executable permissions"
     )]
-    UvStart {
+    ProcessStart {
         path: PathBuf,
         #[source]
         source: io::Error,
@@ -48,6 +50,8 @@ pub(crate) enum Error {
     UvStatus { operation: &'static str, status: ExitStatus },
     #[error("unsupported uv version: {0}; use uv >=0.9.26 (tested: 0.9.26)")]
     UvVersion(String),
+    #[error("{tool}: {reason}")]
+    Tool { tool: &'static str, reason: String },
     #[error("could not install the cancellation handler: {0}")]
     CancellationSetup(#[from] ctrlc::Error),
     #[error("operation cancelled")]

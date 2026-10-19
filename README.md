@@ -9,9 +9,10 @@ quality checks, tests, and development workflows into one cohesive CLI.
 **Experimental alpha — [`0.1.0-alpha.1`](https://crates.io/crates/pyfaro/0.1.0-alpha.1),
 published on 2026-10-19.** The published alpha implements `init`, `--help`,
 and `--version`. Interfaces may change between alpha versions.
-The development branch adds `sync` and `run`, and targets an unpublished
+The development branch adds `sync`, `run`, and `tools`, and targets an unpublished
 `0.1.0-alpha.2` build. The installation command below installs the published
-`alpha.1`.
+`alpha.1`. Completing the Foundation backlog milestone does not publish a
+stable `0.1.0`; release preparation and approval are separate.
 
 The first alpha targets **Linux** for `init --apply`. macOS and Windows
 retain builds, help/version, and non-writing previews; applying initialization
@@ -76,6 +77,13 @@ to reject a stale lock before execution. Without `--project`, `run` also
 discovers the nearest project from a nested directory. See the
 [run guide](docs/run.md).
 
+`pyfaro tools` reports the resolved executable path and version for uv, Ruff,
+ty, and pytest. Use `pyfaro tools ruff` (or another tool name) to require one
+tool and get an actionable error if it is missing or incompatible. Project
+tools are found in the selected project's `.venv`, then `VIRTUAL_ENV`, then
+`PATH`; uv uses `PATH` or an explicit `--uv <path>`. See the
+[tools guide](docs/tools.md).
+
 ## Planned experience
 
 - Create and initialize Python projects with opinionated, editable defaults.
@@ -87,8 +95,8 @@ discovers the nearest project from a nested directory. See the
 
 Remaining planned commands: `create`, `add`, `remove`, `dev`,
 `lint`, `fmt`, `type`, `check`, `test`, `build`, and `doctor`.
-These commands are roadmap items, not working functionality. The initial
-`init` slice is available ahead of the broader project-management milestone.
+These commands are roadmap items, not working functionality. The development
+build currently includes `init`, `sync`, `run`, and `tools`.
 
 ## Integration over reimplementation
 

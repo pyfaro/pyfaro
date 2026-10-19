@@ -26,6 +26,7 @@ include = [
     "/docs/config.md",
     "/docs/sync.md",
     "/docs/run.md",
+    "/docs/tools.md",
     "/docs/uv-adapter.md",
     "/docs/releasing.md",
     "/docs/architecture/0001-project-architecture.md",

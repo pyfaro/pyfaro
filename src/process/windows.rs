@@ -24,12 +24,15 @@ pub(super) fn run(
     let job = JobObject::new().map_err(|source| {
         Error::io("create delegated process job", &program, source)
     })?;
-    let child = command
-        .spawn()
-        .map_err(|source| Error::UvStart { path: program.clone(), source })?;
+    let child = command.spawn().map_err(|source| Error::ProcessStart {
+        path: program.clone(),
+        source,
+    })?;
     let pid = child.id();
-    let mut contained = ContainedChild::contain(child, job, pid)
-        .map_err(|source| Error::UvStart { path: program.clone(), source })?;
+    let mut contained =
+        ContainedChild::contain(child, job, pid).map_err(|source| {
+            Error::ProcessStart { path: program.clone(), source }
+        })?;
     let operation = loop {
         if cancelled.load(Ordering::SeqCst) {
             break Err(Error::Cancelled);

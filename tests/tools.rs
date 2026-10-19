@@ -1,0 +1,161 @@
+mod support;
+
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Output};
+
+use tempfile::tempdir;
+
+fn install(directory: &Path, name: &str) -> PathBuf {
+    fs::create_dir_all(directory).unwrap();
+    let binary =
+        directory.join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
+    fs::copy(support::fixture_uv(), &binary).unwrap();
+    binary
+}
+
+fn cli(project: &Path, path: &Path, active: &Path, args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(args)
+        .current_dir(project)
+        .env("PATH", path)
+        .env("VIRTUAL_ENV", active)
+        .output()
+        .unwrap()
+}
+
+#[test]
+fn lists_resolved_paths_and_versions_in_precedence_order() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project with spaces");
+    let active = sandbox.path().join("active");
+    let path = sandbox.path().join("path");
+    fs::create_dir(&project).unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'example'\n")
+        .unwrap();
+    let project_ruff = install(&project.join(".venv").join(scripts()), "ruff");
+    let active_ruff = install(&active.join(scripts()), "ruff");
+    let active_ty = install(&active.join(scripts()), "ty");
+    let path_ty = install(&path, "ty");
+    let path_pytest = install(&path, "pytest");
+    let path_uv = install(&path, "uv");
+    let selected_uv = install(&sandbox.path().join("explicit"), "uv");
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["tools", "--project"])
+        .arg(&project)
+        .arg("--uv")
+        .arg(&selected_uv)
+        .current_dir(sandbox.path())
+        .env("PATH", &path)
+        .env("VIRTUAL_ENV", &active)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(
+        stdout.lines().collect::<Vec<_>>(),
+        [
+            format!("uv: {} (uv 0.9.26)", selected_uv.display()),
+            format!("ruff: {} (ruff 0.14.0)", project_ruff.display()),
+            format!("ty: {} (ty 0.0.1-alpha.24)", active_ty.display()),
+            format!("pytest: {} (pytest 8.4.2)", path_pytest.display()),
+        ]
+    );
+    assert!(!stdout.contains(&active_ruff.display().to_string()));
+    assert!(!stdout.contains(&path_ty.display().to_string()));
+    assert!(!stdout.contains(&path_uv.display().to_string()));
+    assert!(output.stderr.is_empty());
+
+    let nested = project.join("src/nested");
+    fs::create_dir_all(&nested).unwrap();
+    let discovered = cli(&nested, &path, &active, &["tools", "ruff"]);
+    assert!(discovered.status.success(), "{discovered:?}");
+    assert_eq!(
+        String::from_utf8(discovered.stdout).unwrap().trim_end(),
+        format!("ruff: {} (ruff 0.14.0)", project_ruff.display())
+    );
+}
+
+#[test]
+fn reports_missing_tools_and_strict_selector_fails_actionably() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let path = sandbox.path().join("empty-path");
+    fs::create_dir(&project).unwrap();
+    fs::create_dir(&path).unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'example'\n")
+        .unwrap();
+    let output = cli(&project, &path, sandbox.path(), &["tools"]);
+    assert!(output.status.success(), "{output:?}");
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    for name in ["uv", "ruff", "ty", "pytest"] {
+        assert!(stdout.contains(&format!("{name}: unavailable")), "{stdout}");
+    }
+    let selected = cli(&project, &path, sandbox.path(), &["tools", "ruff"]);
+    assert_eq!(selected.status.code(), Some(1));
+    let stderr = String::from_utf8(selected.stderr).unwrap();
+    assert!(stderr.contains("ruff: not found"), "{stderr}");
+    assert!(stderr.contains(".venv"), "{stderr}");
+    assert!(selected.stdout.is_empty());
+    assert!(!project.join(".venv").exists());
+    assert!(!project.join("uv.lock").exists());
+}
+
+#[test]
+fn rejects_unrecognized_versions_and_old_explicit_uv() {
+    let sandbox = tempdir().unwrap();
+    let path = sandbox.path().join("path");
+    let active = sandbox.path().join("active");
+    fs::create_dir(&active).unwrap();
+    let ruff = install(&path, "ruff");
+    let invalid = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["tools", "ruff"])
+        .current_dir(sandbox.path())
+        .env("PATH", &path)
+        .env("VIRTUAL_ENV", &active)
+        .env("PYFARO_FIXTURE_VERSION", "other 1.2.3")
+        .output()
+        .unwrap();
+    assert_eq!(invalid.status.code(), Some(1), "{invalid:?}");
+    let stderr = String::from_utf8(invalid.stderr).unwrap();
+    assert!(stderr.contains(&ruff.display().to_string()), "{stderr}");
+    assert!(stderr.contains("unexpected --version output"), "{stderr}");
+
+    let uv = install(&path, "uv");
+    let old = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["tools", "uv", "--uv"])
+        .arg(&uv)
+        .current_dir(sandbox.path())
+        .env("PATH", &active)
+        .env("PYFARO_FIXTURE_VERSION", "uv 0.9.25")
+        .output()
+        .unwrap();
+    assert_eq!(old.status.code(), Some(1), "{old:?}");
+    assert!(String::from_utf8_lossy(&old.stderr).contains("uv >=0.9.26"));
+}
+
+#[test]
+fn explicit_project_requires_its_own_metadata() {
+    let sandbox = tempdir().unwrap();
+    fs::write(
+        sandbox.path().join("pyproject.toml"),
+        "[project]\nname = 'outer'\n",
+    )
+    .unwrap();
+    let child = sandbox.path().join("child");
+    fs::create_dir(&child).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["tools", "ruff", "--project"])
+        .arg(&child)
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .contains("has no pyproject.toml")
+    );
+}
+
+fn scripts() -> &'static str {
+    if cfg!(windows) { "Scripts" } else { "bin" }
+}

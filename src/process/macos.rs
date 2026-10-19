@@ -26,9 +26,10 @@ pub(super) fn run(
     let program = PathBuf::from(command.get_program());
     let mut wrapped = CommandWrap::from(command);
     wrapped.wrap(ProcessGroup::leader());
-    let mut child = wrapped
-        .spawn()
-        .map_err(|source| Error::UvStart { path: program.clone(), source })?;
+    let mut child = wrapped.spawn().map_err(|source| Error::ProcessStart {
+        path: program.clone(),
+        source,
+    })?;
     let input = if relay {
         child.stdin().take().map(super::unix_input::Relay::start)
     } else {
