@@ -190,6 +190,42 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
     );
     assert!(!text(&dynamic).contains("OK: dependencies:"));
 
+    fs::write(
+        &metadata,
+        "[project]\nname = 'sample'\ndependencies = []\ndynamic = ['dependencies']\n",
+    )
+    .unwrap();
+    let conflicting_dynamic = doctor(&project, &bin, &uv);
+    assert_eq!(
+        conflicting_dynamic.status.code(),
+        Some(1),
+        "{conflicting_dynamic:?}"
+    );
+    assert!(
+        text(&conflicting_dynamic)
+            .contains("dynamic project dependencies cannot be checked")
+    );
+    assert!(!text(&conflicting_dynamic).contains("OK: dependencies:"));
+
+    fs::write(
+        &metadata,
+        "[project]\nname = 'sample'\n[tool]\nuv = 'invalid'\n",
+    )
+    .unwrap();
+    let malformed_uv = doctor(&project, &bin, &uv);
+    assert_eq!(malformed_uv.status.code(), Some(1), "{malformed_uv:?}");
+    assert!(text(&malformed_uv).contains("[tool.uv] must be a table"));
+    assert!(!text(&malformed_uv).contains("OK: dependencies:"));
+    fs::write(project.join("uv.toml"), "default-groups = []\n").unwrap();
+    let malformed_ignored_uv = doctor(&project, &bin, &uv);
+    assert_eq!(
+        malformed_ignored_uv.status.code(),
+        Some(1),
+        "{malformed_ignored_uv:?}"
+    );
+    assert!(text(&malformed_ignored_uv).contains("[tool.uv] must be a table"));
+    fs::remove_file(project.join("uv.toml")).unwrap();
+
     fs::write(&metadata, "[project]\nname = 'sample'\n").unwrap();
     fs::write(project.join(".python-version"), "3.11\n").unwrap();
     let pinned = doctor(&project, &bin, &uv);
@@ -198,6 +234,36 @@ fn invalid_configuration_conflicts_and_layout_are_actionable() {
     fs::write(project.join(".python-version"), "3.12\n").unwrap();
     let matching = doctor(&project, &bin, &uv);
     assert_eq!(matching.status.code(), Some(0), "{matching:?}");
+}
+
+#[cfg(unix)]
+#[test]
+fn non_executable_project_python_is_blocking_without_dependencies() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("project");
+    let bin = sandbox.path().join("bin");
+    fs::create_dir_all(project.join(".venv/bin")).unwrap();
+    fs::write(
+        project.join("pyproject.toml"),
+        "[project]\nname = 'sample'\ndependencies = []\n",
+    )
+    .unwrap();
+    fs::write(project.join(".venv/bin/python"), "not executable").unwrap();
+    fs::set_permissions(
+        project.join(".venv/bin/python"),
+        fs::Permissions::from_mode(0o644),
+    )
+    .unwrap();
+    let uv = install(&bin, "uv");
+    install(&bin, "python");
+
+    let output = doctor(&project, &bin, &uv);
+    let report = text(&output);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(report.contains(".venv/bin/python is not executable"), "{report}");
+    assert!(report.contains("OK: Python:"), "{report}");
 }
 
 #[test]
@@ -374,6 +440,24 @@ fn invalid_and_unselected_groups_are_blocking_without_distribution_checks() {
         assert!(report.contains(expected), "{report}");
         assert!(!report.contains("OK: dependencies:"), "{report}");
     }
+    fs::write(
+        &metadata,
+        "[project]\nname = 'sample'\n[tool.uv]\ndefault-groups = ['missing']\n",
+    )
+    .unwrap();
+    let ignored_defaults = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("doctor")
+        .arg("--project")
+        .arg(&project)
+        .arg("--uv")
+        .arg(&uv)
+        .env("PATH", &bin)
+        .env_remove("VIRTUAL_ENV")
+        .env("UV_NO_DEFAULT_GROUPS", "1")
+        .output()
+        .unwrap();
+    assert_eq!(ignored_defaults.status.code(), Some(1), "{ignored_defaults:?}");
+    assert!(text(&ignored_defaults).contains("group \"missing\" is missing"));
 }
 
 #[test]
@@ -532,6 +616,54 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         "{report}"
     );
 
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = ['missing-doctor-dev-package==1.0']\nquality = ['missing-doctor-quality-package==1.0']\n").unwrap();
+    let with_uv_env = |name: &str, value: &str| {
+        Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+            .arg("doctor")
+            .arg("--project")
+            .arg(&project)
+            .env("PATH", &path)
+            .env_remove("VIRTUAL_ENV")
+            .env("UV_NO_DEV", "false")
+            .env("UV_NO_DEFAULT_GROUPS", "false")
+            .env_remove("UV_NO_GROUP")
+            .env(name, value)
+            .output()
+            .unwrap()
+    };
+    let no_dev = with_uv_env("UV_NO_DEV", "1");
+    let report = text(&no_dev);
+    assert_eq!(no_dev.status.code(), Some(0), "{no_dev:?}");
+    assert!(
+        !report.contains("missing-doctor-dev-package is missing"),
+        "{report}"
+    );
+    let no_defaults = with_uv_env("UV_NO_DEFAULT_GROUPS", "1");
+    assert_eq!(no_defaults.status.code(), Some(0), "{no_defaults:?}");
+    let no_group = with_uv_env("UV_NO_GROUP", "dev");
+    assert_eq!(no_group.status.code(), Some(0), "{no_group:?}");
+
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = ['missing-doctor-dev-package==1.0']\nquality = ['missing-doctor-quality-package==1.0']\n[tool.uv]\ndefault-groups = ['dev', 'quality']\n").unwrap();
+    let no_dev = with_uv_env("UV_NO_DEV", "1");
+    let report = text(&no_dev);
+    assert_eq!(no_dev.status.code(), Some(1), "{no_dev:?}");
+    assert!(
+        report.contains("missing-doctor-quality-package is missing"),
+        "{report}"
+    );
+    assert!(
+        !report.contains("missing-doctor-dev-package is missing"),
+        "{report}"
+    );
+    let no_group = with_uv_env("UV_NO_GROUP", "DEV quality");
+    let report = text(&no_group);
+    assert_eq!(no_group.status.code(), Some(0), "{no_group:?}");
+    assert!(!report.contains("is missing from .venv"), "{report}");
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = []\nquality = ['broken =>1']\n[tool.uv]\ndefault-groups = ['dev', 'quality']\n").unwrap();
+    let invalid_excluded = with_uv_env("UV_NO_DEFAULT_GROUPS", "1");
+    assert_eq!(invalid_excluded.status.code(), Some(1), "{invalid_excluded:?}");
+    assert!(text(&invalid_excluded).contains("invalid requirement"));
+
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\ndev = [{include-group = 'quality'}]\nquality = ['missing-doctor-quality-package==1.0']\n").unwrap();
     let included = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
         .arg("doctor")
@@ -548,6 +680,13 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         "{report}"
     );
     assert!(!report.contains("group \"quality\" is not checked"), "{report}");
+    let excluded_include = with_uv_env("UV_NO_GROUP", "quality");
+    let report = text(&excluded_include);
+    assert_eq!(excluded_include.status.code(), Some(0), "{excluded_include:?}");
+    assert!(
+        !report.contains("missing-doctor-quality-package is missing"),
+        "{report}"
+    );
 
     fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n[dependency-groups]\nQA__Test = [{include-group = 'other..test'}]\nOther-Test = ['missing-doctor-normalized-package==1.0']\n[tool.uv]\ndefault-groups = ['qa.test']\n").unwrap();
     let normalized = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
@@ -665,4 +804,22 @@ fn real_offline_uv_environment_checks_missing_runtime_distributions() {
         text(&selected_legacy)
             .contains("missing-doctor-legacy-package is missing from .venv")
     );
+
+    fs::write(&metadata, "[project]\nname = 'sample'\nversion = '1.0.0'\n")
+        .unwrap();
+    let legacy_only = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .arg("doctor")
+        .arg("--project")
+        .arg(&project)
+        .env("PATH", &path)
+        .env_remove("VIRTUAL_ENV")
+        .output()
+        .unwrap();
+    let report = text(&legacy_only);
+    assert_eq!(legacy_only.status.code(), Some(1), "{legacy_only:?}");
+    assert!(
+        report.contains("missing-doctor-legacy-package is missing from .venv"),
+        "{report}"
+    );
+    assert!(!report.contains("group \"dev\" is missing"), "{report}");
 }

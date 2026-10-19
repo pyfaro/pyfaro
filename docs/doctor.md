@@ -33,17 +33,21 @@ Doctor validates `pyproject.toml` with the same Pyfaro config loader used by
 `sync` and `run`. It reports conflicting per-tool files alongside
 `[tool.ruff]`, `[tool.ty]`, or `[tool.pytest]`, and detects files where `src`,
 `tests`, or `.venv` directories are expected. A `.venv` directory without its
-Python interpreter is a blocking layout issue. For uv, a project `uv.toml`
+Python interpreter is a blocking layout issue. On Unix, an existing
+`.venv/bin/python` without executable permission also blocks, even if another
+Python is available on `PATH` and the project has no dependencies. For uv, a project `uv.toml`
 takes precedence over `[tool.uv]` in `pyproject.toml`; doctor reports their
-coexistence as a warning.
+coexistence as a warning. A non-table `[tool.uv]` value is an error.
 
 Doctor parses `[project].dependencies` and uv's default dependency groups
 with PyPA's PEP 508 implementation available to the project interpreter
 (including pip's bundled copy or the copy in CPython's `ensurepip` wheel).
 The `dev` group is selected by default, unless uv's `default-groups` setting
-changes that selection. Doctor discovers uv configuration from the project
-directory upward: in each directory, `uv.toml` takes precedence over
-`[tool.uv]` in `pyproject.toml`, and the nearest configured directory wins.
+changes that selection. `UV_NO_DEV`, `UV_NO_DEFAULT_GROUPS`, and the
+space-delimited `UV_NO_GROUP` environment variable remove groups from installed
+distribution checks, as they do for uv. Doctor discovers uv configuration from
+the project directory upward: in each directory, `uv.toml` takes precedence
+over `[tool.uv]` in `pyproject.toml`, and the nearest configured directory wins.
 Both table and inline-table group declarations are accepted. Group names in
 defaults and includes match according to PEP 735: case is ignored and runs of
 `-`, `_`, or `.` are equivalent.
@@ -51,13 +55,16 @@ Invalid group names, duplicate names after normalization, and explicitly
 selected groups that are missing are blocking findings. Included groups are
 followed. Legacy uv `dev-dependencies` are validated even when `dev` is not
 selected. Their installed distributions are checked only when `dev` is
-selected, and malformed requirements identify the uv configuration file to
-correct. Non-default groups not included by a selected group are reported as
-unchecked warnings, since `pyfaro sync` does not install them by default.
-Doctor still validates their requirement strings, entry structure, and inclusion cycles,
+selected, including when `dev` is explicitly listed in `default-groups` and
+legacy `dev-dependencies` are its only definition. Malformed requirements
+identify the uv configuration file to correct. Non-default groups not included
+by a selected group are reported as unchecked warnings. Doctor still validates
+every group's requirement strings, entry structure, and inclusion cycles
 without checking whether their distributions are installed. Invalid group
 entries, inclusion cycles, and dynamic project dependencies are blocking
-findings. An include table must contain only `include-group`.
+findings, even when a static dependencies array is also present. Explicit
+default group names are validated even when environment switches exclude them.
+An include table must contain only `include-group`.
 Doctor evaluates environment markers and checks applicable distribution names
 in the project's existing `.venv` using Python's standard
 `importlib.metadata`. A missing project interpreter or distribution is a

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io::Write;
@@ -252,6 +253,23 @@ fn inspect_layout(root: &Path, report: &mut Report) -> Result<()> {
             ),
         )?;
     }
+    #[cfg(unix)]
+    if interpreter.is_file() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let permissions = fs::metadata(&interpreter)
+            .map_err(|error| Error::io("inspect", &interpreter, error))?
+            .permissions();
+        if permissions.mode() & 0o111 == 0 {
+            report.line(
+                Severity::Error,
+                format!(
+                    "layout: {} is not executable; repair it with pyfaro sync",
+                    interpreter.display()
+                ),
+            )?;
+        }
+    }
     Ok(())
 }
 
@@ -371,6 +389,7 @@ struct GroupCollector<'a> {
     checked: Vec<String>,
     selected: Vec<String>,
     active: Vec<String>,
+    disabled: &'a [String],
 }
 
 impl GroupCollector<'_> {
@@ -378,6 +397,7 @@ impl GroupCollector<'_> {
         &mut self,
         name: &str,
         requirements: &mut Vec<Requirement>,
+        unselected_requirements: &mut Vec<Requirement>,
         selected_group: bool,
         report: &mut Report,
     ) -> Result<bool> {
@@ -414,7 +434,12 @@ impl GroupCollector<'_> {
         let mut valid = true;
         for entry in group.iter() {
             if let Some(requirement) = entry.as_str() {
-                requirements.push(Requirement {
+                let target = if selected_group {
+                    &mut *requirements
+                } else {
+                    &mut *unselected_requirements
+                };
+                target.push(Requirement {
                     text: requirement.to_owned(),
                     source: self.source.to_owned(),
                 });
@@ -425,10 +450,16 @@ impl GroupCollector<'_> {
                     .and_then(|table| table.get("include-group"))
                     .and_then(|value| value.as_str());
                 if let Some(included) = included {
+                    let included = normalize_group_name(included);
                     valid &= self.collect(
-                        &normalize_group_name(included),
+                        &included,
                         requirements,
-                        selected_group,
+                        unselected_requirements,
+                        selected_group
+                            && !self
+                                .disabled
+                                .iter()
+                                .any(|name| name == &included),
                         report,
                     )?;
                 } else {
@@ -447,6 +478,15 @@ impl GroupCollector<'_> {
         }
         Ok(valid)
     }
+}
+
+fn uv_env_enabled(name: &str) -> bool {
+    env::var(name).is_ok_and(|value| {
+        matches!(
+            value.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        )
+    })
 }
 
 struct DeclaredDependencies {
@@ -556,6 +596,20 @@ fn uv_configuration(
                 }
             }
         };
+        if document
+            .get("tool")
+            .and_then(|tool| tool.get("uv"))
+            .is_some_and(|uv| uv.as_table_like().is_none())
+        {
+            report.line(
+                Severity::Error,
+                format!(
+                    "dependencies: [tool.uv] in {} must be a table",
+                    metadata.display()
+                ),
+            )?;
+            return Ok(UvDiscovery::Invalid);
+        }
         if document.get("tool").and_then(|tool| tool.get("uv")).is_some() {
             return Ok(UvDiscovery::Config(Box::new(UvConfiguration {
                 document,
@@ -594,7 +648,8 @@ fn declared_dependencies(
             report.line(Severity::Error, "dependencies: [project].dependencies must be an array of requirement strings")?;
             invalid = true;
         }
-    } else if document
+    }
+    if document
         .get("project")
         .and_then(|project| project.get("dynamic"))
         .and_then(|dynamic| dynamic.as_array())
@@ -604,6 +659,15 @@ fn declared_dependencies(
     {
         report.line(Severity::Error, "dependencies: dynamic project dependencies cannot be checked from pyproject.toml; inspect the build backend output and sync the environment")?;
         invalid = true;
+    }
+    if document
+        .get("tool")
+        .and_then(|tool| tool.get("uv"))
+        .is_some_and(|uv| uv.as_table_like().is_none())
+    {
+        report
+            .line(Severity::Error, "dependencies: [tool.uv] must be a table")?;
+        return Ok(None);
     }
     let uv_configuration = match uv_configuration(root, document, report)? {
         UvDiscovery::Config(config) => Some(config),
@@ -618,6 +682,10 @@ fn declared_dependencies(
         .map(|config| config.label("default-groups"))
         .unwrap_or_else(|| "[tool.uv].default-groups".to_owned());
     let explicit_defaults = default_groups.is_some();
+    let has_legacy_dev = uv_configuration
+        .as_ref()
+        .and_then(|config| config.setting("dev-dependencies"))
+        .is_some();
     let selected_groups = match default_groups {
         None => Some(vec!["dev".to_owned()]),
         Some(value) if value.as_str() == Some("all") => None,
@@ -640,6 +708,13 @@ fn declared_dependencies(
             }
         }
     };
+    let disabled_groups: Vec<String> = env::var("UV_NO_GROUP")
+        .unwrap_or_default()
+        .split_whitespace()
+        .map(normalize_group_name)
+        .chain(uv_env_enabled("UV_NO_DEV").then(|| "dev".to_owned()))
+        .collect();
+    let no_default_groups = uv_env_enabled("UV_NO_DEFAULT_GROUPS");
     let mut unselected_requirements = Vec::new();
     if let Some(groups) = document.get("dependency-groups") {
         let groups = groups.as_table().cloned().or_else(|| {
@@ -667,24 +742,35 @@ fn declared_dependencies(
                 checked: Vec::new(),
                 selected: Vec::new(),
                 active: Vec::new(),
+                disabled: &disabled_groups,
             };
-            let selected_names: Vec<String> = match &selected_groups {
+            let configured_names: Vec<String> = match &selected_groups {
                 Some(selected) => selected.clone(),
                 None => groups
                     .iter()
                     .map(|(name, _)| normalize_group_name(name))
                     .collect(),
             };
-            for name in selected_names {
-                if !explicit_defaults
-                    && name == "dev"
-                    && !group_names.contains_key(&name)
+            for name in &configured_names {
+                if !group_names.contains_key(name)
+                    && !(name == "dev" && has_legacy_dev)
+                    && (explicit_defaults || name != "dev")
+                {
+                    report.line(Severity::Error, format!("dependencies: group {name:?} is missing; define it in [dependency-groups]"))?;
+                    invalid = true;
+                }
+            }
+            for name in configured_names {
+                if no_default_groups
+                    || disabled_groups.iter().any(|disabled| disabled == &name)
+                    || !group_names.contains_key(&name)
                 {
                     continue;
                 }
                 invalid |= !collector.collect(
                     &name,
                     &mut requirements,
+                    &mut unselected_requirements,
                     true,
                     report,
                 )?;
@@ -694,6 +780,7 @@ fn declared_dependencies(
                 if !collector.checked.iter().any(|entry| entry == &normalized) {
                     invalid |= !collector.collect(
                         &normalized,
+                        &mut requirements,
                         &mut unselected_requirements,
                         false,
                         report,
@@ -701,7 +788,7 @@ fn declared_dependencies(
                 }
                 if !collector.selected.iter().any(|entry| entry == &normalized)
                 {
-                    report.line(Severity::Warn, format!("dependencies: group {name:?} is not checked because pyfaro sync does not select it by default; sync it explicitly if needed"))?;
+                    report.line(Severity::Warn, format!("dependencies: group {name:?} is not checked for installed distributions; sync it explicitly if needed"))?;
                 }
             }
         } else {
@@ -713,6 +800,9 @@ fn declared_dependencies(
         }
     } else if explicit_defaults && let Some(selected) = &selected_groups {
         for name in selected {
+            if name == "dev" && has_legacy_dev {
+                continue;
+            }
             report.line(Severity::Error, format!("dependencies: group {name:?} is missing; define it in [dependency-groups]"))?;
             invalid = true;
         }
@@ -723,7 +813,9 @@ fn declared_dependencies(
         let label = config.label("dev-dependencies");
         let selected = selected_groups
             .as_ref()
-            .is_none_or(|selected| selected.iter().any(|name| name == "dev"));
+            .is_none_or(|selected| selected.iter().any(|name| name == "dev"))
+            && !no_default_groups
+            && !disabled_groups.iter().any(|name| name == "dev");
         if let Some(legacy) = legacy.as_array() {
             for entry in legacy.iter() {
                 if let Some(requirement) = entry.as_str() {
