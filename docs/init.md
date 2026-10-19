@@ -25,8 +25,9 @@ pyfaro init ./my-project
 pyfaro init ./my-project --apply
 ```
 
-The path defaults to the current directory. It is the exact directory to
-initialize, not an ancestor-project search. Relative paths and paths with
+The path defaults to the current directory. Unlike `sync` and `run`, `init`
+uses the exact directory to initialize, not an ancestor-project search;
+this keeps creation of a new project deliberate. Relative paths and paths with
 spaces are supported; existing symlinks in the directory path are resolved.
 
 Without `--apply`, Pyfaro validates the existing configuration and displays

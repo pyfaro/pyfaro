@@ -46,9 +46,13 @@ pub(crate) struct InitArgs {
 
 #[derive(Args)]
 pub(crate) struct SyncArgs {
-    /// Project directory (defaults to the current directory)
-    #[arg(default_value = ".")]
-    pub path: PathBuf,
+    /// Explicit project directory (otherwise discover from the current directory)
+    #[arg(conflicts_with = "project")]
+    pub path: Option<PathBuf>,
+
+    /// Explicit project directory; overrides discovery
+    #[arg(long)]
+    pub project: Option<PathBuf>,
 
     /// Refuse to update an absent or stale uv.lock
     #[arg(long, conflicts_with = "frozen")]
@@ -69,9 +73,9 @@ pub(crate) struct SyncArgs {
 
 #[derive(Args)]
 pub(crate) struct RunArgs {
-    /// Project directory (defaults to the current directory)
-    #[arg(long, default_value = ".")]
-    pub project: PathBuf,
+    /// Explicit project directory (otherwise discover from the current directory)
+    #[arg(long)]
+    pub project: Option<PathBuf>,
 
     /// Refuse to update an absent or stale uv.lock
     #[arg(long, conflicts_with = "frozen")]

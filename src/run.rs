@@ -1,44 +1,12 @@
 use std::ffi::{OsStr, OsString};
-use std::fs;
 use std::path::Path;
 
 use crate::cli::RunArgs;
-use crate::error::{Error, Result};
-use crate::{process, uv};
+use crate::error::Result;
+use crate::{process, project, uv};
 
 pub(crate) fn run(args: RunArgs) -> Result<()> {
-    let root = fs::canonicalize(&args.project).map_err(|source| {
-        Error::io("resolve project directory", &args.project, source)
-    })?;
-    if !root.is_dir() {
-        return Err(Error::Project(format!(
-            "project path is not a directory: {}",
-            root.display()
-        )));
-    }
-    let metadata = root.join("pyproject.toml");
-    match fs::metadata(&metadata) {
-        Ok(entry) if entry.is_file() => {}
-        Ok(_) => {
-            return Err(Error::Project(format!(
-                "project metadata is not a file: {}",
-                metadata.display()
-            )));
-        }
-        Err(source) if source.kind() == std::io::ErrorKind::NotFound => {
-            return Err(Error::Project(format!(
-                "project directory has no pyproject.toml: {}",
-                root.display()
-            )));
-        }
-        Err(source) => {
-            return Err(Error::io(
-                "inspect project metadata",
-                &metadata,
-                source,
-            ));
-        }
-    }
+    let root = project::select(args.project.as_deref())?;
     let cancelled = process::cancellation()?;
     let uv = uv::Uv::discover(args.uv, args.offline, &cancelled)?;
     let mut command = vec![

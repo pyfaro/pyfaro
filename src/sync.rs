@@ -1,19 +1,10 @@
-use std::fs;
-
 use crate::cli::SyncArgs;
-use crate::error::{Error, Result};
-use crate::{process, uv};
+use crate::error::Result;
+use crate::{process, project, uv};
 
 pub(crate) fn run(args: SyncArgs) -> Result<()> {
-    let root = fs::canonicalize(&args.path).map_err(|source| {
-        Error::io("resolve project directory", &args.path, source)
-    })?;
-    if !root.is_dir() {
-        return Err(Error::Project(format!(
-            "project path is not a directory: {}",
-            root.display()
-        )));
-    }
+    let root =
+        project::select(args.project.as_deref().or(args.path.as_deref()))?;
     let cancelled = process::cancellation()?;
     let uv = uv::Uv::discover(args.uv, args.offline, &cancelled)?;
     let mut command = vec!["sync"];
