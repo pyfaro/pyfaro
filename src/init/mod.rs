@@ -1,4 +1,3 @@
-mod config;
 mod files;
 
 use std::fs;
@@ -6,6 +5,7 @@ use std::io;
 use std::io::Write;
 
 use crate::cli::InitArgs;
+use crate::config;
 use crate::error::{Error, Failures, Result};
 use crate::process;
 use crate::project;

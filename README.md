@@ -50,6 +50,12 @@ declarations and third-party tool settings. It does not install dependencies
 or create a virtual environment. A second run is idempotent for an unchanged
 project and dependency resolution.
 
+`sync` and `run` load the selected project's `pyproject.toml` before invoking
+uv. The optional `[tool.pyfaro]` table defaults to schema version `1`; invalid
+or unknown Pyfaro settings fail with a path-aware diagnostic. Ruff, ty, uv,
+and other tools keep ownership of their own sections. See the
+[configuration guide](docs/config.md).
+
 Use `--offline` to disable network access or `--uv <path>` to select an
 executable. See the [init guide](docs/init.md) for exact behavior, error
 handling, and alpha limitations, and the [release instructions](docs/releasing.md)

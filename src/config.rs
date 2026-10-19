@@ -1,8 +1,41 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+
 use toml_edit::{DocumentMut, Item, Table, value};
 
 use crate::error::{Error, Result};
 
-pub(super) fn is_workspace(source: &str) -> Result<bool> {
+pub(crate) enum Config {
+    V1 { root: PathBuf },
+}
+
+impl Config {
+    pub(crate) fn load(root: &Path) -> Result<Self> {
+        let metadata = root.join("pyproject.toml");
+        let source = fs::read_to_string(&metadata).map_err(|error| {
+            Error::io("read project metadata", &metadata, error)
+        })?;
+        let document: DocumentMut =
+            source.parse().map_err(|error: toml_edit::TomlError| {
+                Error::Project(format!(
+                    "invalid {}: {error}",
+                    metadata.display()
+                ))
+            })?;
+        validate(&document).map_err(|error| {
+            Error::Project(format!("invalid {}: {error}", metadata.display()))
+        })?;
+        Ok(Self::V1 { root: root.to_owned() })
+    }
+
+    pub(crate) fn root(&self) -> &Path {
+        match self {
+            Self::V1 { root } => root,
+        }
+    }
+}
+
+pub(crate) fn is_workspace(source: &str) -> Result<bool> {
     let document: DocumentMut = source.parse()?;
     Ok(document
         .get("tool")
@@ -12,13 +45,9 @@ pub(super) fn is_workspace(source: &str) -> Result<bool> {
 }
 
 /// Plan the opt-in change while preserving unrelated TOML formatting.
-pub(super) fn prepare(original: &str) -> Result<String> {
+pub(crate) fn prepare(original: &str) -> Result<String> {
     let mut document: DocumentMut = original.parse()?;
-    if document.get("project").and_then(Item::as_table_like).is_none() {
-        return Err(Error::Project(
-            "expected a standard [project] table in pyproject.toml".into(),
-        ));
-    }
+    validate(&document)?;
     if document.get("tool").is_none() {
         let mut tool = Table::new();
         tool.set_implicit(true);
@@ -34,6 +63,30 @@ pub(super) fn prepare(original: &str) -> Result<String> {
         tool.get_mut("pyfaro").and_then(Item::as_table_like_mut).ok_or_else(
             || Error::Project("[tool.pyfaro] must be a table".into()),
         )?;
+    if settings.get("schema-version").is_none() {
+        settings.insert("schema-version", value(1));
+    }
+    Ok(document.to_string())
+}
+
+fn validate(document: &DocumentMut) -> Result<()> {
+    if document.get("project").and_then(Item::as_table_like).is_none() {
+        return Err(Error::Project(
+            "expected a standard [project] table in pyproject.toml".into(),
+        ));
+    }
+    let Some(tool) = document.get("tool") else {
+        return Ok(());
+    };
+    let tool = tool
+        .as_table_like()
+        .ok_or_else(|| Error::Project("tool must be a TOML table".into()))?;
+    let Some(settings) = tool.get("pyfaro") else {
+        return Ok(());
+    };
+    let settings = settings.as_table_like().ok_or_else(|| {
+        Error::Project("[tool.pyfaro] must be a table".into())
+    })?;
     for (key, _) in settings.iter() {
         if key != "schema-version" {
             return Err(Error::Project(format!(
@@ -48,15 +101,23 @@ pub(super) fn prepare(original: &str) -> Result<String> {
             "tool.pyfaro.schema-version must be the integer 1".into(),
         ));
     }
-    if settings.get("schema-version").is_none() {
-        settings.insert("schema-version", value(1));
-    }
-    Ok(document.to_string())
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::prepare;
+    use super::{Config, prepare};
+
+    #[test]
+    fn loading_defaults_to_schema_one_without_writing_metadata() {
+        let directory = tempfile::tempdir().unwrap();
+        let metadata = directory.path().join("pyproject.toml");
+        let source = "[project]\nname = 'example'\n\n[tool.ruff]\nline-length = 100\n\n[tool.ty]\n";
+        std::fs::write(&metadata, source).unwrap();
+        let config = Config::load(directory.path()).unwrap();
+        assert_eq!(config.root(), directory.path());
+        assert_eq!(std::fs::read_to_string(metadata).unwrap(), source);
+    }
 
     #[test]
     fn rejects_unknown_or_invalid_pyfaro_settings() {
