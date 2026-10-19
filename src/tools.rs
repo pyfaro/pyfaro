@@ -33,22 +33,38 @@ pub(crate) fn run(args: ToolsArgs) -> Result<()> {
         let result =
             inspect(tool, root.as_deref(), args.uv.as_ref(), &cancelled);
         match result {
-            Ok((path, version)) => writeln!(
-                output,
-                "{}: {} ({version})",
-                name(tool),
-                path.display()
-            )
-            .map_err(Error::Output)?,
+            Ok((path, version)) => {
+                let report =
+                    format!("{}: {} ({version})", name(tool), path.display());
+                writeln!(output, "{}", single_line(&report))
+                    .map_err(Error::Output)?
+            }
             Err(Error::Cancelled) => return Err(Error::Cancelled),
             Err(error) if args.tool.is_some() => return Err(error),
             Err(error) => {
-                writeln!(output, "{}: unavailable ({error})", name(tool))
+                let report = format!("{}: unavailable ({error})", name(tool));
+                writeln!(output, "{}", single_line(&report))
                     .map_err(Error::Output)?
             }
         }
     }
     Ok(())
+}
+
+fn single_line(value: &str) -> String {
+    let mut escaped = String::new();
+    for character in value.chars() {
+        match character {
+            '\n' => escaped.push_str("\\n"),
+            '\r' => escaped.push_str("\\r"),
+            '\t' => escaped.push_str("\\t"),
+            character if character.is_control() => {
+                escaped.push_str(&format!("\\u{{{:x}}}", character as u32));
+            }
+            character => escaped.push(character),
+        }
+    }
+    escaped
 }
 
 fn name(tool: Tool) -> &'static str {

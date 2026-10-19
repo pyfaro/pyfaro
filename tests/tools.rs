@@ -243,6 +243,26 @@ fn informational_listing_escapes_multiline_probe_errors() {
     );
 }
 
+#[cfg(unix)]
+#[test]
+fn tool_reports_escape_newlines_in_executable_paths() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("line\nbreak");
+    fs::create_dir(&project).unwrap();
+    fs::write(project.join("pyproject.toml"), "[project]\nname = 'example'\n")
+        .unwrap();
+    install(&project.join(".venv").join(scripts()), "ruff");
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["tools", "ruff"])
+        .current_dir(&project)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    let report = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(report.lines().count(), 1, "{report:?}");
+    assert!(report.contains("line\\nbreak"), "{report}");
+}
+
 #[test]
 fn uv_probe_failure_is_actionable_without_forwarding_the_probe_status() {
     let sandbox = tempdir().unwrap();
