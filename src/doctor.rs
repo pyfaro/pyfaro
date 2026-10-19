@@ -281,15 +281,15 @@ fn inspect_configuration(
                         }
                     }
                 }
-                _ => match fs::File::open(&path) {
-                    Ok(file) => match file.metadata() {
-                        Ok(metadata) if metadata.is_file() => true,
-                        Ok(_) => {
-                            report.line(Severity::Error, format!("configuration: {} must be a readable file, not a directory or special file", path.display()))?;
-                            false
-                        }
+                _ => match fs::metadata(&path) {
+                    Ok(metadata) if !metadata.is_file() => {
+                        report.line(Severity::Error, format!("configuration: {} must be a readable file, not a directory or special file", path.display()))?;
+                        false
+                    }
+                    Ok(_) => match fs::File::open(&path) {
+                        Ok(_) => true,
                         Err(error) => {
-                            report.line(Severity::Error, format!("configuration: cannot inspect {}: {error}; check the file and its permissions", path.display()))?;
+                            report.line(Severity::Error, format!("configuration: cannot read {}: {error}; check the file and its permissions", path.display()))?;
                             false
                         }
                     },
@@ -299,7 +299,7 @@ fn inspect_configuration(
                         false
                     }
                     Err(error) => {
-                        report.line(Severity::Error, format!("configuration: cannot read {}: {error}; check the file and its permissions", path.display()))?;
+                        report.line(Severity::Error, format!("configuration: cannot inspect {}: {error}; check the file and its permissions", path.display()))?;
                         false
                     }
                 },
