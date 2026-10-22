@@ -15,6 +15,63 @@ future publication, the maintainer must explicitly approve the exact version
 and merged commit after reviewing the archive and CI evidence. A preparation
 PR alone is not publication approval.
 
+## How to release
+
+Releases go through the manual [Release workflow](#manual-release-workflow).
+The steps below assume `<version>` is the development version already in
+`Cargo.toml` (for example `0.4.0-alpha.1`) and that CI on `main` is green.
+
+1. **Prepare.** In a PR, rename `## Unreleased — <version> development` in
+   `CHANGELOG.md` to `## <version> — YYYY-MM-DD` and replace "This version
+   has not been published" with a one-line introduction. That section becomes
+   the GitHub Release notes. Merge the PR once CI passes.
+2. **Dry run (optional).** Package and test without uploading:
+
+   ```sh
+   gh workflow run release.yml -f version=<version>
+   gh run watch "$(gh run list --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
+   ```
+
+   Download the `crate` artifact from the run to review the archive and its
+   SHA-256.
+3. **Publish.** Start the real run from `main`:
+
+   ```sh
+   gh workflow run release.yml -f version=<version> -f publish=true
+   ```
+
+   Preflight, CI on all three platforms, the audit, and packaging run first.
+4. **Approve.** The **Publish to crates.io** job waits on the `crates-io`
+   environment. Approve it in the run page (**Review deployments**), or:
+
+   ```sh
+   run=<run id>
+   env_id=$(gh api "repos/pyfaro/pyfaro/actions/runs/$run/pending_deployments" --jq '.[0].environment.id')
+   gh api -X POST "repos/pyfaro/pyfaro/actions/runs/$run/pending_deployments" \
+     -F "environment_ids[]=$env_id" -f state=approved -f comment="Approve <version>"
+   ```
+
+   The workflow then uploads, tags `v<version>`, builds the release archives,
+   creates the GitHub Release, and reinstalls the version from crates.io.
+5. **Verify.** Check the crates.io page, the tag, and the release assets:
+
+   ```sh
+   gh release download v<version> -p 'SHA256SUMS' -p '*x86_64-unknown-linux-gnu.tar.gz'
+   sha256sum -c --ignore-missing SHA256SUMS
+   cargo install pyfaro --version <version> --locked
+   ```
+
+6. **Record.** In a follow-up PR, add the publication paragraph to the
+   changelog section and a "Published release" record below, point the README
+   install command at `<version>`, move `Cargo.toml` to the next development
+   version, and add a new `## Unreleased — <next> development` section.
+
+If preflight fails, fix the reported input (wrong ref, version mismatch,
+missing changelog heading, existing tag, or a version crates.io already
+knows) and start again. If a failure happens after the upload, see the
+recovery notes in the workflow sections below. Published versions can never
+be replaced; a defective one is yanked and superseded by a new version.
+
 ## Published release: 0.3.0-alpha.1
 
 - Version: [`pyfaro 0.3.0-alpha.1`](https://crates.io/crates/pyfaro/0.3.0-alpha.1).

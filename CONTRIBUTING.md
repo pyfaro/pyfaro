@@ -109,7 +109,7 @@ publishing, tags the commit, and creates a GitHub Release with standalone
 archives. Future versions use the same workflow. Backlog issue B06 still
 owns signing, provenance, and installers for the public beta. The
 `v0.1.0-alpha.2`, `v0.2.0-alpha.1`, and `v0.3.0-alpha.1` tags point to their
-published source commits and all have GitHub prereleases. See
-[the publishing guide](docs/releasing.md) for verified release records and
+published source commits and all have GitHub prereleases. To cut a release, follow [How to release](docs/releasing.md#how-to-release).
+See [the publishing guide](docs/releasing.md) for verified release records and
 explicit approval gates for future uploads, tags, and releases. No registry
 credentials are stored in this repository.
