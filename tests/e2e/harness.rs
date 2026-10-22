@@ -364,6 +364,13 @@ impl Outcome {
         self
     }
 
+    pub fn stderr_eq(&self, expected: &str) -> &Self {
+        if self.stderr != expected {
+            self.fail(&format!("stderr is not exactly {expected:?}"));
+        }
+        self
+    }
+
     pub fn stdout_empty(&self) -> &Self {
         self.stdout_eq("")
     }
