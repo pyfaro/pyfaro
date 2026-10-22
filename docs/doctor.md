@@ -2,7 +2,8 @@
 
 `pyfaro doctor` inspects the nearest project without intentionally changing
 project files. Use `--project <PATH>` to select an exact directory and
-`--uv <PATH>` to select a specific uv executable.
+`--uv <PATH>` to select a specific uv executable. This command is available
+in published `0.2.0-alpha.1` and later versions.
 
 ```sh
 pyfaro doctor

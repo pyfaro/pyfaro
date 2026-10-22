@@ -3,6 +3,7 @@
 `pyfaro python list|install|pin` delegates to uv. Install uv separately;
 Pyfaro accepts stable uv versions at least `0.9.26` and tests against
 `0.9.26`. It does not maintain a Python installer, download catalog, or cache.
+These commands are available in published `0.2.0-alpha.1` and later versions.
 
 ```sh
 pyfaro python list

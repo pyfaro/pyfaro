@@ -1,11 +1,11 @@
 # Publishing Pyfaro
 
-The latest published version is [`0.1.0-alpha.2`](https://crates.io/crates/pyfaro/0.1.0-alpha.2).
-It adds `sync`, `run`, and `tools` to the experimental `init` workflow.
-`init --apply` remains Linux-only; `sync` and `run` are tested on Linux,
-macOS, and Windows. The repository now develops unpublished `0.2.0-alpha.1`,
-which adds project creation, dependency editing, Python-version commands,
-and doctor. Its version number is not a publication approval.
+The latest published version is [`0.2.0-alpha.1`](https://crates.io/crates/pyfaro/0.2.0-alpha.1).
+It adds project creation, dependency editing, Python-version commands, and
+doctor to the experimental `init`, `sync`, `run`, and `tools` workflows.
+`init --apply` remains Linux-only; the other commands are tested on Linux,
+macOS, and Windows. The repository now develops unpublished `0.3.0-alpha.1`
+(v0.3.0 Code Quality work). Its version number is not a publication approval.
 
 Completing the `v0.1.0 — Foundation` or `v0.2.0 — Project Management` backlog
 milestones means their source-work criteria are met, not that a stable crate
@@ -13,6 +13,32 @@ has shipped. CI package and publish dry-runs do not upload a crate. Before any
 future publication, the maintainer must explicitly approve the exact version
 and merged commit after reviewing the archive and CI evidence. A preparation
 PR alone is not publication approval.
+
+## Published release: 0.2.0-alpha.1
+
+- Version: [`pyfaro 0.2.0-alpha.1`](https://crates.io/crates/pyfaro/0.2.0-alpha.1).
+- Source: merged [PR #89](https://github.com/pyfaro/pyfaro/pull/89), commit
+  [`c7d185c8c0a247396104b183c8473bddcd299856`](https://github.com/pyfaro/pyfaro/commit/c7d185c8c0a247396104b183c8473bddcd299856).
+- Registry timestamp: `2026-10-22T08:37:08.585547Z`.
+- Verified publisher and current owner: `mhbxyz`.
+- Published archive SHA-256:
+  `15c76a1da74c8114d0d3a8b3bb16c03a5985251f5703c94c66960bb2ab9bda37`.
+- The registry checksum matches the locally packaged archive.
+- Before upload, a clean checkout of the source commit passed `cargo fmt`,
+  Clippy with `-D warnings`, all-target tests (124 passed), a release build,
+  `cargo audit`, `cargo package`, and a publish dry-run. All-target tests
+  also passed (124) from the unpacked package.
+- `cargo install pyfaro --version 0.2.0-alpha.1 --locked` succeeded from
+  crates.io. The installed binary reported `pyfaro 0.2.0-alpha.1`. Linux
+  smoke checks with uv 0.9.26 covered `init` preview/apply/reapply (the
+  reapply left output byte-identical), `sync`, `run`, `tools`, `doctor`,
+  `create lib`, and `create cli`.
+- The annotated [`v0.2.0-alpha.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.2.0-alpha.1)
+  resolves to the source commit above, not a later development commit.
+  **No GitHub Release was created for this version.** Creating one requires
+  separate maintainer authorization.
+
+This version exists on crates.io and must not be published again.
 
 ## Published release: 0.1.0-alpha.2
 
@@ -97,7 +123,7 @@ not be committed to this repository.
 ## Pre-publication verification for a future release
 
 First agree on the next release version and prepare it in a reviewed PR.
-Do not publish the repository's `0.2.0-alpha.1` development version merely
+Do not publish the repository's `0.3.0-alpha.1` development version merely
 because it is present in `Cargo.toml`. Use a clean checkout of the merged
 preparation commit, not the PR branch, and the pinned Rust toolchain. Install
 uv 0.9.26 separately and provide Python 3.10+ (CI uses 3.12). Repeat these
@@ -188,7 +214,7 @@ path and version. The all-tool listing and doctor may mark optional Ruff, ty,
 or pytest as unavailable without failing or installing them. Creation,
 dependency editing, Python pinning, and doctor failure paths are covered by
 the all-target integration suite; test a generated library and CLI manually
-before a future v0.2 publication approval.
+before any future publication approval.
 
 Also run `cargo test --locked --all-targets` from the unpacked package to
 verify the shipped tests and fixtures are self-contained. Check the

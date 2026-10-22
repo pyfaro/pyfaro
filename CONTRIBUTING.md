@@ -94,10 +94,11 @@ See the [backlog maintenance guide](tools/github-backlog/README.md).
 
 ## Releases
 
-Experimental `alpha.1` and `alpha.2` crates were published manually. Backlog
-issue B06 still owns automated public-beta distribution, standalone artifacts,
-and GitHub Release automation. The manually created `v0.1.0-alpha.2` tag and
-prerelease point to the published source commit. See
+Experimental `0.1.0-alpha.1`, `0.1.0-alpha.2`, and `0.2.0-alpha.1` crates
+were published manually. Backlog issue B06 still owns automated public-beta
+distribution, standalone artifacts, and GitHub Release automation. The
+manually created `v0.1.0-alpha.2` and `v0.2.0-alpha.1` tags point to their
+published source commits; only `0.1.0-alpha.2` has a prerelease. See
 [the publishing guide](docs/releasing.md) for verified release records and
 explicit approval gates for future uploads, tags, and releases. No registry
 credentials are stored in this repository.
