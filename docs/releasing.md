@@ -275,11 +275,10 @@ first sets the version and dates its `## <version>` changelog section.
    `crates-io` environment, obtains a short-lived token through crates.io
    trusted publishing, uploads, and fails if the registry checksum differs
    from the reviewed archive. It then creates the annotated `v<version>` tag
-   on the exact workflow commit and, unless `github-release` is unchecked, a
-   GitHub Release whose notes are the changelog section and checksum.
-   Versions with a pre-release suffix become GitHub prereleases. No
-   standalone binaries are attached.
-5. **Install from crates.io** installs the published version with `--locked`
+   on the exact workflow commit.
+5. **GitHub Release** runs unless `github-release` is unchecked. It calls
+   `.github/workflows/github-release.yml`, described below.
+6. **Install from crates.io** installs the published version with `--locked`
    and checks its `--version` output.
 
 Run it once with `publish` unchecked to obtain the archive and checksum for
@@ -295,18 +294,54 @@ One-time setup, done by a crates.io owner and a repository admin:
 - In GitHub, keep the `crates-io` environment restricted to `main` with the
   maintainer as a required reviewer.
 
-If the upload succeeds but tagging or the GitHub Release fails, do not rerun
-the workflow: preflight rejects the published version. Create the missing
-tag on the workflow's commit and the release manually, following the
-approval steps above.
+If the upload succeeds but tagging fails, do not rerun the workflow:
+preflight rejects the published version. Create the missing tag on the
+workflow's commit, following the approval steps above, then run the GitHub
+Release workflow for it.
+
+### GitHub Release workflow
+
+`.github/workflows/github-release.yml` builds the downloadable assets for a
+version that is already on crates.io and tagged, and creates its GitHub
+Release. The Release workflow calls it after publishing. Run it by hand to
+backfill an older tag or refresh its assets:
+
+```sh
+gh workflow run github-release.yml -f tag=v0.2.0-alpha.1
+```
+
+It checks that the tag exists and the version is on crates.io, then builds
+the tagged source with the pinned toolchain for:
+
+| Target | Runner | Archive |
+| --- | --- | --- |
+| `x86_64-unknown-linux-gnu` | Ubuntu 22.04 | `.tar.gz` |
+| `aarch64-unknown-linux-gnu` | Ubuntu 22.04 Arm | `.tar.gz` |
+| `aarch64-apple-darwin` | macOS | `.tar.gz` |
+| `x86_64-apple-darwin` | macOS, cross-compiled | `.tar.gz` |
+| `x86_64-pc-windows-msvc` | Windows | `.zip` |
+
+Each archive holds the `pyfaro` executable, `README.md`, `LICENSE`, and
+`CHANGELOG.md`. Native builds must report the exact version; the
+cross-compiled macOS build is not executed. The release also attaches the
+`.crate` downloaded from crates.io, after checking it against the registry
+checksum, and a `SHA256SUMS` file for every asset.
+
+The notes are the `## <version>` section of `CHANGELOG.md` from the
+triggering ref (the released commit, or `main` for a backfill), followed by
+install instructions and GitHub's generated list of merged pull requests
+since the previous release. Versions with a pre-release suffix become
+prereleases. When the release already exists, its notes are replaced and
+its assets are re-uploaded. The binaries are unsigned and have no
+provenance attestation yet.
 
 ## Public beta distribution remains B02/B06
 
-The existing beta work retains responsibility for a supported-platform
-matrix, standalone executable builds, tag-to-release automation, least-
-privilege credentials or trusted publishing, protected release approval,
-checksums, artifact provenance, generated release notes, and documented
-recovery/credential rotation. No alpha preparation closes those tickets.
+The alpha workflows above already provide trusted publishing, a protected
+release approval, checksums, generated release notes, and standalone
+archives. The beta work retains responsibility for the supported-platform
+policy, signed binaries and artifact provenance, installers, and documented
+credential rotation.
 
 References: [Cargo publishing](https://doc.rust-lang.org/cargo/reference/publishing.html),
 [manifest packaging/publication controls](https://doc.rust-lang.org/cargo/reference/manifest.html).

@@ -15,7 +15,7 @@ on:
         type: boolean
         default: false
       github-release:
-        description: Create a GitHub Release for the new tag
+        description: Create a GitHub Release with binaries for the new tag
         type: boolean
         default: true
 
@@ -31,14 +31,11 @@ jobs:
     name: Release preflight
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    outputs:
-      prerelease: ${{ steps.inputs.outputs.prerelease }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Validate version, ref, tag, and registry
-        id: inputs
         env:
           VERSION: ${{ inputs.version }}
           REF: ${{ github.ref }}
@@ -68,10 +65,6 @@ jobs:
             echo "::error::crates.io returned HTTP $status for pyfaro $VERSION; it may already be published"
             exit 1
           fi
-          case "$VERSION" in
-            *-*) echo prerelease=true >> "$GITHUB_OUTPUT" ;;
-            *) echo prerelease=false >> "$GITHUB_OUTPUT" ;;
-          esac
 
   checks:
     name: Checks
@@ -129,7 +122,7 @@ jobs:
 
   publish:
     name: Publish to crates.io
-    needs: [preflight, package]
+    needs: package
     if: inputs.publish
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -190,29 +183,16 @@ jobs:
           gh api "repos/$REPOSITORY/git/refs" \
             -f ref="refs/tags/v$VERSION" -f sha="$tag" >/dev/null
           echo "Tagged $COMMIT as v$VERSION"
-      - name: Create the GitHub Release
-        if: inputs.github-release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPOSITORY: ${{ github.repository }}
-          PRERELEASE: ${{ needs.preflight.outputs.prerelease }}
-        run: |
-          set -euo pipefail
-          awk -v heading="## $VERSION" '
-            index($0, heading) == 1 { found = 1; next }
-            found && /^## / { exit }
-            found { print }
-          ' CHANGELOG.md > notes.md
-          {
-            echo
-            echo "Published on [crates.io](https://crates.io/crates/pyfaro/$VERSION)."
-            echo "Archive SHA-256: \`$(cut -d' ' -f1 "reviewed/pyfaro-$VERSION.crate.sha256")\`."
-            echo "No standalone binaries are attached."
-          } >> notes.md
-          flags=()
-          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
-          gh release create "v$VERSION" --repo "$REPOSITORY" --verify-tag \
-            --title "Pyfaro $VERSION" --notes-file notes.md "${flags[@]}"
+
+  github-release:
+    name: GitHub Release
+    needs: publish
+    if: inputs.github-release
+    permissions:
+      contents: write
+    uses: ./.github/workflows/github-release.yml
+    with:
+      tag: v${{ inputs.version }}
 
   verify-install:
     name: Install from crates.io
