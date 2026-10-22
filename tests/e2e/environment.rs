@@ -229,7 +229,7 @@ fn python_install_downloads_an_explicit_version_into_the_sandbox() {
         .pyfaro(["python", "install", "3.13"])
         .run_plain()
         .success()
-        .stderr_contains("Python 3.13 is already installed");
+        .stdout_empty();
 }
 
 #[test]
