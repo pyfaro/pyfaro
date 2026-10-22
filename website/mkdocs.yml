@@ -4,7 +4,7 @@ site_url: https://pyfaro.github.io/pyfaro/
 repo_url: https://github.com/pyfaro/pyfaro
 repo_name: pyfaro/pyfaro
 edit_uri: edit/main/website/docs/
-copyright: Pyfaro is dual-licensed under MIT or Apache-2.0.
+copyright: Pyfaro is licensed under the Apache License 2.0.
 strict: true
 
 theme:
