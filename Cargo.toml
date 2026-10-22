@@ -73,3 +73,6 @@ todo = "warn"
 [[bin]]
 name = "pyfaro"
 path = "src/main.rs"
+
+[dev-dependencies]
+sha2 = "0.10"

@@ -75,6 +75,32 @@ initialization. See the [init guide](docs/init.md), [create guide](docs/create.m
 The [uv adapter guide](docs/uv-adapter.md) records delegation and platform
 behavior for new workflows.
 
+## End-to-end tests
+
+End-to-end (e2e) tests run the real built `pyfaro` binary against real uv
+0.9.26, Ruff 0.16.10, ty 0.0.85 and pytest 9.1.1 in disposable directories
+(whose paths contain a space and a non-ASCII character). They assert exit
+codes, output and file-system effects, and use fakes only to simulate a tool
+that is missing or broken.
+
+Run the suite locally with uv 0.9.26 and Python 3.10 or newer on PATH:
+
+```sh
+PYFARO_E2E=1 cargo test --locked --test e2e
+```
+
+Without `PYFARO_E2E=1` every e2e test prints a skip note and passes. Network
+access is needed the first time tools are fetched into the uv cache. The suite
+lives in `tests/e2e/`: `main.rs` declares one module per command group
+(`tests/e2e/<group>.rs`), and `harness.rs` provides the shared `Sandbox`,
+command builder, `Outcome` assertions, project helpers and file-tree snapshot.
+Begin each test with `e2e_guard!();`.
+
+Every new command, and every new behavior of an existing command, must ship
+with its e2e test in the same PR. The `E2E (ubuntu-latest)`, `E2E (macos-latest)`
+and `E2E (windows-latest)` jobs are required checks; nothing merges until they
+pass.
+
 ## Branches and pull requests
 
 Start from current `main`; use a focused branch such as `feat/config-loader`,
