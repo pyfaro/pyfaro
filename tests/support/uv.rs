@@ -72,6 +72,18 @@ fn main() {
         }
         return;
     }
+    if matches!(stem.as_ref(), "ruff" | "ty" | "pytest")
+        && let Some(record) = env::var_os("PYFARO_FIXTURE_TOOL_RECORD")
+    {
+        let cwd = env::current_dir().unwrap();
+        fs::write(record, format!("{}\n{}", cwd.display(), args.join("\n")))
+            .unwrap();
+        let code = env::var("PYFARO_FIXTURE_TOOL_EXIT")
+            .ok()
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(0);
+        process::exit(code);
+    }
     if args.iter().any(|arg| arg == "record") {
         fs::write("uv-arguments.txt", args.join("\n")).unwrap();
         println!("fixture stdout");
