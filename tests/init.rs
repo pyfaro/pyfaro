@@ -426,11 +426,7 @@ fn a_relative_path_entry_is_resolved_once_before_changing_directories() {
     let project = sandbox.path().join("project");
     fs::create_dir(&tools).unwrap();
     fs::create_dir(&project).unwrap();
-    fs::copy(
-        support::fixture_uv(),
-        tools.join(format!("uv{}", std::env::consts::EXE_SUFFIX)),
-    )
-    .unwrap();
+    support::install_fixture(&tools, "uv");
     let original = "[project]\nname = 'example'\nversion = '1.0.0'\n";
     fs::write(project.join("pyproject.toml"), original).unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))

@@ -122,10 +122,17 @@ fn write_project(
             "\n[tool.uv.build-backend]\nmodule-name = \"{package}\"\n"
         ));
     }
+    metadata.push_str(
+        "\n[dependency-groups]\ndev = [\"pytest==9.1.1\", \"ruff==0.16.10\", \"ty==0.0.85\"]\n",
+    );
     metadata.push_str("\n[tool.pyfaro]\nschema-version = 1\n");
+    metadata.push_str(
+        "\n[tool.ruff]\nline-length = 88\nsrc = [\"src\", \"tests\"]\n",
+    );
+    metadata.push_str("\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n");
     write(&root.join("pyproject.toml"), &metadata)?;
     let mut readme = format!(
-        "# {name}\n\nA {} created with Pyfaro.\n\n## Development\n\n```sh\npyfaro sync --offline\npyfaro run --locked --offline -- python -m unittest discover -s tests\nuv --no-python-downloads --offline build\n```\n",
+        "# {name}\n\nA {} created with Pyfaro.\n\n## Development\n\nRun `pyfaro sync` first. It creates `.venv` and `uv.lock` with the pinned Ruff, ty, and pytest from the `dev` dependency group. Commit `uv.lock`, then check and test:\n\n```sh\npyfaro sync\npyfaro check\npyfaro test\nuv build\n```\n",
         if command.is_some() {
             "command-line project"
         } else {
@@ -134,7 +141,7 @@ fn write_project(
     );
     if let Some(command) = command {
         readme.push_str(&format!(
-            "\nRun the installed command with `pyfaro run --locked --offline -- {command}`.\n"
+            "\nRun the installed command with `pyfaro run --locked -- {command}`.\n"
         ));
     }
     write(&root.join("README.md"), &readme)?;
@@ -153,7 +160,7 @@ fn write_project(
         write(
             &tests.join("test_cli.py"),
             &format!(
-                "\"\"\"Smoke test for the installed command.\"\"\"\n\nimport io\nimport unittest\nfrom contextlib import redirect_stdout\n\nfrom {package}.cli import main\n\n\nclass CommandTest(unittest.TestCase):\n    def test_main(self) -> None:\n        output = io.StringIO()\n        with redirect_stdout(output):\n            result = main()\n        self.assertEqual(result, 0)\n        self.assertEqual(output.getvalue(), \"Hello from {name}!\\n\")\n"
+                "\"\"\"Smoke test for the installed command.\"\"\"\n\nimport pytest\n\nfrom {package}.cli import main\n\n\ndef test_main(capsys: pytest.CaptureFixture[str]) -> None:\n    message = \"Hello from {name}!\\n\"\n    assert main() == 0\n    assert capsys.readouterr().out == message\n"
             ),
         )?;
     } else {
@@ -166,7 +173,7 @@ fn write_project(
         write(
             &tests.join("test_library.py"),
             &format!(
-                "\"\"\"Smoke test for the public API.\"\"\"\n\nimport unittest\n\nfrom {package} import hello\n\n\nclass LibraryTest(unittest.TestCase):\n    def test_hello(self) -> None:\n        self.assertEqual(hello(), \"Hello from {name}!\")\n"
+                "\"\"\"Smoke test for the public API.\"\"\"\n\nfrom {package} import hello\n\n\ndef test_hello() -> None:\n    message = \"Hello from {name}!\"\n    assert hello() == message\n"
             ),
         )?;
     }

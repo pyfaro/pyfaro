@@ -60,6 +60,14 @@ Cancellation exits 130.
 
 `pyfaro test` never creates or modifies `.venv` or `uv.lock`.
 
+## New projects
+
+`pyfaro create lib` and `pyfaro create cli` generate pytest-style tests, a
+`dev` dependency group pinning pytest, and
+`[tool.pytest.ini_options] testpaths = ["tests"]`. After `pyfaro sync`,
+`pyfaro test` runs them with no further setup. An explicit selection that
+matches nothing (for example `-k nomatch`) exits 5.
+
 ## Tested version
 
 Tested with pytest 9.1.1. Other versions are not rejected.
