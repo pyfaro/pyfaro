@@ -329,6 +329,16 @@ fn create_cli_dotted_name_gets_a_hyphenated_default_command() {
 }
 
 #[test]
+fn create_cli_help_states_the_default_command_rule() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let out = sandbox.pyfaro(["create", "cli", "--help"]).run();
+    out.success().stdout_contains(
+        "Installed command name (defaults to the distribution name with dots replaced by hyphens)",
+    );
+}
+
+#[test]
 fn create_numeric_name_gets_a_leading_underscore_package() {
     e2e_guard!();
     let sandbox = Sandbox::new();

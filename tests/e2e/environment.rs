@@ -991,7 +991,8 @@ fn doctor_blocks_on_missing_default_group_distributions() {
         1,
     );
     // The same finding appears as a warning about the missing executable.
-    out.stdout_contains(&format!("WARN: pytest: {}", not_found("pytest")));
+    out.stdout_contains(&format!("WARN: {}\n", not_found("pytest")));
+    assert!(!out.stdout.contains("pytest: pytest:"), "{}", out.stdout);
 }
 
 #[test]
@@ -1169,7 +1170,8 @@ fn doctor_warnings_for_missing_optional_tools_do_not_fail() {
         .run_plain();
     out.success().stderr_empty();
     for name in ["ruff", "ty", "pytest"] {
-        out.stdout_contains(&format!("WARN: {name}: {}", not_found(name)));
+        out.stdout_contains(&format!("WARN: {}\n", not_found(name)));
+        assert!(!out.stdout.contains(&format!("{name}: {name}:")));
     }
     out.stdout_contains("OK: doctor: no blocking issues");
     assert!(!out.stdout.contains("ERROR"), "{}", out.stdout);
@@ -1198,7 +1200,14 @@ fn doctor_project_selects_the_project_from_elsewhere() {
     alone
         .code(1)
         .stdout_contains("ERROR: project: no pyproject.toml found from ")
+        .stdout_contains("; use --project <PATH>\n")
         .stderr_contains(DOCTOR_FAILED);
+    assert!(
+        !alone.stdout.contains("<PATH>; use --project"),
+        "{}",
+        alone.stdout
+    );
+    assert!(!alone.stdout.contains("to select a project"), "{}", alone.stdout);
 
     // From inside the project the nearest project is found.
     Cmd::pyfaro(&project.path("tests"), ["doctor"])

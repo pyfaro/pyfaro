@@ -39,7 +39,8 @@ missing executable, install it in the intended environment or put it on
 Doctor validates `pyproject.toml` with the same Pyfaro config loader used by
 `sync` and `run`, and reports a non-string or empty `[project].name`. It reports conflicting per-tool files alongside
 `[tool.ruff]`, `[tool.ty]`, or `[tool.pytest]`, and detects files where `src`,
-`tests`, or project environment directories are expected, including dangling symlinks. A project environment
+`tests`, or project environment directories are expected, including dangling symlinks. Only a non-directory at `src` or `tests` is
+reported as a layout conflict; a missing directory is not. A project environment
 without its Python interpreter is a blocking layout issue. On Unix, an existing
 project interpreter without executable permission also blocks, even if another
 Python is available on `PATH` and the project has no dependencies. Standalone

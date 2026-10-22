@@ -22,8 +22,9 @@ unchanged. uv must be a stable version >=0.9.26; CI tests 0.9.26.
 Ruff, ty, and pytest must identify
 themselves with a parseable version; pytest is checked using its
 [PEP 440](https://packaging.python.org/en/latest/specifications/version-specifiers/)
-version scheme, including prereleases. This command does not claim a tested
-compatibility range for them.
+version scheme, including prereleases. CI tests Ruff 0.16.10, ty 0.0.85, and
+pytest 9.1.1; these versions are documented, not enforced, so other versions
+that identify themselves are accepted.
 
 For Ruff, ty, and pytest, resolution checks the nearest project's environment
 first, then the environment named by `VIRTUAL_ENV`, then `PATH`. By default the

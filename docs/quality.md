@@ -51,6 +51,12 @@ violations or files that `fmt --check` would reformat, 2 for Ruff errors).
 Pyfaro's own failures, such as no project or a missing Ruff, exit 1;
 cancellation exits 130.
 
+When a delegated tool run fails, Pyfaro adds a final stderr line
+`error: <tool> failed (exit status: N); see <tool>'s output above`. Ruff, ty and
+pytest still write their own caches (`.ruff_cache`, `.pytest_cache`,
+`__pycache__`) in the project; source files stay untouched unless you run a
+fixing command.
+
 ## No implicit sync
 
 These commands never create or modify `.venv` or `uv.lock`. Install tools
