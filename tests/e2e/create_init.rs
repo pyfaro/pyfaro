@@ -579,10 +579,7 @@ fn created_cli_runs_its_installed_command_through_pyfaro_run() {
         develop(&root),
         ["acme_tools-0.1.0-py3-none-any.whl", "acme_tools-0.1.0.tar.gz"]
     );
-    Cmd::pyfaro(&root, ["run", "--locked", "--", "acme-tools"])
-        .run()
-        .success()
-        .stdout_eq("Hello from acme-tools!\n");
+    assert_runs(&root, "acme-tools", "Hello from acme-tools!");
 }
 
 #[test]
@@ -605,10 +602,7 @@ fn created_cli_with_distinct_names_builds_and_runs_the_selected_command() {
         develop(&root),
         ["acme_tools-0.1.0-py3-none-any.whl", "acme_tools-0.1.0.tar.gz"]
     );
-    Cmd::pyfaro(&root, ["run", "--locked", "--", "acme-do"])
-        .run()
-        .success()
-        .stdout_eq("Hello from acme-tools!\n");
+    assert_runs(&root, "acme-do", "Hello from acme-tools!");
     Cmd::pyfaro(&root, ["run", "--locked", "--", "acme-tools"]).run().code(2);
 }
 
@@ -618,10 +612,7 @@ fn created_dotted_cli_runs_its_default_command() {
     let sandbox = Sandbox::new();
     let root = generate(&sandbox, &["cli", "acme.tools"], "dotted");
     develop(&root);
-    Cmd::pyfaro(&root, ["run", "--locked", "--", "acme-tools"])
-        .run()
-        .success()
-        .stdout_eq("Hello from acme.tools!\n");
+    assert_runs(&root, "acme-tools", "Hello from acme.tools!");
 }
 
 #[test]
@@ -1252,4 +1243,11 @@ mod linux_uv {
         assert_eq!(read(sandbox.join("project/uv.lock")), "original lock\n");
         assert_eq!(read(sandbox.join("project/pyproject.toml")), PLAIN);
     }
+}
+
+/// Run the installed command through `pyfaro run`; Python prints CRLF on Windows.
+fn assert_runs(root: &Path, command: &str, greeting: &str) {
+    let out = Cmd::pyfaro(root, ["run", "--locked", "--", command]).run();
+    out.success().stderr_empty();
+    assert_eq!(out.stdout.replace("\r\n", "\n"), format!("{greeting}\n"));
 }
