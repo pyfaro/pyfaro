@@ -2,6 +2,7 @@
 
 `pyfaro test` runs [pytest](https://docs.pytest.org/) in the project
 environment. Pyfaro does not reimplement pytest or interpret its configuration.
+This command is available in published `0.3.0-alpha.1` and later versions.
 
 ```sh
 pyfaro test [--project <PATH>] [PYTEST_ARGS]...

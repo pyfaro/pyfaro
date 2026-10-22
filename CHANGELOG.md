@@ -1,9 +1,24 @@
 # Changelog
 
+## Unreleased — 0.4.0-alpha.1 development
+
+Version `0.4.0-alpha.1` has not been published. It has no changes yet.
+
 ## 0.3.0-alpha.1 — 2026-10-22
 
-Experimental release prepared for the manual Release workflow. It adds these
-code-quality capabilities to `0.2.0-alpha.1`:
+Published on [crates.io](https://crates.io/crates/pyfaro/0.3.0-alpha.1)
+through crates.io trusted publishing by the manual Release workflow
+([run 39757664060](https://github.com/pyfaro/pyfaro/actions/runs/39757664060)),
+at `2026-10-22T09:50:14.928095Z` from commit `2f041243b9d74cefaa526f017ef84118f95e50a0`.
+The workflow created the annotated [`v0.3.0-alpha.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.3.0-alpha.1).
+The [GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.3.0-alpha.1)
+followed on `2026-10-22T09:51:48Z` with Linux, macOS, and Windows archives,
+the `.crate`, and `SHA256SUMS`. The archive SHA-256 is
+`67f43a670e90536a00ed55be57524ce094baba837955408ea71e6163ee6922fe`.
+Smoke checks with the downloaded Linux binary and uv 0.9.26 covered
+`create lib`, `sync`, `check`, and `test`.
+This experimental release adds these code-quality capabilities to
+`0.2.0-alpha.1`:
 
 - Add `pyfaro lint` and `pyfaro fmt` through Ruff, with project selection,
   paths resolved from the working directory, and `fmt --check` for a

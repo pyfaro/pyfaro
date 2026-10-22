@@ -6,15 +6,16 @@ quality checks, tests, and development workflows into one cohesive CLI.
 
 ## Status
 
-**Latest published alpha: [`0.2.0-alpha.1`](https://crates.io/crates/pyfaro/0.2.0-alpha.1),
+**Latest published alpha: [`0.3.0-alpha.1`](https://crates.io/crates/pyfaro/0.3.0-alpha.1),
 published on 2026-10-22.** It implements `init`, `sync`, `run`, `tools`,
-`create`, `add`, `remove`, `python`, and `doctor`.
-The repository develops **unpublished `0.3.0-alpha.1`**, which adds `lint`,
-`fmt`, `type`, `test`, and `check` from the v0.3.0 Code Quality work.
+`create`, `add`, `remove`, `python`, `doctor`, `lint`, `fmt`, `type`, `test`,
+and `check`.
+The repository develops **unpublished `0.4.0-alpha.1`** (v0.4.0 Developer
+Experience), which adds no commands yet.
 Interfaces may change between alpha versions.
 Completing a backlog milestone does not publish a stable or prerelease crate.
-The annotated [`v0.2.0-alpha.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.2.0-alpha.1)
-marks the published source. Its [GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.2.0-alpha.1)
+The annotated [`v0.3.0-alpha.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.3.0-alpha.1)
+marks the published source. Its [GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.3.0-alpha.1)
 offers unsigned standalone archives for Linux (x86_64, arm64), macOS (arm64,
 x86_64), and Windows (x86_64), with `SHA256SUMS`. GitHub Releases provide
 these downloadable archives alongside `cargo install`.
@@ -29,11 +30,11 @@ The other implemented workflows are tested on all three CI platforms.
 With Rust 1.90 or newer and Cargo installed:
 
 ```sh
-cargo install pyfaro --version 0.2.0-alpha.1 --locked
+cargo install pyfaro --version 0.3.0-alpha.1 --locked
 pyfaro --version
 ```
 
-The expected output is `pyfaro 0.2.0-alpha.1`. uv and Python are separate
+The expected output is `pyfaro 0.3.0-alpha.1`. uv and Python are separate
 runtime requirements for applying initialization on Linux and using `sync`
 or `run` on supported platforms.
 
@@ -116,7 +117,7 @@ Its probes use temporary files and may trigger interpreter or tool startup
 side effects. Blocking findings return a non-zero exit code. See the
 [doctor guide](docs/doctor.md) for scope, diagnostics, and fixes.
 
-The unpublished development version also adds quality checks and tests.
+Published `0.3.0-alpha.1` also adds quality checks and tests.
 `pyfaro lint` and `pyfaro fmt` run Ruff, and `fmt --check` verifies formatting
 without writing. `pyfaro type` runs ty, and `pyfaro test [PYTEST_ARGS]...`
 runs pytest in the project environment and returns pytest's exit code.
@@ -138,9 +139,9 @@ commands syncs implicitly. New `create` templates pin them in the `dev` group. S
 
 Remaining planned commands: `dev` and `build`.
 These commands are roadmap items, not working functionality. The published
-`0.2.0-alpha.1` includes `init`, `sync`, `run`, `tools`, `create`, `add`,
-`remove`, `python`, and `doctor`. The `0.3.0-alpha.1` development version adds
-`lint`, `fmt`, `type`, `test`, and `check`.
+`0.3.0-alpha.1` includes `init`, `sync`, `run`, `tools`, `create`, `add`,
+`remove`, `python`, `doctor`, `lint`, `fmt`, `type`, `test`, and `check`.
+The `0.4.0-alpha.1` development version adds no commands yet.
 
 ## Integration over reimplementation
 
