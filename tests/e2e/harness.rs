@@ -13,7 +13,7 @@
 //! Everything runs inside a [`Sandbox`] whose path contains a space and a
 //! non-ASCII character, with an isolated environment (no inherited
 //! `VIRTUAL_ENV`, `UV_PROJECT_ENVIRONMENT` or user Ruff/ty configuration, and a
-//! sandbox-local `UV_PYTHON_INSTALL_DIR`). The shared uv cache is kept for speed.
+//! sandbox-local `UV_PYTHON_INSTALL_DIR` and `UV_PYTHON_BIN_DIR`). The shared uv cache is kept for speed.
 
 #![allow(dead_code)]
 
@@ -261,6 +261,7 @@ impl Cmd {
             })
             .unwrap_or(cwd);
         command.env("UV_PYTHON_INSTALL_DIR", sandbox.join("python"));
+        command.env("UV_PYTHON_BIN_DIR", sandbox.join("python-bin"));
         command.env("XDG_CONFIG_HOME", sandbox.join("config"));
         command.env("APPDATA", sandbox.join("config"));
         command.args(args);

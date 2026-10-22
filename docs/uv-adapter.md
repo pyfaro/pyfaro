@@ -19,7 +19,8 @@ stderr on failure.
 Pyfaro returns uv's numeric failure status and reports its
 own discovery, version, spawn, and process-cleanup errors separately. It never
 installs uv. uv receives `--no-python-downloads` except for an explicit
-`pyfaro python install` request; `--offline` still forbids network access.
+`pyfaro python install` request and `pyfaro python list`, which must show
+available downloads without fetching any; `--offline` still forbids network access.
 
 `UV_PROJECT`, `UV_WORKING_DIR`, `UV_FROZEN`, `UV_LOCKED`, `UV_NO_SYNC`, and
 `UV_ISOLATED` environment overrides are removed before delegation so they

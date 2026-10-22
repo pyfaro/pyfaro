@@ -18,7 +18,7 @@ pub(crate) fn run(args: PythonArgs) -> Result<()> {
     };
     let cancelled = process::cancellation()?;
     let uv = uv::Uv::discover(args.uv, args.offline, &cancelled)?;
-    let (operation, install, command) = match args.command {
+    let (operation, downloads, command) = match args.command {
         PythonCommand::List { request, only_installed, all_versions } => {
             let mut command =
                 vec![OsString::from("python"), OsString::from("list")];
@@ -32,7 +32,7 @@ pub(crate) fn run(args: PythonArgs) -> Result<()> {
                 command.push(OsString::from("--"));
                 command.push(request);
             }
-            ("python list", false, command)
+            ("python list", true, command)
         }
         PythonCommand::Install { targets } => {
             let mut command =
@@ -56,5 +56,5 @@ pub(crate) fn run(args: PythonArgs) -> Result<()> {
             ("python pin", false, command)
         }
     };
-    uv.execute_python(&root, operation, &command, install, &cancelled)
+    uv.execute_python(&root, operation, &command, downloads, &cancelled)
 }
