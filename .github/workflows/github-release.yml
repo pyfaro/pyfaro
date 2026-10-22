@@ -1,0 +1,204 @@
+name: GitHub Release
+
+# Build standalone binaries for an already published and tagged version and
+# create (or refresh the assets of) its GitHub Release. The Release workflow
+# calls this after publishing; run it by hand to backfill an older tag.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag (for example v0.2.0-alpha.1)
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve the published version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - name: Check the tag and crates.io version
+        id: version
+        env:
+          TAG: ${{ inputs.tag }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          case "$TAG" in
+            v*) version="${TAG#v}" ;;
+            *) echo "::error::Tag $TAG does not start with v"; exit 1 ;;
+          esac
+          if ! git ls-remote --exit-code --tags "https://github.com/$REPOSITORY.git" "refs/tags/$TAG" >/dev/null; then
+            echo "::error::Tag $TAG does not exist"
+            exit 1
+          fi
+          status=$(curl -sS -o /dev/null -w '%{http_code}' \
+            -A 'pyfaro-release (https://github.com/pyfaro/pyfaro)' \
+            "https://crates.io/api/v1/crates/pyfaro/$version")
+          if [ "$status" != 200 ]; then
+            echo "::error::pyfaro $version is not on crates.io (HTTP $status)"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          case "$version" in
+            *-*) echo prerelease=true >> "$GITHUB_OUTPUT" ;;
+            *) echo prerelease=false >> "$GITHUB_OUTPUT" ;;
+          esac
+
+  binaries:
+    name: Build (${{ matrix.target }})
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-22.04-arm
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            cross: true
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      TARGET: ${{ matrix.target }}
+      VERSION: ${{ needs.resolve.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
+        with:
+          toolchain: '1.90.0'
+          targets: ${{ matrix.target }}
+      - name: Build the release binary
+        run: cargo build --locked --release --target "$TARGET"
+      - name: Check the binary version
+        if: ${{ !matrix.cross }}
+        run: |
+          set -euo pipefail
+          test "$("target/$TARGET/release/pyfaro" --version)" = "pyfaro $VERSION"
+      - name: Archive the binary
+        run: |
+          set -euo pipefail
+          name="pyfaro-$VERSION-$TARGET"
+          mkdir -p "dist/$name"
+          cp README.md LICENSE CHANGELOG.md "dist/$name/"
+          if [ "$RUNNER_OS" = Windows ]; then
+            cp "target/$TARGET/release/pyfaro.exe" "dist/$name/"
+            (cd dist && 7z a -tzip "$name.zip" "$name" >/dev/null)
+          else
+            cp "target/$TARGET/release/pyfaro" "dist/$name/"
+            tar -C dist -czf "dist/$name.tar.gz" "$name"
+          fi
+          rm -r "dist/$name"
+          ls -l dist
+      - name: Keep the archive
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: binary-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Create the GitHub Release
+    needs: [resolve, binaries]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ inputs.tag }}
+      VERSION: ${{ needs.resolve.outputs.version }}
+      PRERELEASE: ${{ needs.resolve.outputs.prerelease }}
+      GH_TOKEN: ${{ github.token }}
+      REPOSITORY: ${{ github.repository }}
+    steps:
+      # Release notes come from the triggering ref (the released commit when
+      # called by the Release workflow, or main for a backfill), not the tag.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the binaries
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: binary-*
+          path: dist
+          merge-multiple: true
+      - name: Download and verify the published crate
+        run: |
+          set -euo pipefail
+          agent='pyfaro-release (https://github.com/pyfaro/pyfaro)'
+          crate="dist/pyfaro-$VERSION.crate"
+          curl -sS --fail -L -A "$agent" -o "$crate" \
+            "https://static.crates.io/crates/pyfaro/pyfaro-$VERSION.crate"
+          registry=$(curl -sS --fail -A "$agent" \
+            "https://crates.io/api/v1/crates/pyfaro/$VERSION" \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["version"]["checksum"])')
+          downloaded=$(sha256sum "$crate" | cut -d' ' -f1)
+          if [ "$registry" != "$downloaded" ]; then
+            echo "::error::Downloaded crate does not match the registry checksum"
+            exit 1
+          fi
+          (cd dist && sha256sum -- * > SHA256SUMS)
+          cat dist/SHA256SUMS
+      - name: Write the release notes
+        run: |
+          set -euo pipefail
+          awk -v heading="## $VERSION" '
+            index($0, heading) == 1 { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::CHANGELOG.md on the default branch has no '## $VERSION' section"
+            exit 1
+          fi
+          cat >> notes.md <<EOF
+
+          ## Install
+
+          From crates.io: \`cargo install pyfaro --version $VERSION --locked\`.
+          Or download the archive for your platform below, extract it, and put
+          \`pyfaro\` on your \`PATH\`. uv 0.9.26 or newer is required at runtime.
+          Verify downloads against \`SHA256SUMS\`. The \`.crate\` file is the
+          exact archive published on crates.io.
+          EOF
+      - name: Create or update the release
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$TAG" --repo "$REPOSITORY" --notes-file notes.md
+            gh release upload "$TAG" --repo "$REPOSITORY" --clobber dist/*
+          else
+            flags=()
+            if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
+            gh release create "$TAG" --repo "$REPOSITORY" --verify-tag \
+              --title "Pyfaro $VERSION" --notes-file notes.md --generate-notes \
+              "${flags[@]}" dist/*
+          fi
