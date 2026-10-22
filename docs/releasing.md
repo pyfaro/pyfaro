@@ -1,11 +1,12 @@
 # Publishing Pyfaro
 
-The latest published version is [`0.2.0-alpha.1`](https://crates.io/crates/pyfaro/0.2.0-alpha.1).
-It adds project creation, dependency editing, Python-version commands, and
-doctor to the experimental `init`, `sync`, `run`, and `tools` workflows.
+The latest published version is [`0.3.0-alpha.1`](https://crates.io/crates/pyfaro/0.3.0-alpha.1).
+It adds `lint`, `fmt`, `type`, `test`, and `check` to the project creation,
+dependency, Python-version, and doctor commands of `0.2.0-alpha.1`.
 `init --apply` remains Linux-only; the other commands are tested on Linux,
-macOS, and Windows. The repository now develops unpublished `0.3.0-alpha.1`
-(v0.3.0 Code Quality work). Its version number is not a publication approval.
+macOS, and Windows. The repository now develops unpublished `0.4.0-alpha.1`
+(v0.4.0 Developer Experience work). Its version number is not a publication
+approval.
 
 Completing the `v0.1.0 — Foundation` or `v0.2.0 — Project Management` backlog
 milestones means their source-work criteria are met, not that a stable crate
@@ -13,6 +14,35 @@ has shipped. CI package and publish dry-runs do not upload a crate. Before any
 future publication, the maintainer must explicitly approve the exact version
 and merged commit after reviewing the archive and CI evidence. A preparation
 PR alone is not publication approval.
+
+## Published release: 0.3.0-alpha.1
+
+- Version: [`pyfaro 0.3.0-alpha.1`](https://crates.io/crates/pyfaro/0.3.0-alpha.1).
+- Source: merged [PR #100](https://github.com/pyfaro/pyfaro/pull/100), commit
+  [`2f041243b9d74cefaa526f017ef84118f95e50a0`](https://github.com/pyfaro/pyfaro/commit/2f041243b9d74cefaa526f017ef84118f95e50a0).
+- Registry timestamp: `2026-10-22T09:50:14.928095Z`.
+- Published archive SHA-256:
+  `67f43a670e90536a00ed55be57524ce094baba837955408ea71e6163ee6922fe`.
+  The workflow compared the registry checksum with the reviewed artifact.
+- This was the first release made through the Release workflow,
+  [run 39757664060](https://github.com/pyfaro/pyfaro/actions/runs/39757664060),
+  dispatched from `main` with `publish` checked. The maintainer approved the
+  `crates-io` environment deployment. It was published through crates.io
+  trusted publishing (GitHub provider), with no long-lived token.
+- Every job passed: preflight, CI on Linux, macOS, and Windows, the RustSec
+  audit, package (all-target tests from the unpacked archive and a publish
+  dry-run), publish, install from crates.io, and GitHub Release.
+- The workflow created the annotated [`v0.3.0-alpha.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.3.0-alpha.1)
+  on the source commit above. The [GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.3.0-alpha.1)
+  was published at `2026-10-22T09:51:48Z`. It attaches standalone archives
+  for x86_64 and aarch64 Linux, aarch64 and x86_64 macOS, and x86_64 Windows,
+  the `.crate`, and `SHA256SUMS`.
+- After release, the downloaded Linux x86_64 archive and the `.crate` passed
+  `sha256sum -c`, and the binary reported `pyfaro 0.3.0-alpha.1`. With that
+  binary and uv 0.9.26, `create lib`, `sync`, `check` (ok), and `test`
+  (1 passed) worked.
+
+This version exists on crates.io and must not be published again.
 
 ## Published release: 0.2.0-alpha.1
 
@@ -127,7 +157,7 @@ not be committed to this repository.
 ## Pre-publication verification for a future release
 
 First agree on the next release version and prepare it in a reviewed PR.
-Do not publish the repository's `0.3.0-alpha.1` development version merely
+Do not publish the repository's `0.4.0-alpha.1` development version merely
 because it is present in `Cargo.toml`. Use a clean checkout of the merged
 preparation commit, not the PR branch, and the pinned Rust toolchain. Install
 uv 0.9.26 separately and provide Python 3.10+ (CI uses 3.12). Repeat these

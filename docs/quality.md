@@ -2,6 +2,7 @@
 
 `pyfaro lint` and `pyfaro fmt` run [Ruff](https://docs.astral.sh/ruff/) on a
 project. Pyfaro does not reimplement Ruff or interpret its configuration.
+These commands are available in published `0.3.0-alpha.1` and later versions.
 
 ```sh
 pyfaro lint [PATHS]... [--project <PATH>]            # ruff check
