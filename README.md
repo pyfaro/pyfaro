@@ -1,211 +1,203 @@
-# Pyfaro
+<p align="center">
+  <img src="https://raw.githubusercontent.com/pyfaro/pyfaro/main/assets/branding/pyfaro-logo.svg" alt="Pyfaro" width="220">
+</p>
 
-The unified Python development toolchain. Fast, opinionated, and built with
-Rust. Inspired by Vite+, Pyfaro aims to bring project setup, dependencies,
-quality checks, tests, and development workflows into one cohesive CLI.
+<h3 align="center">One command-line workflow for Python projects.<br>Fast, opinionated, built with Rust.</h3>
 
-## Status
+<p align="center">
+  <a href="https://crates.io/crates/pyfaro"><img src="https://img.shields.io/crates/v/pyfaro?include_prereleases&label=crates.io" alt="crates.io version"></a>
+  <a href="https://github.com/pyfaro/pyfaro/actions/workflows/ci.yml"><img src="https://github.com/pyfaro/pyfaro/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <a href="https://github.com/pyfaro/pyfaro/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache-2.0"></a>
+  <a href="https://pyfaro.github.io/pyfaro/"><img src="https://img.shields.io/badge/docs-pyfaro.github.io-D4A017" alt="Documentation"></a>
+</p>
 
-**Latest published alpha: [`0.3.0-alpha.1`](https://crates.io/crates/pyfaro/0.3.0-alpha.1),
-published on 2026-10-22.** It implements `init`, `sync`, `run`, `tools`,
-`create`, `add`, `remove`, `python`, `doctor`, `lint`, `fmt`, `type`, `test`,
-and `check`.
-The repository develops **unpublished `0.4.0-alpha.1`** (v0.4.0 Developer
-Experience), which adds no commands yet.
-Interfaces may change between alpha versions.
-Completing a backlog milestone does not publish a stable or prerelease crate.
-The annotated [`v0.3.0-alpha.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.3.0-alpha.1)
-marks the published source. Its [GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.3.0-alpha.1)
-offers unsigned standalone archives for Linux (x86_64, arm64), macOS (arm64,
-x86_64), and Windows (x86_64), with `SHA256SUMS`. GitHub Releases provide
-these downloadable archives alongside `cargo install`.
+Pyfaro brings project creation, dependencies, Python versions, linting,
+formatting, type checking and testing under a single `pyfaro` command. It does
+not replace the tools you already trust: it orchestrates
+[uv](https://docs.astral.sh/uv/), [Ruff](https://docs.astral.sh/ruff/),
+[ty](https://docs.astral.sh/ty/) and [pytest](https://docs.pytest.org/) behind
+one consistent, scriptable interface, so a new contributor, a CI job and a
+git hook all run exactly the same commands.
 
-The current alpha series targets **Linux** for `init --apply`. macOS and Windows
-retain builds, help/version, and non-writing previews; applying initialization
-there is explicitly unavailable until lifecycle guarantees are implemented.
-The other implemented workflows are tested on all three CI platforms.
+> **Alpha software.** Pyfaro is under active development and interfaces may
+> change between alpha versions. See [Project status](#project-status).
 
-## Install the alpha
+## Why Pyfaro
 
-With Rust 1.90 or newer and Cargo installed:
+- **One entry point.** `create`, `sync`, `add`, `check`, `test` and more,
+  instead of remembering four tools and their flags.
+- **`pyfaro check` is your quality gate.** Format check, lint and type check
+  in one run, with a clear summary and an honest exit code. It writes files
+  only when you pass `--fix`.
+- **No second ecosystem.** Standard `pyproject.toml` and uv's `uv.lock`.
+  Pyfaro adds a tiny `[tool.pyfaro]` table and leaves everything else alone.
+- **Adopt it in place.** `pyfaro init` previews what it would change before
+  touching your existing project.
+- **Predictable by design.** Nothing syncs, installs or downloads behind your
+  back. `doctor` explains what is wrong and how to fix it.
+- **A single native binary** written in Rust.
+
+## Demo
+
+```console
+$ pyfaro create lib textkit
+Created library at ~/projects/textkit
+$ cd textkit
+$ pyfaro sync
+Using CPython 3.13.11
+Creating virtual environment at: .venv
+Resolved 12 packages in 93ms
+...
+$ pyfaro check
+4 files already formatted
+All checks passed!
+All checks passed!
+
+== pyfaro check summary ==
+format: ok
+lint: ok
+type: ok
+check: ok
+$ pyfaro test
+============================= test session starts ==============================
+...
+collected 1 item
+
+tests/test_library.py .                                                  [100%]
+
+============================== 1 passed in 0.01s ===============================
+```
+
+## Installation
+
+Pyfaro needs [uv](https://docs.astral.sh/uv/getting-started/installation/)
+**0.9.26 or newer** at runtime. Pyfaro never installs uv or Python for you.
+
+**From crates.io** (Rust 1.90 or newer):
 
 ```sh
-cargo install pyfaro --version 0.3.0-alpha.1 --locked
+cargo install pyfaro --locked
+```
+
+**Prebuilt binaries** for Linux (x86_64, aarch64), macOS (arm64, x86_64) and
+Windows (x86_64) are attached to each
+[GitHub Release](https://github.com/pyfaro/pyfaro/releases), together with a
+`SHA256SUMS` file. The archives are unsigned: verify them against
+`SHA256SUMS`, extract, and put `pyfaro` on your `PATH`.
+
+Check the installation:
+
+```sh
 pyfaro --version
 ```
 
-The expected output is `pyfaro 0.3.0-alpha.1`. uv and Python are separate
-runtime requirements for applying initialization on Linux and using `sync`
-or `run` on supported platforms.
+More detail: [Installation](https://pyfaro.github.io/pyfaro/getting-started/installation/).
 
-## Try the initialization workflow
-
-Install uv separately and have a suitable Python interpreter available.
-The tested uv version is **0.9.26**; older versions are rejected. Pyfaro never
-installs uv or downloads Python automatically. The development-only
-`pyfaro python install` explicitly allows uv to download an interpreter.
-
-Preview initialization of a new or existing standalone project, then
-explicitly apply it:
+## Quick start
 
 ```sh
-pyfaro init ./my-project
-pyfaro init ./my-project --apply
+pyfaro create lib my-lib      # or: pyfaro create cli my-app
+cd my-lib
+pyfaro sync                   # create .venv and uv.lock
+pyfaro add "requests>=2"      # then: pyfaro sync
+pyfaro check                  # format check, lint, type check
+pyfaro test                   # run pytest
 ```
 
-`init` delegates new project metadata and dependency locking to uv, adds
-`[tool.pyfaro]` with `schema-version = 1`, and preserves existing dependency
-declarations and third-party tool settings. It does not install dependencies
-or create a virtual environment. A second run is idempotent for an unchanged
-project and dependency resolution.
+Adopting an existing project? Preview first, then apply (Linux only for now):
 
-`sync` and `run` load the selected project's `pyproject.toml` before invoking
-uv. The optional `[tool.pyfaro]` table defaults to schema version `1`; invalid
-or unknown Pyfaro settings fail with a path-aware diagnostic. Ruff, ty, uv,
-and other tools keep ownership of their own sections. See the
-[configuration guide](docs/config.md).
+```sh
+pyfaro init                   # preview, writes nothing
+pyfaro init --apply
+```
 
-Use `--offline` to disable network access or `--uv <path>` to select an
-executable. See the [init guide](docs/init.md) for exact behavior, error
-handling, and alpha limitations, and the [release instructions](docs/releasing.md)
-for the publication approval gate.
+Walk through it step by step in
+[First steps](https://pyfaro.github.io/pyfaro/getting-started/first-steps/), or
+follow a full [workflow](https://pyfaro.github.io/pyfaro/workflows/).
 
-In the published alpha, `pyfaro sync [PATH]` creates or updates the
-project's `.venv` and `uv.lock` through uv. Use `--locked` to reject stale
-locks or `--frozen` to install from an existing lock without checking it.
-From a nested directory, Pyfaro selects the nearest `pyproject.toml`;
-positional `PATH` starts discovery elsewhere, while `--project <PATH>`
-selects an exact project instead.
-See the [sync guide](docs/sync.md) for the mode differences.
+## Commands
 
-In published `0.2.0-alpha.1` and later, `pyfaro add "requests>=2"` and
-`pyfaro remove requests` delegate dependency and lockfile edits to uv.
-Use `--dev` or `--group <NAME>` for dependency groups, then run `pyfaro sync`
-to update the environment.
-See the [dependency guide](docs/dependencies.md).
+| Command | What it does |
+| --- | --- |
+| [`create`](https://pyfaro.github.io/pyfaro/commands/create/) | Scaffold a packaged library (`lib`) or command-line app (`cli`) |
+| [`init`](https://pyfaro.github.io/pyfaro/commands/init/) | Preview or apply Pyfaro initialization of an existing project |
+| [`sync`](https://pyfaro.github.io/pyfaro/commands/sync/) | Create or update `.venv` and `uv.lock` through uv |
+| [`add` / `remove`](https://pyfaro.github.io/pyfaro/commands/add-remove/) | Edit dependencies and dependency groups through uv |
+| [`run`](https://pyfaro.github.io/pyfaro/commands/run/) | Run a program in the project environment |
+| [`python`](https://pyfaro.github.io/pyfaro/commands/python/) | List, install and pin Python versions through uv |
+| [`tools`](https://pyfaro.github.io/pyfaro/commands/tools/) | Show the resolved path and version of uv, Ruff, ty and pytest |
+| [`doctor`](https://pyfaro.github.io/pyfaro/commands/doctor/) | Diagnose configuration, environment and tools |
+| [`lint`](https://pyfaro.github.io/pyfaro/commands/lint/) / [`fmt`](https://pyfaro.github.io/pyfaro/commands/fmt/) | Lint and format with Ruff |
+| [`type`](https://pyfaro.github.io/pyfaro/commands/type/) | Type-check with ty |
+| [`check`](https://pyfaro.github.io/pyfaro/commands/check/) | Format check, lint and type check in one run; `--fix` applies safe fixes |
+| [`test`](https://pyfaro.github.io/pyfaro/commands/test/) | Run pytest in the project environment |
 
-`pyfaro run -- <program> [args...]` executes through uv in the project
-environment. For example, `pyfaro run -- python -m pytest` runs pytest from
-the project. Use `--project <PATH>` to select another project, or `--locked`
-to reject a stale lock before execution. Without `--project`, `run` also
-discovers the nearest project from a nested directory. See the
-[run guide](docs/run.md).
+Recipes live in the [workflows](https://pyfaro.github.io/pyfaro/workflows/)
+section: a [new library](https://pyfaro.github.io/pyfaro/workflows/new-library/),
+a [new CLI](https://pyfaro.github.io/pyfaro/workflows/new-cli/),
+[adopting an existing project](https://pyfaro.github.io/pyfaro/workflows/adopt-existing-project/),
+[CI](https://pyfaro.github.io/pyfaro/workflows/continuous-integration/) and
+[troubleshooting](https://pyfaro.github.io/pyfaro/workflows/troubleshooting/).
 
-`pyfaro tools` reports the resolved executable path and version for uv, Ruff,
-ty, and pytest. Use `pyfaro tools ruff` (or another tool name) to require one
-tool and get an actionable error if it is missing or incompatible. Project
-tools are found in the selected project's `.venv`, then `VIRTUAL_ENV`, then
-`PATH`; uv uses `PATH` or an explicit `--uv <path>`. See the
-[tools guide](docs/tools.md).
+## How it works
 
-Published `0.2.0-alpha.1` also adds `pyfaro create lib NAME` and
-`pyfaro create cli NAME`. Both generate a packaged `src/` layout with a smoke
-test; the CLI variant also creates a console entry point. Creation itself
-does not invoke uv or download Python. See the [create guide](docs/create.md)
-for naming, interpreter, and build details.
-
-It also adds `pyfaro python list`, `python install`, and
-`python pin` as thin uv wrappers. Listing and pinning do not download Python;
-an explicit `install` may do so unless `--offline` is set. See the
-[Python guide](docs/python.md) for project selection and pin behavior.
-
-`pyfaro doctor` is also available in `0.2.0-alpha.1`. It reports
-project configuration, interpreter and tool versions, layout conflicts, and
-missing runtime or default-group distributions without intentionally changing
-project files.
-Its probes use temporary files and may trigger interpreter or tool startup
-side effects. Blocking findings return a non-zero exit code. See the
-[doctor guide](docs/doctor.md) for scope, diagnostics, and fixes.
-
-Published `0.3.0-alpha.1` also adds quality checks and tests.
-`pyfaro lint` and `pyfaro fmt` run Ruff, and `fmt --check` verifies formatting
-without writing. `pyfaro type` runs ty, and `pyfaro test [PYTEST_ARGS]...`
-runs pytest in the project environment and returns pytest's exit code.
-`pyfaro check` runs the format check, lint, and type check, prints a summary,
-and exits 1 if any step fails. It writes files only with an explicit `--fix`.
-pytest must be installed in the project environment; Ruff and ty are found
-there first, then in an active environment or on `PATH`. None of the
-commands syncs implicitly. New `create` templates pin them in the `dev` group. See the
-[quality guide](docs/quality.md) and [test guide](docs/test.md).
-
-## Planned experience
-
-- Create and initialize Python projects with opinionated, editable defaults.
-- Add, remove, and synchronize dependencies through uv.
-- Run programs and development servers in the project environment.
-- Lint and format with Ruff, type-check with ty, and test with pytest.
-- Combine non-destructive quality checks with clear diagnostics.
-- Build Python distributions through uv; later add workspaces and task graphs.
-
-Remaining planned commands: `dev` and `build`.
-These commands are roadmap items, not working functionality. The published
-`0.3.0-alpha.1` includes `init`, `sync`, `run`, `tools`, `create`, `add`,
-`remove`, `python`, `doctor`, `lint`, `fmt`, `type`, `test`, and `check`.
-The `0.4.0-alpha.1` development version adds no commands yet.
-
-## Integration over reimplementation
+Pyfaro owns the command line, configuration, orchestration and diagnostics.
+Everything else stays with the tool built for it.
 
 | Responsibility | Owner |
 | --- | --- |
-| CLI, configuration, orchestration, diagnostics, workflows | Pyfaro |
+| CLI, configuration, orchestration, diagnostics | Pyfaro |
 | Python, environments, resolution, dependencies, packaging | uv |
 | Linting and formatting | Ruff |
-| Static typing | ty; alternate checkers may be considered later |
+| Static typing | ty |
 | Test execution | pytest |
 
-Pyfaro will use `pyproject.toml` and uv's `uv.lock`. It will not introduce
-another dependency solver, package manager, Python installer, lockfile format,
-linter, type checker, or test engine. The current code keeps each workflow
-in a focused module and delegates environment and package operations to uv.
-Modules will grow when there is functionality to own.
-See [ADR 0001](docs/architecture/0001-project-architecture.md).
+There is no second resolver, lock file format, package manager, linter or test
+engine: Pyfaro calls the real tools and passes their output and exit status
+through. Read more in
+[How it works](https://pyfaro.github.io/pyfaro/concepts/how-it-works/) and the
+[architecture decision record](docs/architecture/0001-project-architecture.md).
 
-## Build from source
+## Project status
 
-Install [Rust through rustup](https://rustup.rs/) and Git. The checked-in
-toolchain selects Rust 1.90.0, rustfmt, and Clippy.
+Pyfaro is **alpha**. The latest published version is
+[`0.3.0-alpha.1`](https://crates.io/crates/pyfaro/0.3.0-alpha.1); the `main`
+branch develops `0.4.0-alpha.1`. Interfaces may change between alpha versions.
+
+- **Tested versions:** uv 0.9.26, Ruff 0.16.10, ty 0.0.85, pytest 9.1.1.
+- **Platforms:** Linux, macOS and Windows are built and tested in CI.
+  `init --apply` is **Linux-only** for now; on macOS and Windows `init`
+  previews but does not apply.
+- **Implemented:** `create`, `init`, `sync`, `add`, `remove`, `run`, `python`,
+  `tools`, `doctor`, `lint`, `fmt`, `type`, `check` and `test`.
+
+See the [changelog](CHANGELOG.md) for what each release contains.
+
+## Roadmap
+
+Planned, **not yet available**: `pyfaro dev` (development mode), `pyfaro build`
+(distributions through uv), and later workspaces and tasks. Milestones are
+planning targets, not release announcements. Follow the
+[roadmap board](https://github.com/orgs/pyfaro/projects/1),
+[milestones](https://github.com/pyfaro/pyfaro/milestones) and
+[issues](https://github.com/pyfaro/pyfaro/issues).
+
+## Contributing
+
+Contributions are welcome. Read the [contribution guide](CONTRIBUTING.md) and
+the [code of conduct](CODE_OF_CONDUCT.md); report vulnerabilities as described
+in the [security policy](SECURITY.md). Questions are welcome in
+[Discussions](https://github.com/pyfaro/pyfaro/discussions).
+
+To build from source you need Rust (the toolchain is pinned in
+`rust-toolchain.toml`):
 
 ```sh
 git clone https://github.com/pyfaro/pyfaro.git
 cd pyfaro
 cargo build --locked
 cargo run --locked -- --help
-cargo run --locked -- --version
 ```
-
-Python, uv, Ruff, ty, and pytest are not needed to compile the Rust binary.
-Running `init --apply`, `sync`, `run`, dependency, Python-version, and doctor
-integration tests requires uv and Python. Local template creation does not.
-See [CONTRIBUTING.md](CONTRIBUTING.md) for checks and development conventions.
-
-## Roadmap
-
-Milestones are planning targets, not release announcements or dates.
-
-| Milestone | Focus |
-| --- | --- |
-| v0.1.0 — Foundation | Architecture, CLI, configuration, process runner, CI |
-| v0.2.0 — Project Management | Creation, environments, dependencies, Python versions, run, doctor |
-| v0.3.0 — Code Quality | Ruff, ty, pytest; first useful MVP |
-| v0.4.0 — Developer Experience | Development mode, presets, simple tasks |
-| v0.5.0 — Public Beta | Packaging, installers, public distribution |
-| v1.0.0 — Stable Release | Compatibility, security, stability |
-| v1.1.0 — Workspaces & Tasks | Workspace orchestration, DAG, local cache |
-| v1.2.0 — Agent Integration | Structured diagnostics and agent workflows |
-
-Follow the [development roadmap](https://github.com/orgs/pyfaro/projects/1),
-[issues](https://github.com/pyfaro/pyfaro/issues), and
-[milestones](https://github.com/pyfaro/pyfaro/milestones).
-The authoritative [backlog manifest](tools/github-backlog/pyfaro-issues.json)
-is included alongside its import tools. Tickets close only after their full
-acceptance criteria have been reviewed.
-
-## Community and security
-
-Contributions are welcome. Read our [contribution guide](CONTRIBUTING.md),
-[code of conduct](CODE_OF_CONDUCT.md), and [security policy](SECURITY.md).
-General questions belong in
-[Discussions](https://github.com/pyfaro/pyfaro/discussions).
 
 ## License
 
