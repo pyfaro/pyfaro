@@ -452,12 +452,12 @@ fn type_skips_excluded_files_even_when_named() {
     e2e_guard!();
     let sandbox = Sandbox::new();
     let project = sandbox.synced_project(Kind::Lib);
-    let relative = with_excluded_file(&project);
+    let _relative = with_excluded_file(&project);
     project.pyfaro(["type"]).run().success();
     // ty ignores the exclusion for a named file on Windows (#109).
     #[cfg(not(windows))]
     {
-        project.pyfaro(["type", &relative]).run().success();
+        project.pyfaro(["type", &_relative]).run().success();
     }
 }
 
