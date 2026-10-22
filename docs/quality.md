@@ -55,6 +55,12 @@ cancellation exits 130.
 These commands never create or modify `.venv` or `uv.lock`. Install tools
 explicitly with `pyfaro add --dev ruff` and `pyfaro sync`.
 
+## New projects
+
+`pyfaro create lib|cli` pins Ruff in the `dev` dependency group and writes a
+minimal `[tool.ruff]` section. Run `pyfaro sync` once (and commit `uv.lock`);
+`pyfaro fmt --check` and `pyfaro lint` then pass on the generated code.
+
 ## Tested version
 
 Tested with Ruff 0.16.10. Other versions are not rejected.

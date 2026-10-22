@@ -4,6 +4,8 @@ use std::process::{Command, Output};
 
 use tempfile::tempdir;
 
+mod support;
+
 fn pyfaro(args: &[&str], target: &Path) -> Output {
     Command::new(env!("CARGO_BIN_EXE_pyfaro"))
         .arg("create")
@@ -14,33 +16,44 @@ fn pyfaro(args: &[&str], target: &Path) -> Output {
         .expect("start pyfaro")
 }
 
-fn uv(project: &Path, cache: &Path, args: &[&str]) -> Output {
+fn uv(project: &Path, args: &[&str]) -> Output {
     Command::new("uv")
         .current_dir(project)
-        .env("UV_CACHE_DIR", cache)
-        .args(["--no-python-downloads", "--offline", "--no-progress"])
+        .args(["--no-python-downloads", "--no-progress"])
         .args(args)
         .output()
         .expect("start uv")
 }
 
-fn sync(project: &Path, cache: &Path) -> Output {
+fn sync(project: &Path) -> Output {
     Command::new(env!("CARGO_BIN_EXE_pyfaro"))
-        .args(["sync", "--offline"])
+        .arg("sync")
         .arg(project)
-        .env("UV_CACHE_DIR", cache)
         .output()
         .unwrap()
 }
 
-fn run_project(project: &Path, cache: &Path, command: &[&str]) -> Output {
+fn pyfaro_in(project: &Path, args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_pyfaro"))
         .current_dir(project)
-        .env("UV_CACHE_DIR", cache)
-        .args(["run", "--locked", "--offline", "--"])
-        .args(command)
+        .args(args)
         .output()
         .unwrap()
+}
+
+/// Sync with the pinned quality tools, then check, test, and build. Needs the
+/// network, so it only runs when `PYFARO_REAL_QUALITY_TOOLS=1`.
+fn sync_check_test_build(project: &Path) -> bool {
+    if !support::real_quality_tools() {
+        return false;
+    }
+    assert_pinned_uv();
+    assert_success(sync(project));
+    assert!(project.join("uv.lock").is_file());
+    assert_success(pyfaro_in(project, &["check"]));
+    assert_success(pyfaro_in(project, &["test"]));
+    assert_success(uv(project, &["build"]));
+    true
 }
 
 fn assert_success(output: Output) -> String {
@@ -56,10 +69,8 @@ fn assert_pinned_uv() {
 
 #[test]
 fn library_syncs_tests_and_builds_with_real_uv() {
-    assert_pinned_uv();
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("library with spaces é");
-    let cache = sandbox.path().join("uv-cache");
     assert_success(pyfaro(
         &["lib", "acme-widget", "--python", "3.10"],
         &project,
@@ -75,23 +86,25 @@ fn library_syncs_tests_and_builds_with_real_uv() {
     assert!(!project.join("uv.lock").exists());
     assert!(!project.join(".venv").exists());
 
-    assert_success(sync(&project, &cache));
-    assert_success(run_project(
-        &project,
-        &cache,
-        &["python", "-m", "unittest", "discover", "-s", "tests"],
-    ));
-    assert_success(uv(&project, &cache, &["build"]));
+    assert!(metadata.contains("pytest==9.1.1"));
+    assert!(metadata.contains("ruff==0.16.10"));
+    assert!(metadata.contains("ty==0.0.85"));
+    assert!(metadata.contains("[tool.pytest.ini_options]"));
+    assert!(metadata.contains("[tool.ruff]"));
+    let readme = fs::read_to_string(project.join("README.md")).unwrap();
+    assert!(readme.contains("pyfaro sync") && readme.contains("uv.lock"));
+    assert!(readme.contains("pyfaro check") && readme.contains("pyfaro test"));
+    if !sync_check_test_build(&project) {
+        return;
+    }
     assert!(project.join("dist/acme_widget-0.1.0-py3-none-any.whl").is_file());
     assert!(project.join("dist/acme_widget-0.1.0.tar.gz").is_file());
 }
 
 #[test]
 fn cli_uses_separate_distribution_package_and_command_names() {
-    assert_pinned_uv();
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("a cli project");
-    let cache = sandbox.path().join("uv-cache");
     assert_success(pyfaro(
         &[
             "cli",
@@ -107,17 +120,17 @@ fn cli_uses_separate_distribution_package_and_command_names() {
     assert!(metadata.contains("acme-do = \"acme_console.cli:main\""));
     assert!(metadata.contains("module-name = \"acme_console\""));
     assert!(project.join("src/acme_console/cli.py").is_file());
-    assert_success(sync(&project, &cache));
-    assert_success(run_project(
-        &project,
-        &cache,
-        &["python", "-m", "unittest", "discover", "-s", "tests"],
-    ));
+    if !sync_check_test_build(&project) {
+        return;
+    }
     assert_eq!(
-        assert_success(run_project(&project, &cache, &["acme-do"])).trim_end(),
+        assert_success(pyfaro_in(
+            &project,
+            &["run", "--locked", "--", "acme-do"]
+        ))
+        .trim_end(),
         "Hello from acme-tools!"
     );
-    assert_success(uv(&project, &cache, &["build"]));
     assert!(project.join("dist/acme_tools-0.1.0-py3-none-any.whl").is_file());
 }
 
@@ -179,54 +192,40 @@ fn default_target_is_the_named_directory() {
 
 #[test]
 fn numeric_distribution_gets_an_importable_package() {
-    assert_pinned_uv();
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("numeric");
-    let cache = sandbox.path().join("uv-cache");
     assert_success(pyfaro(&["lib", "1widget"], &project));
     let metadata = fs::read_to_string(project.join("pyproject.toml")).unwrap();
     assert!(metadata.contains("module-name = \"_1widget\""));
     assert!(project.join("src/_1widget/__init__.py").is_file());
-    assert_success(sync(&project, &cache));
-    assert_success(run_project(
-        &project,
-        &cache,
-        &["python", "-m", "unittest", "discover", "-s", "tests"],
-    ));
-    assert_success(uv(&project, &cache, &["build"]));
+    sync_check_test_build(&project);
 }
 
 #[test]
 fn repeated_separators_normalize_to_a_buildable_package() {
-    assert_pinned_uv();
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("normalized");
-    let cache = sandbox.path().join("uv-cache");
     assert_success(pyfaro(&["lib", "foo--bar"], &project));
     assert!(project.join("src/foo_bar/__init__.py").is_file());
-    assert_success(sync(&project, &cache));
-    assert_success(run_project(
-        &project,
-        &cache,
-        &["python", "-m", "unittest", "discover", "-s", "tests"],
-    ));
-    assert_success(uv(&project, &cache, &["build"]));
+    sync_check_test_build(&project);
 }
 
 #[test]
 fn dotted_distribution_gets_a_valid_default_command() {
-    assert_pinned_uv();
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("dotted");
-    let cache = sandbox.path().join("uv-cache");
     assert_success(pyfaro(&["cli", "acme.tools"], &project));
     let metadata = fs::read_to_string(project.join("pyproject.toml")).unwrap();
     assert!(metadata.contains("acme-tools = \"acme_tools.cli:main\""));
-    assert_success(sync(&project, &cache));
+    if !sync_check_test_build(&project) {
+        return;
+    }
     assert_eq!(
-        assert_success(run_project(&project, &cache, &["acme-tools"]))
-            .trim_end(),
+        assert_success(pyfaro_in(
+            &project,
+            &["run", "--locked", "--", "acme-tools"]
+        ))
+        .trim_end(),
         "Hello from acme.tools!"
     );
-    assert_success(uv(&project, &cache, &["build"]));
 }
