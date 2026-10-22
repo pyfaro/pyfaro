@@ -823,7 +823,7 @@ fn run_passes_arguments_through_verbatim() {
         .env("PYTHONIOENCODING", "utf-8")
         .run()
         .success()
-        .stdout_eq("['a b', '--flag', '-n', '--', '-x', '', 'café']\n");
+        .stdout_text_eq("['a b', '--flag', '-n', '--', '-x', '', 'café']\n");
 }
 
 #[test]
@@ -845,7 +845,7 @@ fn run_does_not_interpret_hyphenated_arguments_as_pyfaro_options() {
         ])
         .run()
         .success()
-        .stdout_eq("['--locked', '--project', 'x', '--offline']\n");
+        .stdout_text_eq("['--locked', '--project', 'x', '--offline']\n");
 }
 
 #[test]
@@ -876,7 +876,7 @@ fn run_streams_stdout_and_stderr_of_the_program() {
         ])
         .run()
         .success()
-        .stdout_eq("to-out\n")
+        .stdout_text_eq("to-out\n")
         .stderr_contains("to-err");
 }
 
@@ -897,7 +897,7 @@ fn run_executes_a_py_script_relative_to_the_working_directory() {
         .cwd(project.path("scripts"))
         .run()
         .success()
-        .stdout_eq("scripts\nTrue\n['--verbose', 'x y']\n");
+        .stdout_text_eq("scripts\nTrue\n['--verbose', 'x y']\n");
 }
 
 #[test]
@@ -913,7 +913,7 @@ fn run_py_script_imports_the_project_package() {
         .pyfaro(["run", "--", "check_import.py"])
         .run()
         .success()
-        .stdout_eq("acme_widget\n");
+        .stdout_text_eq("acme_widget\n");
 }
 
 #[test]
@@ -927,7 +927,7 @@ fn run_py_script_runs_through_the_project_python_not_a_shebang() {
         .pyfaro(["run", "--", "plain.py"])
         .run()
         .success()
-        .stdout_eq("ran\n");
+        .stdout_text_eq("ran\n");
 }
 
 #[test]
@@ -983,7 +983,7 @@ fn run_locked_accepts_a_fresh_lock() {
         ])
         .run()
         .success()
-        .stdout_eq("ran\n");
+        .stdout_text_eq("ran\n");
     assert_eq!(project.snapshot(), before);
 }
 
@@ -999,7 +999,7 @@ fn run_frozen_uses_the_existing_lock_without_updating_it() {
         .pyfaro(["run", "--frozen", "--", "python", "-c", "print('ran')"])
         .run()
         .success()
-        .stdout_eq("ran\n");
+        .stdout_text_eq("ran\n");
     assert_eq!(project.snapshot(), before);
     assert!(!installed(&project).contains("local-dep"));
 }
@@ -1047,7 +1047,7 @@ fn run_syncs_the_environment_by_default() {
         .pyfaro(["run", "--", "python", "-c", "print('ran')"])
         .run()
         .success()
-        .stdout_eq("ran\n")
+        .stdout_text_eq("ran\n")
         .stderr_contains("Creating virtual environment");
     assert!(project.path(".venv").is_dir());
     assert!(project.path("uv.lock").is_file());
@@ -1071,7 +1071,7 @@ fn run_from_a_nested_directory_uses_the_project_environment_and_keeps_the_cwd()
         .cwd(&nested)
         .run()
         .success()
-        .stdout_eq("acme_widget\nTrue\n");
+        .stdout_text_eq("acme_widget\nTrue\n");
     assert!(!nested.join(".venv").exists());
     assert!(!nested.join("uv.lock").exists());
 }
@@ -1089,7 +1089,7 @@ fn run_project_selects_the_exact_directory_and_keeps_the_cwd() {
         .env("PYTHONIOENCODING", "utf-8")
         .run()
         .success()
-        .stdout_eq(&format!("{sandbox_name}\nTrue\n"));
+        .stdout_text_eq(&format!("{sandbox_name}\nTrue\n"));
     assert!(!sandbox.join(".venv").exists());
     assert!(project.path(".venv").is_dir());
 }
@@ -1146,7 +1146,7 @@ fn run_forwards_standard_input() {
         .stdin("piped input\nsecond line\n")
         .run()
         .success()
-        .stdout_eq("PIPED INPUT\nSECOND LINE\n");
+        .stdout_text_eq("PIPED INPUT\nSECOND LINE\n");
 }
 
 #[test]
@@ -1165,7 +1165,7 @@ fn run_forwards_standard_input_to_a_program_on_the_path() {
         .stdin("12345")
         .run()
         .success()
-        .stdout_eq("5\n");
+        .stdout_text_eq("5\n");
 }
 
 #[test]
@@ -1209,7 +1209,7 @@ fn run_offline_works_for_a_synced_project() {
         .pyfaro(["run", "--offline", "--", "python", "-c", "print('ran')"])
         .run()
         .success()
-        .stdout_eq("ran\n");
+        .stdout_text_eq("ran\n");
 }
 
 #[test]

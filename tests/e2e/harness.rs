@@ -394,6 +394,15 @@ impl Outcome {
         self
     }
 
+    /// Like [`Outcome::stdout_eq`] but accepts CRLF line endings, which
+    /// Python's text-mode stdout produces on Windows.
+    pub fn stdout_text_eq(&self, expected: &str) -> &Self {
+        if self.stdout.replace("\r\n", "\n") != expected {
+            self.fail(&format!("stdout is not exactly {expected:?}"));
+        }
+        self
+    }
+
     pub fn stdout_empty(&self) -> &Self {
         self.stdout_eq("")
     }
