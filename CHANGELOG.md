@@ -2,7 +2,25 @@
 
 ## Unreleased — 0.3.0-alpha.1 development
 
-This version has not been published. No changes yet.
+This version has not been published. The development tree adds these
+capabilities to `0.2.0-alpha.1`:
+
+- Add `pyfaro lint` and `pyfaro fmt` through Ruff, with project selection,
+  paths resolved from the working directory, and `fmt --check` for a
+  non-writing format check.
+- Add `pyfaro type` through ty, running in the project environment without
+  an implicit sync.
+- Add `pyfaro test` through pytest in the project environment, forwarding
+  arguments and pytest's exit codes unchanged.
+- Add `pyfaro check`, which runs the format check, lint, and type check, prints
+  a summary, and exits 1 when any step fails. An explicit `--fix` runs
+  `ruff check --fix`, then `ruff format`, then repeats the verification.
+- Pin pytest 9.1.1, Ruff 0.16.10, and ty 0.0.85 in the `dev` dependency group
+  of `create lib` and `create cli` templates.
+- Test against Ruff 0.16.10, ty 0.0.85, and pytest 9.1.1. Other versions are
+  not rejected, and no quality command syncs the environment implicitly.
+- Add manual Release and GitHub Release workflows that attach downloadable
+  standalone archives, the `.crate`, and `SHA256SUMS`.
 
 ## 0.2.0-alpha.1 — 2026-10-22
 
