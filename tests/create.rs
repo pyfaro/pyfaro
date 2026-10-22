@@ -58,7 +58,8 @@ fn sync_check_test_build(project: &Path) -> bool {
 
 fn assert_success(output: Output) -> String {
     assert!(output.status.success(), "{output:?}");
-    String::from_utf8(output.stdout).unwrap()
+    // Windows tools may print non-ASCII paths in the console code page.
+    String::from_utf8_lossy(&output.stdout).into_owned()
 }
 
 fn assert_pinned_uv() {
