@@ -55,8 +55,6 @@ jobs:
       - name: Clippy
         run: cargo clippy --locked --all-targets --all-features -- -D warnings
       - name: Tests
-        env:
-          PYFARO_REAL_QUALITY_TOOLS: '1'
         run: cargo test --locked --all-targets
       - name: Debug build
         run: cargo build --locked

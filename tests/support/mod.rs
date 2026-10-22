@@ -33,19 +33,6 @@ pub fn fixture_uv() -> &'static Path {
         .executable
 }
 
-/// Gate for tests that sync the pinned Ruff, ty and pytest from the network.
-/// Returns false, with a skip note, unless `PYFARO_REAL_QUALITY_TOOLS=1`.
-#[allow(dead_code)]
-pub fn real_quality_tools() -> bool {
-    if std::env::var("PYFARO_REAL_QUALITY_TOOLS").as_deref() == Ok("1") {
-        return true;
-    }
-    eprintln!(
-        "skipping: set PYFARO_REAL_QUALITY_TOOLS=1 to sync and run the real pinned Ruff, ty and pytest (needs network)"
-    );
-    false
-}
-
 /// Install the fixture executable as `<directory>/<stem><EXE_SUFFIX>`.
 ///
 /// A hard link never opens the file for writing, so a concurrently forked

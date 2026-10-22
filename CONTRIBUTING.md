@@ -15,18 +15,10 @@ Thank you for helping build Pyfaro. Please follow our
   rejection. Failure scenarios use a portable Rust executable fixture.
 - Authenticated GitHub CLI for backlog maintenance.
 - Ruff, ty, and pytest are not needed to compile or run the default tests;
-  quality-command tests use a portable fixture executable. Tests that sync the
-  real pinned tools (Ruff 0.16.10, ty 0.0.85, pytest 9.1.1, the tested
-  versions) need network access and are gated by `PYFARO_REAL_QUALITY_TOOLS=1`.
-  Without it they print a skip note and pass. CI sets it on all three
-  platforms for `cargo test`. Gated tests use the default shared uv cache so
-  repeated syncs are cheap. Run them locally with:
-
-  ```sh
-  PYFARO_REAL_QUALITY_TOOLS=1 cargo test --locked --all-targets
-  ```
-
-  Pyfaro does not install these tools automatically.
+  quality-command tests use a portable fixture executable. The real pinned
+  tools (Ruff 0.16.10, ty 0.0.85, pytest 9.1.1, the tested versions) are
+  exercised by the [end-to-end suite](#end-to-end-tests), which needs network
+  access for the first sync. Pyfaro does not install these tools automatically.
 
 ```sh
 git clone https://github.com/pyfaro/pyfaro.git
