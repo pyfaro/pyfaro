@@ -68,12 +68,12 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
             Some(root)
         }
         Err(error) => {
-            report.line(
-                Severity::Error,
-                format!(
-                    "project: {error}; use --project <PATH> to select a project"
-                ),
-            )?;
+            let hint = if matches!(error, Error::NoProject { .. }) {
+                ""
+            } else {
+                "; use --project <PATH> to select a project"
+            };
+            report.line(Severity::Error, format!("project: {error}{hint}"))?;
             None
         }
     };
@@ -163,7 +163,8 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
             Severity::Ok,
             format!("uv: {} ({version})", path.display()),
         )?,
-        Err(error) => report.line(Severity::Error, format!("uv: {error}"))?,
+        Err(error) => report
+            .line(Severity::Error, format!("uv: {}", failure_detail(error)))?,
     }
     for tool in [Tool::Ruff, Tool::Ty, Tool::Pytest] {
         let version = inspect_tool(
@@ -206,6 +207,15 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
     }
 }
 
+/// The tool name is already printed as the line prefix, so drop it from the
+/// error text.
+fn failure_detail(error: Error) -> String {
+    match error {
+        Error::Tool { reason, .. } => reason,
+        other => other.to_string(),
+    }
+}
+
 fn inspect_tool(
     tool: Tool,
     root: Option<&Path>,
@@ -225,9 +235,10 @@ fn inspect_tool(
         }
         Err(Error::Cancelled) => Err(Error::Cancelled),
         Err(error) => {
+            let detail = failure_detail(error);
             report.line(
                 if required { Severity::Error } else { Severity::Warn },
-                format!("{name}: {error}"),
+                format!("{name}: {detail}"),
             )?;
             Ok(None)
         }

@@ -47,6 +47,11 @@ there.
 pytest's exit status is returned unchanged: 0 all tests passed, 1 tests failed,
 2 interrupted, 3 internal error, 4 usage error, 5 no tests collected.
 
+When a delegated pytest run fails, Pyfaro adds a final stderr line
+`error: pytest failed (exit status: N); see pytest's output above` and exits with
+pytest's own status. pytest may write its own caches (`.pytest_cache` and `__pycache__`) in the project; Pyfaro
+leaves source files untouched.
+
 Pyfaro reports its own failures with exit 1 and an actionable message, so they
 are never confused with test failures:
 

@@ -71,7 +71,7 @@ Usage: pyfaro create cli [OPTIONS] <NAME>
 | `--path <PATH>` | Target directory; its parent must already exist |
 | `--python <PYTHON>` | Minimum Python version as `MAJOR.MINOR` (default `3.10`) |
 | `--package <PACKAGE>` | Import package name (defaults to the normalized distribution name) |
-| `--command <COMMAND>` | Installed command name (defaults to the distribution name) |
+| `--command <COMMAND>` | Installed command name (defaults to the distribution name with dots replaced by hyphens) |
 
 ## `pyfaro init`
 

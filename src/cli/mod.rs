@@ -181,7 +181,7 @@ pub(crate) struct CreateCliArgs {
     #[arg(long)]
     pub package: Option<String>,
 
-    /// Installed command name (defaults to the distribution name)
+    /// Installed command name (defaults to the distribution name with dots replaced by hyphens)
     #[arg(long)]
     pub command: Option<String>,
 }
