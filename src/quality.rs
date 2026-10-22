@@ -1,6 +1,6 @@
 //! Code-quality commands that run a project tool directly (no shell, no `uv run`).
 //!
-//! Tested with Ruff 0.16.10. Other versions are not rejected.
+//! Tested with Ruff 0.16.10 and ty 0.0.85. Other versions are not rejected.
 //! These commands never sync: they do not create or modify `.venv` or `uv.lock`.
 
 use std::ffi::OsString;
@@ -9,7 +9,7 @@ use std::process::{Command, ExitStatus};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
-use crate::cli::{FmtArgs, LintArgs};
+use crate::cli::{FmtArgs, LintArgs, TypeArgs};
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::{process, project, tools};
@@ -107,4 +107,30 @@ pub(crate) fn fmt(args: FmtArgs) -> Result<()> {
     let flags: &[&str] = if args.check { &["--check"] } else { &[] };
     let arguments = ruff_args("format", flags, &args.paths)?;
     require_success("ruff", run_tool(&context, "ruff", &arguments)?)
+}
+
+/// Arguments for `ty check`: `--python <environment>` only when that
+/// directory exists, then `--force-exclude` and absolute paths only when
+/// paths were given.
+pub(crate) fn ty_args(
+    environment: &Path,
+    paths: &[PathBuf],
+) -> Result<Vec<OsString>> {
+    let mut args = vec![OsString::from("check")];
+    if environment.is_dir() {
+        args.push(OsString::from("--python"));
+        args.push(environment.as_os_str().to_owned());
+    }
+    if !paths.is_empty() {
+        args.push(OsString::from("--force-exclude"));
+        args.extend(absolute_paths(paths)?);
+    }
+    Ok(args)
+}
+
+pub(crate) fn type_check(args: TypeArgs) -> Result<()> {
+    let context = context(args.project.as_deref())?;
+    let environment = tools::project_environment(&context.root);
+    let arguments = ty_args(&environment, &args.paths)?;
+    require_success("ty", run_tool(&context, "ty", &arguments)?)
 }

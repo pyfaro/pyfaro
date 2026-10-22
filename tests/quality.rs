@@ -162,3 +162,73 @@ fn outside_a_project_fails_with_exit_one() {
     assert_eq!(output.status.code(), Some(1), "{output:?}");
     assert!(!fixture.record.exists());
 }
+
+fn with_ty(fixture: &Fixture) {
+    install(&fixture.project.join(".venv").join(scripts()), "ty");
+}
+
+#[test]
+fn type_passes_the_environment_and_absolute_forced_paths() {
+    let fixture = project(false);
+    with_ty(&fixture);
+    let sub = fixture.project.join("src");
+    let output = pyfaro(
+        &fixture,
+        &sub,
+        &["type", "nested", "--project", fixture.project.to_str().unwrap()],
+        "0",
+    );
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    let (cwd, argv) = recorded(&fixture);
+    assert_eq!(cwd, fs::canonicalize(&fixture.project).unwrap());
+    assert_eq!(argv[0], "check");
+    assert_eq!(argv[1], "--python");
+    assert!(same(&argv[2], &fixture.project.join(".venv")), "{argv:?}");
+    assert_eq!(argv[3], "--force-exclude");
+    assert!(same(&argv[4], &sub.join("nested")), "{argv:?}");
+    assert!(Path::new(&argv[4]).is_absolute());
+    assert_eq!(argv.len(), 5);
+}
+
+#[test]
+fn type_without_paths_and_environment_omits_python() {
+    let fixture = project(false);
+    // ty lives on PATH-less discovery only through the environment, so use a
+    // VIRTUAL_ENV that holds ty while the project environment does not exist.
+    let other = fixture.record.parent().unwrap().join("other");
+    install(&other.join(scripts()), "ty");
+    let empty = fixture.record.parent().unwrap().join("empty");
+    fs::create_dir_all(&empty).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
+        .args(["type"])
+        .current_dir(&fixture.project)
+        .env("PATH", &empty)
+        .env("VIRTUAL_ENV", &other)
+        .env_remove("UV_PROJECT_ENVIRONMENT")
+        .env("PYFARO_FIXTURE_TOOL_RECORD", &fixture.record)
+        .env("PYFARO_FIXTURE_TOOL_EXIT", "0")
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    let (_, argv) = recorded(&fixture);
+    assert_eq!(argv, ["check"]);
+    assert!(!fixture.project.join(".venv").exists());
+}
+
+#[test]
+fn type_forwards_the_exit_code() {
+    let fixture = project(false);
+    with_ty(&fixture);
+    let output = pyfaro(&fixture, &fixture.project, &["type"], "2");
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+}
+
+#[test]
+fn missing_ty_is_actionable() {
+    let fixture = project(true);
+    let output = pyfaro(&fixture, &fixture.project, &["type"], "0");
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("pyfaro add --dev ty"), "{stderr}");
+    assert!(!fixture.record.exists());
+}
