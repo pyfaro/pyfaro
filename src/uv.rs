@@ -147,10 +147,10 @@ impl Uv {
         root: &Path,
         operation: &'static str,
         args: &[A],
-        install: bool,
+        downloads: bool,
         cancelled: &AtomicBool,
     ) -> Result<()> {
-        let mut command = self.command(root, !install);
+        let mut command = self.command(root, !downloads);
         command
             .env_remove("UV_NO_PROJECT")
             .env_remove("UV_NO_CONFIG")
