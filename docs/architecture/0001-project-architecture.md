@@ -30,7 +30,8 @@ build backend configuration, and unrelated metadata.
 At bootstrap, only `--help` and `--version` worked. The table remains the
 design map; the development tree now implements `create`, `init`, `add`,
 `remove`, `sync`, `run`, `python`, `tools`, `doctor`, `lint`, `fmt`, `type`,
-`check`, and `test`. Other rows remain planned. Command flags and limitations are documented in their guides.
+`check`, and `test`. Other rows remain planned. Command flags and limitations
+are documented in their guides.
 
 | Command | Pyfaro responsibility | Delegated capability |
 | --- | --- | --- |

@@ -122,8 +122,9 @@ without writing. `pyfaro type` runs ty, and `pyfaro test [PYTEST_ARGS]...`
 runs pytest in the project environment and returns pytest's exit code.
 `pyfaro check` runs the format check, lint, and type check, prints a summary,
 and exits 1 if any step fails. It writes files only with an explicit `--fix`.
-These tools must be installed in the project; none of the commands syncs
-implicitly. New `create` templates pin them in the `dev` group. See the
+pytest must be installed in the project environment; Ruff and ty are found
+there first, then in an active environment or on `PATH`. None of the
+commands syncs implicitly. New `create` templates pin them in the `dev` group. See the
 [quality guide](docs/quality.md) and [test guide](docs/test.md).
 
 ## Planned experience
