@@ -1,9 +1,9 @@
 # Changelog
 
-## Unreleased — 0.3.0-alpha.1 development
+## 0.3.0-alpha.1 — 2026-10-22
 
-This version has not been published. The development tree adds these
-capabilities to `0.2.0-alpha.1`:
+Experimental release prepared for the manual Release workflow. It adds these
+code-quality capabilities to `0.2.0-alpha.1`:
 
 - Add `pyfaro lint` and `pyfaro fmt` through Ruff, with project selection,
   paths resolved from the working directory, and `fmt --check` for a
