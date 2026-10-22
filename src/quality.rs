@@ -26,7 +26,34 @@ pub(crate) fn context(project: Option<&Path>) -> Result<Context> {
     let root = project::select(project)?;
     let config = Config::load(&root)?;
     let cancelled = process::cancellation()?;
-    Ok(Context { root: config.root().to_owned(), cancelled })
+    Ok(Context { root: normalize(config.root()), cancelled })
+}
+
+/// Windows temp directories often use 8.3 short names (`RUNNER~1`) while ty
+/// canonicalizes its project root to the long form, so an exclude pattern
+/// never matches a path spelled with the short form. Resolve existing paths
+/// to the long form and drop the `\\?\` prefix that `canonicalize` adds.
+/// Unchanged elsewhere, and for paths that do not exist.
+fn normalize(path: &Path) -> PathBuf {
+    if cfg!(windows)
+        && let Ok(long) = path.canonicalize()
+    {
+        return strip_verbatim(&long);
+    }
+    path.to_owned()
+}
+
+/// `\\?\C:\dir` becomes `C:\dir`. UNC and device paths are kept verbatim.
+fn strip_verbatim(path: &Path) -> PathBuf {
+    let Some(text) = path.to_str() else {
+        return path.to_owned();
+    };
+    match text.strip_prefix(r"\\?\").map(str::as_bytes) {
+        Some([drive, b':', b'\\', ..]) if drive.is_ascii_alphabetic() => {
+            PathBuf::from(&text[4..])
+        }
+        _ => path.to_owned(),
+    }
 }
 
 /// Make positional paths absolute against the user's current directory, so
@@ -36,7 +63,7 @@ pub(crate) fn absolute_paths(paths: &[PathBuf]) -> Result<Vec<OsString>> {
         .iter()
         .map(|path| {
             std::path::absolute(path)
-                .map(PathBuf::into_os_string)
+                .map(|absolute| normalize(&absolute).into_os_string())
                 .map_err(|source| Error::io("resolve path", path, source))
         })
         .collect()
@@ -311,4 +338,30 @@ pub(crate) fn test(args: TestArgs) -> Result<()> {
         .current_dir(&context.root);
     let status = process::run_interactive(command, &context.cancelled)?;
     require_success("pytest", status)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strip_verbatim_drops_the_prefix_of_drive_paths_only() {
+        let strip = |text: &str| strip_verbatim(Path::new(text));
+        assert_eq!(
+            strip(r"\\?\C:\Users\runneradmin"),
+            Path::new(r"C:\Users\runneradmin")
+        );
+        assert_eq!(
+            strip(r"\\?\UNC\host\share"),
+            Path::new(r"\\?\UNC\host\share")
+        );
+        assert_eq!(strip(r"C:\Users"), Path::new(r"C:\Users"));
+        assert_eq!(strip("/tmp/x"), Path::new("/tmp/x"));
+    }
+
+    #[test]
+    fn normalize_keeps_missing_paths_as_given() {
+        let missing = Path::new("definitely/not/here.py");
+        assert_eq!(normalize(missing), missing);
+    }
 }
