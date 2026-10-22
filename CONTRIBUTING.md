@@ -95,10 +95,12 @@ See the [backlog maintenance guide](tools/github-backlog/README.md).
 ## Releases
 
 Experimental `0.1.0-alpha.1`, `0.1.0-alpha.2`, and `0.2.0-alpha.1` crates
-were published manually. Backlog issue B06 still owns automated public-beta
-distribution, standalone artifacts, and GitHub Release automation. The
-manually created `v0.1.0-alpha.2` and `v0.2.0-alpha.1` tags point to their
-published source commits; only `0.1.0-alpha.2` has a prerelease. See
+were published manually. Future versions use the manual Release workflow,
+which publishes through crates.io trusted publishing, tags the commit, and
+creates a GitHub Release with standalone archives. Backlog issue B06 still
+owns signing, provenance, and installers for the public beta. The
+`v0.1.0-alpha.2` and `v0.2.0-alpha.1` tags point to their published source
+commits and both have GitHub prereleases. See
 [the publishing guide](docs/releasing.md) for verified release records and
 explicit approval gates for future uploads, tags, and releases. No registry
 credentials are stored in this repository.

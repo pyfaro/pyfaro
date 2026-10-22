@@ -35,8 +35,12 @@ PR alone is not publication approval.
   `create lib`, and `create cli`.
 - The annotated [`v0.2.0-alpha.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.2.0-alpha.1)
   resolves to the source commit above, not a later development commit.
-  **No GitHub Release was created for this version.** Creating one requires
-  separate maintainer authorization.
+  The [GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.2.0-alpha.1) was published at
+  `2026-10-22T09:05:49Z` by the GitHub Release workflow, at maintainer
+  request. It attaches standalone archives for five targets, the `.crate`
+  downloaded from crates.io and checked against the registry checksum, and
+  `SHA256SUMS`. The downloaded Linux x86_64 archive matched its checksum and
+  reported `pyfaro 0.2.0-alpha.1`.
 
 This version exists on crates.io and must not be published again.
 
@@ -247,8 +251,8 @@ until the merged archive and checksum have been verified.
    after publication is verified and each action is separately authorized.
    Point the tag to the exact published source commit, not a later development
    commit. Mark alpha GitHub Releases as prereleases and do not claim
-   standalone artifacts unless they have been built and verified. This alpha
-   does not introduce a GitHub Release pipeline.
+   standalone artifacts unless they have been built and verified. The
+   workflows below automate these steps.
 
 A published crate version cannot be overwritten. If a defective alpha ships,
 agree on yanking it and publishing a corrected alpha with a new version;
@@ -331,8 +335,9 @@ The notes are the `## <version>` section of `CHANGELOG.md` from the
 triggering ref (the released commit, or `main` for a backfill), followed by
 install instructions and GitHub's generated list of merged pull requests
 since the previous release. Versions with a pre-release suffix become
-prereleases. When the release already exists, its notes are replaced and
-its assets are re-uploaded. The binaries are unsigned and have no
+prereleases. When the release already exists, its notes are rebuilt the
+same way, including a regenerated pull request list, and its assets are
+re-uploaded. The binaries are unsigned and have no
 provenance attestation yet.
 
 ## Public beta distribution remains B02/B06
