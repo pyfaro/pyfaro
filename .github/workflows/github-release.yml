@@ -193,6 +193,12 @@ jobs:
         run: |
           set -euo pipefail
           if gh release view "$TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            # Keep GitHub's generated pull request list when refreshing.
+            {
+              echo
+              gh api "repos/$REPOSITORY/releases/generate-notes" \
+                -f tag_name="$TAG" --jq .body
+            } >> notes.md
             gh release edit "$TAG" --repo "$REPOSITORY" --notes-file notes.md
             gh release upload "$TAG" --repo "$REPOSITORY" --clobber dist/*
           else

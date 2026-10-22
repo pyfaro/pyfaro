@@ -13,10 +13,9 @@ The repository develops **unpublished `0.3.0-alpha.1`** with the v0.3.0 Code
 Quality work. Interfaces may change between alpha versions.
 Completing a backlog milestone does not publish a stable or prerelease crate.
 The annotated [`v0.2.0-alpha.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.2.0-alpha.1)
-marks the published source. No GitHub Release exists for this version, and
-there are no standalone binaries. The earlier
-[`0.1.0-alpha.2` prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.1.0-alpha.2)
-is unchanged.
+marks the published source. Its [GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.2.0-alpha.1)
+offers unsigned standalone archives for Linux (x86_64, arm64), macOS (arm64,
+x86_64), and Windows (x86_64), with `SHA256SUMS`.
 
 The current alpha series targets **Linux** for `init --apply`. macOS and Windows
 retain builds, help/version, and non-writing previews; applying initialization

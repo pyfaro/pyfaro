@@ -8,8 +8,10 @@ This version has not been published. No changes yet.
 
 Published on [crates.io](https://crates.io/crates/pyfaro/0.2.0-alpha.1).
 The annotated [`v0.2.0-alpha.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.2.0-alpha.1)
-points to the published source. No GitHub Release was created for this
-version. This experimental release adds these capabilities to `0.1.0-alpha.2`:
+points to the published source. The [GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.2.0-alpha.1)
+followed on `2026-10-22T09:05:49Z` with Linux, macOS, and Windows archives,
+the published `.crate`, and `SHA256SUMS`.
+This experimental release adds these capabilities to `0.1.0-alpha.2`:
 
 - Add `pyfaro add` and `pyfaro remove` for uv-owned dependency and lockfile
   edits, including development and named dependency groups. Environment
