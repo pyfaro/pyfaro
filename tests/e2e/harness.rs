@@ -212,6 +212,7 @@ fn write_file(path: &Path, contents: &str) -> PathBuf {
 pub struct Cmd {
     command: Command,
     description: String,
+    stdin: Option<Vec<u8>>,
 }
 
 impl Cmd {
@@ -264,7 +265,7 @@ impl Cmd {
         command.env("APPDATA", sandbox.join("config"));
         command.args(args);
         let description = format!("{program} (cwd {})", cwd.display());
-        Self { command, description }
+        Self { command, description, stdin: None }
     }
 
     pub fn arg(mut self, arg: impl AsRef<OsStr>) -> Self {
@@ -300,8 +301,30 @@ impl Cmd {
         self
     }
 
+    /// Pipe these bytes to the process's standard input (default: null).
+    pub fn stdin(mut self, input: impl Into<Vec<u8>>) -> Self {
+        self.stdin = Some(input.into());
+        self
+    }
+
     pub fn run(mut self) -> Outcome {
-        let output = self.command.output().expect("start process");
+        let output = match self.stdin.take() {
+            None => self.command.output().expect("start process"),
+            Some(input) => {
+                use std::io::Write;
+                use std::process::Stdio;
+                let mut child = self
+                    .command
+                    .stdin(Stdio::piped())
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+                    .expect("start process");
+                // A process that exits without reading closes the pipe.
+                let _ = child.stdin.take().unwrap().write_all(&input);
+                child.wait_with_output().expect("wait for process")
+            }
+        };
         Outcome {
             description: format!(
                 "{} {:?}",
@@ -367,6 +390,15 @@ impl Outcome {
     pub fn stderr_eq(&self, expected: &str) -> &Self {
         if self.stderr != expected {
             self.fail(&format!("stderr is not exactly {expected:?}"));
+        }
+        self
+    }
+
+    /// Like [`Outcome::stdout_eq`] but accepts CRLF line endings, which
+    /// Python's text-mode stdout produces on Windows.
+    pub fn stdout_text_eq(&self, expected: &str) -> &Self {
+        if self.stdout.replace("\r\n", "\n") != expected {
+            self.fail(&format!("stdout is not exactly {expected:?}"));
         }
         self
     }
