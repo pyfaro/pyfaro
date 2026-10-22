@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="316 124 390 480" role="img" aria-label="Pyfaro">
+  <title>Pyfaro</title>
+  <defs>
+    <linearGradient id="degrade-anthracite" gradientUnits="userSpaceOnUse"
+                    x1="335" y1="150" x2="650" y2="570">
+      <stop offset="0" stop-color="#252d34"/>
+      <stop offset="1" stop-color="#232a30"/>
+    </linearGradient>
+    <linearGradient id="degrade-faisceau" gradientUnits="userSpaceOnUse"
+                    x1="491" y1="253" x2="693" y2="253">
+      <stop offset="0" stop-color="#fff3c4"/>
+      <stop offset="0.48" stop-color="#ffdc76"/>
+      <stop offset="1" stop-color="#ffca3e"/>
+    </linearGradient>
+    <linearGradient id="degrade-fenetre" gradientUnits="userSpaceOnUse"
+                    x1="431" y1="235" x2="477" y2="273">
+      <stop offset="0" stop-color="#ffd553"/>
+      <stop offset="1" stop-color="#ffca3e"/>
+    </linearGradient>
+    <linearGradient id="degrade-ruban" gradientUnits="userSpaceOnUse"
+                    x1="328" y1="480" x2="492" y2="440">
+      <stop offset="0" stop-color="#3076b5"/>
+      <stop offset="1" stop-color="#2e6ba6"/>
+    </linearGradient>
+  </defs>
+  <g id="symbole">
+    <g id="monogramme" fill="url(#degrade-anthracite)">
+      <path id="p-partie-superieure"
+            d="M 335,136 H 544
+               C 626,136 693,199 693,280
+               C 693,360 630,425 551,429
+               C 531,430 511,434 492,440
+               C 425,461 367,508 330,563
+               Q 328,566 328,561
+               V 144 Q 328,136 335,136 Z"/>
+      <path id="p-pied"
+            d="M 490,466
+               Q 493,465 493,469
+               V 560 Q 493,564 489,565
+               L 351,591 Q 348,592 350,587
+               C 369,531 423,491 490,466 Z"/>
+    </g>
+
+    <g id="lumiere">
+      <path id="faisceau"
+            fill="url(#degrade-faisceau)"
+            d="M 494,237.5 L 665.8,195.7
+               C 683.2,220.2 693,249.2 693,280
+               C 693,289.1 692.2,298.1 690.5,306.8
+               L 494,268.5 Q 490.5,267.8 490.5,264.2
+               V 242 Q 490.5,238.4 494,237.5 Z"/>
+    </g>
+
+    <g id="phare">
+      <g id="structure-phare" fill="#ffffff">
+        <path id="socle-phare"
+              d="M 328,429
+                 C 350,408 372,390 394,373
+                 C 401,367 404,361 405,353
+                 L 488,359 L 544,352
+                 Q 548,351 546,354
+                 C 526,368 503,376 478,385
+                 C 413,409 349,431 331,466
+                 Q 328,473 328,480 Z"/>
+        <path id="tour-phare"
+              d="M 410,292 H 482 L 488,360
+                 L 404,364 Z"/>
+        <rect id="chambre-lanterne"
+              x="415.5" y="221" width="61" height="65" rx="2"/>
+        <path id="toit-phare"
+              d="M 444,194 Q 446,192.5 448,194
+                 L 486.5,223 Q 490,226 486,226
+                 H 406 Q 402,226 405.5,223 Z"/>
+        <rect id="galerie-phare"
+              x="399.5" y="282.5" width="93" height="15" rx="3"/>
+      </g>
+      <g id="lanterne">
+        <rect id="fenetre-phare"
+              x="431" y="232" width="45" height="43.5" rx="3.5"
+              fill="url(#degrade-fenetre)"/>
+      </g>
+    </g>
+
+    <g id="ruban">
+      <path id="ruban-bleu"
+            fill="url(#degrade-ruban)"
+            d="M 488.8,379.3
+               C 435.5,398.7 394.5,413.1 368.4,429.1
+               C 350.7,440.1 336.8,453.7 331.3,465.6
+               C 328.5,471.5 328,475 328,483
+               V 561 Q 328,566 330,563
+               C 367,508 425,461 492,440 Z"/>
+    </g>
+  </g>
+</svg>
