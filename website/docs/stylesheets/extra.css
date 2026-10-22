@@ -1,0 +1,183 @@
+/* Pyfaro documentation theme.
+   Palette taken from the logo: anthracite (the P), gold (the beam), blue (the ribbon). */
+
+:root {
+  --pf-anthracite: #252d34;
+  --pf-anthracite-deep: #1b2127;
+  --pf-gold: #ffca3e;
+  --pf-gold-soft: #ffdc76;
+  --pf-gold-pale: #fff3c4;
+  --pf-blue: #2e6ba6;
+  --pf-blue-bright: #3076b5;
+}
+
+/* Light scheme */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: var(--pf-anthracite);
+  --md-primary-fg-color--light: #3a444d;
+  --md-primary-fg-color--dark: var(--pf-anthracite-deep);
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: rgba(255, 255, 255, 0.75);
+  --md-accent-fg-color: #8a5d00;            /* dark gold: 5.3:1 on white */
+  --md-accent-fg-color--transparent: rgba(255, 202, 62, 0.15);
+  --md-accent-bg-color: var(--pf-gold);
+  --md-typeset-a-color: #245c94;            /* 6.6:1 on white */
+  --md-code-bg-color: #f4f6f8;
+  --pf-card-bg: #ffffff;
+  --pf-card-border: #dde3e8;
+  --pf-muted: #55606a;
+}
+
+/* Dark scheme */
+[data-md-color-scheme="slate"] {
+  --md-hue: 210;
+  --md-default-bg-color: #1b2127;
+  --md-default-bg-color--light: rgba(27, 33, 39, 0.54);
+  --md-default-fg-color: rgba(255, 255, 255, 0.92);
+  --md-default-fg-color--light: rgba(255, 255, 255, 0.72);
+  --md-primary-fg-color: var(--pf-anthracite-deep);
+  --md-primary-fg-color--light: #2c353d;
+  --md-primary-fg-color--dark: #14191d;
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: rgba(255, 255, 255, 0.75);
+  --md-accent-fg-color: var(--pf-gold);
+  --md-accent-fg-color--transparent: rgba(255, 202, 62, 0.14);
+  --md-accent-bg-color: var(--pf-gold);
+  --md-typeset-a-color: #7ab6f0;            /* 8:1 on the dark background */
+  --md-code-bg-color: #232a30;
+  --md-code-fg-color: #e6ebef;
+  --md-footer-bg-color: #14191d;
+  --pf-card-bg: #232a30;
+  --pf-card-border: #36404a;
+  --pf-muted: #a9b4bd;
+}
+
+/* Header and tabs: anthracite in both schemes, with a gold rule */
+.md-header,
+.md-tabs {
+  background-color: var(--pf-anthracite);
+  color: #ffffff;
+}
+[data-md-color-scheme="slate"] .md-header,
+[data-md-color-scheme="slate"] .md-tabs {
+  background-color: var(--pf-anthracite-deep);
+}
+.md-header { box-shadow: none; }
+.md-tabs { border-bottom: 2px solid var(--pf-gold); }
+.md-header__button.md-logo img { height: 1.8rem; width: 1.8rem; }
+.md-tabs__link { opacity: 0.8; }
+.md-tabs__link:hover,
+.md-tabs__item--active .md-tabs__link { opacity: 1; color: var(--pf-gold-soft); }
+
+/* Highlights */
+::selection { background: var(--pf-gold); color: var(--pf-anthracite); }
+.md-search-result mark,
+.md-typeset mark {
+  background-color: rgba(255, 202, 62, 0.45);
+  color: inherit;
+}
+.md-nav__link--active,
+.md-nav__item .md-nav__link--active { color: var(--md-typeset-a-color); font-weight: 600; }
+.md-typeset a:hover { color: var(--md-accent-fg-color); }
+.md-typeset h1 { font-weight: 700; letter-spacing: -0.02em; color: var(--md-default-fg-color); }
+.md-typeset h2 { font-weight: 650; letter-spacing: -0.01em; }
+.md-typeset .headerlink:hover { color: var(--md-accent-fg-color); }
+.md-typeset code { border-radius: 0.2rem; }
+.md-typeset .tabbed-set > .tabbed-labels > label:hover { color: var(--md-accent-fg-color); }
+.md-typeset .tabbed-set > input:checked + label { color: var(--md-typeset-a-color); }
+
+/* Grid cards: gold top edge */
+.md-typeset .grid.cards > ul > li,
+.md-typeset .grid > .card {
+  background: var(--pf-card-bg);
+  border: 1px solid var(--pf-card-border);
+  border-top: 3px solid var(--pf-gold);
+  border-radius: 0.5rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.md-typeset .grid.cards > ul > li:hover,
+.md-typeset .grid > .card:hover {
+  border-color: var(--pf-card-border);
+  border-top-color: var(--pf-gold);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(20, 25, 29, 0.14);
+}
+
+/* Buttons: .md-button is built into Material; these are the Pyfaro variants */
+.md-typeset .md-button {
+  border-radius: 0.4rem;
+  font-weight: 600;
+  color: var(--md-typeset-a-color);
+  border-color: currentcolor;
+}
+.md-typeset .md-button--primary,
+.md-typeset .pf-btn--gold {
+  background-color: var(--pf-gold);
+  border-color: var(--pf-gold);
+  color: var(--pf-anthracite);
+}
+.md-typeset .md-button--primary:hover,
+.md-typeset .pf-btn--gold:hover {
+  background-color: var(--pf-gold-soft);
+  border-color: var(--pf-gold-soft);
+  color: var(--pf-anthracite);
+}
+.md-typeset .md-button:not(.md-button--primary):hover {
+  background-color: var(--md-accent-fg-color--transparent);
+  border-color: var(--md-accent-fg-color);
+  color: var(--md-accent-fg-color);
+}
+
+/* Badges */
+.pf-badge {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: 1rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--pf-gold);
+  color: var(--pf-anthracite);
+  vertical-align: middle;
+}
+.pf-badge--blue { background: var(--pf-blue); color: #ffffff; }
+
+/* Landing page */
+.pf-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5rem;
+  padding: 2.5rem 0 2rem;
+}
+.pf-hero__logo { flex: 0 1 15rem; }
+.pf-hero__logo img { width: 100%; height: auto; }
+.pf-hero__text { flex: 1 1 22rem; max-width: 34rem; }
+.md-typeset .pf-hero__title {
+  margin: 0 0 0.6rem;
+  font-size: 2.3rem;
+  line-height: 1.15;
+}
+.pf-hero__lead { font-size: 1.05rem; color: var(--pf-muted); margin: 0 0 1.4rem; }
+.pf-hero__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.pf-hero__actions .md-button { margin: 0; }
+.pf-section-title { text-align: center; margin-top: 2.5rem; }
+.pf-lead { text-align: center; color: var(--pf-muted); }
+.pf-center { text-align: center; }
+
+/* The hero logo has no tile; keep the anthracite lettering legible on dark */
+[data-md-color-scheme="slate"] .pf-hero__logo img {
+  background: #ffffff;
+  border-radius: 1.4rem;
+  padding: 0.8rem;
+}
+
+@media (max-width: 44.9375em) {
+  .pf-hero { padding-top: 1rem; gap: 1.5rem; }
+  .md-typeset .pf-hero__title { font-size: 1.8rem; }
+}
+
+/* Mermaid diagrams are centred */
+.md-typeset .mermaid { text-align: center; }

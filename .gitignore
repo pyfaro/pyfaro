@@ -10,3 +10,7 @@ __pycache__/
 .graphify/branch.json
 .graphify/worktree.json
 .graphify/needs_update
+
+# Documentation site build output
+/website/site/
+.venv/
