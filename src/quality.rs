@@ -53,7 +53,8 @@ pub(crate) fn run_tool(
 ) -> Result<ExitStatus> {
     let binary = tools::resolve(tool, Some(&context.root)).map_err(|error| {
         match error {
-            Error::Tool { tool, .. } => Error::Tool {
+            // Keep other reasons, such as a rejected Windows batch wrapper.
+            Error::Tool { tool, reason } if reason.starts_with("not found") => Error::Tool {
                 tool,
                 reason: format!(
                     "not found in the project environment, VIRTUAL_ENV, or PATH; run `pyfaro add --dev {tool}` then `pyfaro sync`"
