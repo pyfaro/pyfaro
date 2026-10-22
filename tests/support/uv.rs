@@ -72,7 +72,17 @@ fn main() {
         }
         return;
     }
-    if matches!(stem.as_ref(), "ruff" | "ty" | "pytest")
+    if matches!(stem.as_ref(), "python" | "python3")
+        && args.first().is_some_and(|arg| arg == "-c")
+        && args.get(1).is_some_and(|code| code.contains("find_spec('pytest')"))
+    {
+        process::exit(i32::from(
+            env::var_os("PYFARO_FIXTURE_NO_PYTEST").is_some(),
+        ));
+    }
+    let python_module = matches!(stem.as_ref(), "python" | "python3")
+        && args.starts_with(&["-m".to_string(), "pytest".to_string()]);
+    if (python_module || matches!(stem.as_ref(), "ruff" | "ty" | "pytest"))
         && let Some(record) = env::var_os("PYFARO_FIXTURE_TOOL_RECORD")
     {
         let cwd = env::current_dir().unwrap();

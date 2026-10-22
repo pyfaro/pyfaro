@@ -5,11 +5,11 @@
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus};
+use std::process::{Command, ExitStatus, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
-use crate::cli::{FmtArgs, LintArgs, TypeArgs};
+use crate::cli::{FmtArgs, LintArgs, TestArgs, TypeArgs};
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::{process, project, tools};
@@ -133,4 +133,47 @@ pub(crate) fn type_check(args: TypeArgs) -> Result<()> {
     let environment = tools::project_environment(&context.root);
     let arguments = ty_args(&environment, &args.paths)?;
     require_success("ty", run_tool(&context, "ty", &arguments)?)
+}
+
+/// Run pytest through the project environment's interpreter, so it imports
+/// that environment's packages. Pyfaro's own failures (no interpreter, pytest
+/// not importable) are reported as errors, never as pytest statuses.
+pub(crate) fn test(args: TestArgs) -> Result<()> {
+    let context = context(args.project.as_deref())?;
+    let python = tools::project_python(&context.root);
+    if !python.is_file() {
+        return Err(Error::Tool {
+            tool: "pytest",
+            reason: format!(
+                "project environment interpreter not found at {}; run `pyfaro sync` first",
+                python.display()
+            ),
+        });
+    }
+    let mut probe = Command::new(&python);
+    probe
+        .args([
+            "-c",
+            "import importlib.util, sys; sys.exit(importlib.util.find_spec('pytest') is None)",
+        ])
+        .current_dir(&context.root)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    if !process::run(probe, &context.cancelled)?.success() {
+        return Err(Error::Tool {
+            tool: "pytest",
+            reason: format!(
+                "not installed in the project environment ({}); run `pyfaro add --dev pytest` then `pyfaro sync`",
+                python.display()
+            ),
+        });
+    }
+    let mut command = Command::new(&python);
+    command
+        .args(["-m", "pytest"])
+        .args(&args.pytest_args)
+        .current_dir(&context.root);
+    let status = process::run_interactive(command, &context.cancelled)?;
+    require_success("pytest", status)
 }
