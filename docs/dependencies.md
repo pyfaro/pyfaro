@@ -3,7 +3,8 @@
 `pyfaro add` and `pyfaro remove` delegate dependency edits and resolution to
 uv. Run them in a project directory or a descendant. Pyfaro finds the nearest
 `pyproject.toml`; `--project <PATH>` selects an exact directory and requires
-its own `pyproject.toml`.
+its own `pyproject.toml`. These commands are available in published
+`0.2.0-alpha.1` and later versions.
 
 ```sh
 pyfaro add "requests>=2,<3"

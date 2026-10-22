@@ -1,8 +1,15 @@
 # Changelog
 
-## Unreleased — 0.2.0-alpha.1 development
+## Unreleased — 0.3.0-alpha.1 development
 
-This version has not been published.
+This version has not been published. No changes yet.
+
+## 0.2.0-alpha.1 — 2026-10-22
+
+Published on [crates.io](https://crates.io/crates/pyfaro/0.2.0-alpha.1).
+The annotated [`v0.2.0-alpha.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.2.0-alpha.1)
+points to the published source. No GitHub Release was created for this
+version. This experimental release adds these capabilities to `0.1.0-alpha.2`:
 
 - Add `pyfaro add` and `pyfaro remove` for uv-owned dependency and lockfile
   edits, including development and named dependency groups. Environment
@@ -14,8 +21,16 @@ This version has not been published.
   permits interpreter downloads; pinning follows uv's project constraints.
 - Add a read-only `pyfaro doctor` report for project configuration, Python and
   tool versions, layout conflicts, and missing runtime distributions.
-- Complete the v0.2.0 project-management backlog without publishing a new
-  crate, tag, or GitHub Release.
+
+The published archive comes from commit
+[`c7d185c8c0a247396104b183c8473bddcd299856`](https://github.com/pyfaro/pyfaro/commit/c7d185c8c0a247396104b183c8473bddcd299856)
+and was registered at `2026-10-22T08:37:08.585547Z`. Its registry and
+locally packaged archive SHA-256 is
+`15c76a1da74c8114d0d3a8b3bb16c03a5985251f5703c94c66960bb2ab9bda37`.
+Installation from crates.io and Linux `init` preview/apply/reapply, `sync`,
+`run`, `tools`, `doctor`, `create lib`, and `create cli` smoke checks passed
+with uv 0.9.26. Reapplying left `pyproject.toml` and `uv.lock` byte-for-byte
+unchanged.
 
 ## 0.1.0-alpha.2 — 2026-10-19
 

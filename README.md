@@ -6,13 +6,17 @@ quality checks, tests, and development workflows into one cohesive CLI.
 
 ## Status
 
-**Latest published alpha: [`0.1.0-alpha.2`](https://crates.io/crates/pyfaro/0.1.0-alpha.2),
-published on 2026-10-19.** It implements `init`, `sync`, `run`, and `tools`.
-The repository develops **unpublished `0.2.0-alpha.1`** with the v0.2.0
-project-management workflows. Interfaces may change between alpha versions.
+**Latest published alpha: [`0.2.0-alpha.1`](https://crates.io/crates/pyfaro/0.2.0-alpha.1),
+published on 2026-10-22.** It implements `init`, `sync`, `run`, `tools`,
+`create`, `add`, `remove`, `python`, and `doctor`.
+The repository develops **unpublished `0.3.0-alpha.1`** with the v0.3.0 Code
+Quality work. Interfaces may change between alpha versions.
 Completing a backlog milestone does not publish a stable or prerelease crate.
-The [GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.1.0-alpha.2)
-tags the published source; it does not include standalone binaries.
+The annotated [`v0.2.0-alpha.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.2.0-alpha.1)
+marks the published source. No GitHub Release exists for this version, and
+there are no standalone binaries. The earlier
+[`0.1.0-alpha.2` prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.1.0-alpha.2)
+is unchanged.
 
 The current alpha series targets **Linux** for `init --apply`. macOS and Windows
 retain builds, help/version, and non-writing previews; applying initialization
@@ -24,11 +28,11 @@ The other implemented workflows are tested on all three CI platforms.
 With Rust 1.90 or newer and Cargo installed:
 
 ```sh
-cargo install pyfaro --version 0.1.0-alpha.2 --locked
+cargo install pyfaro --version 0.2.0-alpha.1 --locked
 pyfaro --version
 ```
 
-The expected output is `pyfaro 0.1.0-alpha.2`. uv and Python are separate
+The expected output is `pyfaro 0.2.0-alpha.1`. uv and Python are separate
 runtime requirements for applying initialization on Linux and using `sync`
 or `run` on supported platforms.
 
@@ -64,7 +68,7 @@ executable. See the [init guide](docs/init.md) for exact behavior, error
 handling, and alpha limitations, and the [release instructions](docs/releasing.md)
 for the publication approval gate.
 
-In the published `alpha.2`, `pyfaro sync [PATH]` creates or updates the
+In the published alpha, `pyfaro sync [PATH]` creates or updates the
 project's `.venv` and `uv.lock` through uv. Use `--locked` to reject stale
 locks or `--frozen` to install from an existing lock without checking it.
 From a nested directory, Pyfaro selects the nearest `pyproject.toml`;
@@ -72,10 +76,10 @@ positional `PATH` starts discovery elsewhere, while `--project <PATH>`
 selects an exact project instead.
 See the [sync guide](docs/sync.md) for the mode differences.
 
-In the unpublished development version, `pyfaro add "requests>=2"` and
+In published `0.2.0-alpha.1` and later, `pyfaro add "requests>=2"` and
 `pyfaro remove requests` delegate dependency and lockfile edits to uv.
 Use `--dev` or `--group <NAME>` for dependency groups, then run `pyfaro sync`
-to update the environment. These commands are not in the published `alpha.2`.
+to update the environment.
 See the [dependency guide](docs/dependencies.md).
 
 `pyfaro run -- <program> [args...]` executes through uv in the project
@@ -92,18 +96,18 @@ tools are found in the selected project's `.venv`, then `VIRTUAL_ENV`, then
 `PATH`; uv uses `PATH` or an explicit `--uv <path>`. See the
 [tools guide](docs/tools.md).
 
-The unpublished development version adds `pyfaro create lib NAME` and
+Published `0.2.0-alpha.1` also adds `pyfaro create lib NAME` and
 `pyfaro create cli NAME`. Both generate a packaged `src/` layout with a smoke
 test; the CLI variant also creates a console entry point. Creation itself
 does not invoke uv or download Python. See the [create guide](docs/create.md)
 for naming, interpreter, and build details.
 
-The development version also adds `pyfaro python list`, `python install`, and
+It also adds `pyfaro python list`, `python install`, and
 `python pin` as thin uv wrappers. Listing and pinning do not download Python;
 an explicit `install` may do so unless `--offline` is set. See the
 [Python guide](docs/python.md) for project selection and pin behavior.
 
-`pyfaro doctor` is also available in the development version. It reports
+`pyfaro doctor` is also available in `0.2.0-alpha.1`. It reports
 project configuration, interpreter and tool versions, layout conflicts, and
 missing runtime or default-group distributions without intentionally changing
 project files.
@@ -123,8 +127,9 @@ side effects. Blocking findings return a non-zero exit code. See the
 Remaining planned commands: `dev`, `lint`, `fmt`, `type`, `check`, `test`, and
 `build`.
 These commands are roadmap items, not working functionality. The published
-`alpha.2` includes `init`, `sync`, `run`, and `tools`; the development version
-also includes `create`, `add`, `remove`, `python`, and `doctor`.
+`0.2.0-alpha.1` includes `init`, `sync`, `run`, `tools`, `create`, `add`,
+`remove`, `python`, and `doctor`. The `0.3.0-alpha.1` development version adds
+no new commands yet.
 
 ## Integration over reimplementation
 

@@ -3,7 +3,8 @@
 `pyfaro create` generates a small, packaged Python project. Creation writes
 files locally; it does not run uv, install Python, resolve dependencies, or
 download anything. The target's parent directory must already exist, and an
-existing file, directory, or symlink is never replaced.
+existing file, directory, or symlink is never replaced. This command is
+available in published `0.2.0-alpha.1` and later versions.
 
 ## Library
 
