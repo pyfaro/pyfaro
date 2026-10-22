@@ -8,7 +8,7 @@ use clap::{Args, Parser, Subcommand};
 #[command(version, about, long_about = None)]
 #[command(arg_required_else_help = true)]
 #[command(
-    after_help = "Experimental alpha: create, init, sync, run, add, remove, python, tools, doctor, lint, fmt, type, and test are implemented; other workflow commands are not implemented yet."
+    after_help = "Experimental alpha: create, init, sync, run, add, remove, python, tools, doctor, lint, fmt, type, test, and check are implemented; other workflow commands are not implemented yet."
 )]
 pub(crate) struct Cli {
     #[command(subcommand)]
@@ -37,6 +37,8 @@ pub(crate) enum Command {
     Type(TypeArgs),
     /// Run pytest in the project environment
     Test(TestArgs),
+    /// Run format check, lint, and type check; optionally apply safe fixes first
+    Check(CheckArgs),
     /// List, install, or pin Python versions through uv
     Python(PythonArgs),
     /// Show resolved paths and versions of external tools
@@ -59,6 +61,20 @@ pub(crate) struct LintArgs {
 pub(crate) struct TypeArgs {
     /// Files or directories relative to the current directory (default: the project)
     pub paths: Vec<PathBuf>,
+
+    /// Explicit project directory; otherwise discover the nearest project
+    #[arg(long)]
+    pub project: Option<PathBuf>,
+}
+
+#[derive(Args)]
+pub(crate) struct CheckArgs {
+    /// Files or directories relative to the current directory (default: the project)
+    pub paths: Vec<PathBuf>,
+
+    /// Apply safe Ruff fixes and formatting first, then verify without writing
+    #[arg(long)]
+    pub fix: bool,
 
     /// Explicit project directory; otherwise discover the nearest project
     #[arg(long)]

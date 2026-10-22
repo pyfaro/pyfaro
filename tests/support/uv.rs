@@ -86,8 +86,27 @@ fn main() {
         && let Some(record) = env::var_os("PYFARO_FIXTURE_TOOL_RECORD")
     {
         let cwd = env::current_dir().unwrap();
-        fs::write(record, format!("{}\n{}", cwd.display(), args.join("\n")))
+        use std::io::Write;
+        let mut file = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(record)
             .unwrap();
+        // Invocations are appended; each ends with a separator line.
+        writeln!(file, "{}\n{}\n--end--", cwd.display(), args.join("\n"))
+            .unwrap();
+        // "<tool> <leading args joined by spaces>=<code>" overrides the exit
+        // code for invocations that start with those arguments.
+        let invocation = format!("{stem} {}", args.join(" "));
+        let when = env::var("PYFARO_FIXTURE_TOOL_EXIT_WHEN").ok().and_then(
+            |value| {
+                let (key, code) = value.rsplit_once('=')?;
+                invocation.starts_with(key).then(|| code.parse::<i32>().ok())?
+            },
+        );
+        if let Some(code) = when {
+            process::exit(code);
+        }
         let code = env::var("PYFARO_FIXTURE_TOOL_EXIT")
             .ok()
             .and_then(|value| value.parse().ok())

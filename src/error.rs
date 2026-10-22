@@ -80,6 +80,9 @@ pub(crate) enum Error {
     },
     #[error("could not install the cancellation handler: {0}")]
     CancellationSetup(#[from] ctrlc::Error),
+    /// `check` already printed its summary; main prints nothing more.
+    #[error("check failed")]
+    CheckFailed,
     #[error("operation cancelled")]
     Cancelled,
     #[error("could not write command output: {0}")]

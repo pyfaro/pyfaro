@@ -9,7 +9,7 @@ use std::process::{Command, ExitStatus, Stdio};
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 
-use crate::cli::{FmtArgs, LintArgs, TestArgs, TypeArgs};
+use crate::cli::{CheckArgs, FmtArgs, LintArgs, TestArgs, TypeArgs};
 use crate::config::Config;
 use crate::error::{Error, Result};
 use crate::{process, project, tools};
@@ -80,59 +80,194 @@ pub(crate) fn require_success(
     }
 }
 
-/// Arguments for `ruff check` or `ruff format`: subcommand, extra flags, then
-/// `--force-exclude` and absolute paths only when paths were given.
-pub(crate) fn ruff_args(
-    subcommand: &str,
-    flags: &[&str],
-    paths: &[PathBuf],
-) -> Result<Vec<OsString>> {
-    let mut args = vec![OsString::from(subcommand)];
-    args.extend(flags.iter().map(OsString::from));
-    if !paths.is_empty() {
-        args.push(OsString::from("--force-exclude"));
-        args.extend(absolute_paths(paths)?);
+/// One tool invocation shared by `lint`, `fmt`, `type` and `check`.
+#[derive(Clone, Copy)]
+enum Step {
+    /// `ruff format`, optionally `--check`.
+    Format { check: bool },
+    /// `ruff check`, optionally `--fix` (safe fixes only).
+    Lint { fix: bool },
+    /// `ty check`.
+    Type,
+}
+
+impl Step {
+    fn tool(self) -> &'static str {
+        match self {
+            Self::Format { .. } | Self::Lint { .. } => "ruff",
+            Self::Type => "ty",
+        }
     }
-    Ok(args)
+
+    /// Full argument list. Paths are absolute and, when given, preceded by
+    /// `--force-exclude`; `ty` gets `--python <environment>` only when that
+    /// directory exists.
+    fn args(
+        self,
+        context: &Context,
+        paths: &[PathBuf],
+    ) -> Result<Vec<OsString>> {
+        let mut args = Vec::new();
+        match self {
+            Self::Format { check } => {
+                args.push(OsString::from("format"));
+                if check {
+                    args.push(OsString::from("--check"));
+                }
+            }
+            Self::Lint { fix } => {
+                args.push(OsString::from("check"));
+                if fix {
+                    args.push(OsString::from("--fix"));
+                }
+            }
+            Self::Type => {
+                args.push(OsString::from("check"));
+                let environment = tools::project_environment(&context.root);
+                if environment.is_dir() {
+                    args.push(OsString::from("--python"));
+                    args.push(environment.into_os_string());
+                }
+            }
+        }
+        if !paths.is_empty() {
+            args.push(OsString::from("--force-exclude"));
+            args.extend(absolute_paths(paths)?);
+        }
+        Ok(args)
+    }
+
+    fn run(self, context: &Context, paths: &[PathBuf]) -> Result<ExitStatus> {
+        run_tool(context, self.tool(), &self.args(context, paths)?)
+    }
+}
+
+fn single(step: Step, project: Option<&Path>, paths: &[PathBuf]) -> Result<()> {
+    let context = context(project)?;
+    require_success(step.tool(), step.run(&context, paths)?)
 }
 
 pub(crate) fn lint(args: LintArgs) -> Result<()> {
-    let context = context(args.project.as_deref())?;
-    let arguments = ruff_args("check", &[], &args.paths)?;
-    require_success("ruff", run_tool(&context, "ruff", &arguments)?)
+    single(Step::Lint { fix: false }, args.project.as_deref(), &args.paths)
 }
 
 pub(crate) fn fmt(args: FmtArgs) -> Result<()> {
-    let context = context(args.project.as_deref())?;
-    let flags: &[&str] = if args.check { &["--check"] } else { &[] };
-    let arguments = ruff_args("format", flags, &args.paths)?;
-    require_success("ruff", run_tool(&context, "ruff", &arguments)?)
-}
-
-/// Arguments for `ty check`: `--python <environment>` only when that
-/// directory exists, then `--force-exclude` and absolute paths only when
-/// paths were given.
-pub(crate) fn ty_args(
-    environment: &Path,
-    paths: &[PathBuf],
-) -> Result<Vec<OsString>> {
-    let mut args = vec![OsString::from("check")];
-    if environment.is_dir() {
-        args.push(OsString::from("--python"));
-        args.push(environment.as_os_str().to_owned());
-    }
-    if !paths.is_empty() {
-        args.push(OsString::from("--force-exclude"));
-        args.extend(absolute_paths(paths)?);
-    }
-    Ok(args)
+    single(
+        Step::Format { check: args.check },
+        args.project.as_deref(),
+        &args.paths,
+    )
 }
 
 pub(crate) fn type_check(args: TypeArgs) -> Result<()> {
+    single(Step::Type, args.project.as_deref(), &args.paths)
+}
+
+/// What happened when a step ran.
+enum Outcome {
+    Passed,
+    Failed(ExitStatus),
+    /// The tool could not be started (for example it is not installed).
+    Unavailable(String),
+}
+
+impl Outcome {
+    fn passed(&self) -> bool {
+        matches!(self, Self::Passed)
+    }
+
+    fn describe(&self) -> String {
+        match self {
+            Self::Passed => "ok".to_owned(),
+            Self::Failed(status) => match status.code() {
+                Some(code) => format!("failed (exit {code})"),
+                None => "failed (terminated by signal)".to_owned(),
+            },
+            Self::Unavailable(reason) => format!("unavailable ({reason})"),
+        }
+    }
+}
+
+/// Run one step. A missing or unusable tool is an outcome, not an error, so
+/// later steps still run; cancellation and other errors abort.
+fn attempt(
+    step: Step,
+    context: &Context,
+    paths: &[PathBuf],
+) -> Result<Outcome> {
+    match step.run(context, paths) {
+        Ok(status) if status.success() => Ok(Outcome::Passed),
+        Ok(status) => Ok(Outcome::Failed(status)),
+        Err(Error::Tool { tool, reason }) => {
+            Ok(Outcome::Unavailable(format!("{tool} {reason}")))
+        }
+        Err(error) => Err(error),
+    }
+}
+
+const VERIFY: [(&str, Step); 3] = [
+    ("format", Step::Format { check: true }),
+    ("lint", Step::Lint { fix: false }),
+    ("type", Step::Type),
+];
+
+/// Print to stderr; never panic when it is closed.
+fn say(text: &str) {
+    use std::io::Write;
+    let _ = writeln!(std::io::stderr().lock(), "{text}");
+}
+
+/// Run format check, lint and type check in order, then print the summary.
+/// Returns whether every step passed.
+fn verify(context: &Context, paths: &[PathBuf]) -> Result<bool> {
+    let mut results = Vec::new();
+    for (name, step) in VERIFY {
+        results.push((name, attempt(step, context, paths)?));
+    }
+    say("");
+    say("== pyfaro check summary ==");
+    for (name, outcome) in &results {
+        say(&format!("{name}: {}", outcome.describe()));
+    }
+    let failed: Vec<&str> = results
+        .iter()
+        .filter(|(_, outcome)| !outcome.passed())
+        .map(|(name, _)| *name)
+        .collect();
+    if failed.is_empty() {
+        say("check: ok");
+    } else {
+        say(&format!("check: failed ({})", failed.join(", ")));
+    }
+    Ok(failed.is_empty())
+}
+
+/// Apply safe automatic fixes. Failures are reported but never stop `check`.
+fn apply_fixes(context: &Context, paths: &[PathBuf]) -> Result<()> {
+    say(
+        "fix: format and lint can be fixed automatically; type has no automatic fixes",
+    );
+    for (name, step) in [
+        ("format", Step::Format { check: false }),
+        ("lint", Step::Lint { fix: true }),
+    ] {
+        let outcome = attempt(step, context, paths)?;
+        say(&format!("fix {name}: {}", outcome.describe()));
+    }
+    Ok(())
+}
+
+pub(crate) fn check(args: CheckArgs) -> Result<()> {
     let context = context(args.project.as_deref())?;
-    let environment = tools::project_environment(&context.root);
-    let arguments = ty_args(&environment, &args.paths)?;
-    require_success("ty", run_tool(&context, "ty", &arguments)?)
+    if args.fix {
+        apply_fixes(&context, &args.paths)?;
+        say("fix: rechecking without writing");
+    }
+    if verify(&context, &args.paths)? {
+        Ok(())
+    } else {
+        Err(Error::CheckFailed)
+    }
 }
 
 /// Run pytest through the project environment's interpreter, so it imports

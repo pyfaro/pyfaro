@@ -35,11 +35,15 @@ fn main() {
         cli::Command::Fmt(args) => quality::fmt(args),
         cli::Command::Type(args) => quality::type_check(args),
         cli::Command::Test(args) => quality::test(args),
+        cli::Command::Check(args) => quality::check(args),
         cli::Command::Python(args) => python::run(args),
         cli::Command::Tools(args) => tools::run(args),
         cli::Command::Doctor(args) => doctor::run(args),
     };
     if let Err(error) = result {
+        if matches!(error, error::Error::CheckFailed) {
+            std::process::exit(error.exit_code());
+        }
         let diagnostic = format!("error: {error}");
         let diagnostic = if tools_command {
             tools::single_line(&diagnostic)
