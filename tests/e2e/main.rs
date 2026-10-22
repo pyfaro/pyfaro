@@ -13,5 +13,4 @@ mod cli;
 mod create_init;
 mod environment;
 mod project_env;
-mod project_env;
 mod quality;
