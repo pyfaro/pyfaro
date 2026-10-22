@@ -171,17 +171,9 @@ fn excluded_files_stay_excluded_even_when_named() {
         project.pyfaro(["lint", &relative]).run().success();
         project.pyfaro(["fmt", "--check", &relative]).run().success();
         project.pyfaro(["type"]).run().success();
-        // ty ignores the exclusion for a named file on Windows (#109).
-        #[cfg(not(windows))]
-        {
-            project.pyfaro(["type", &relative]).run().success();
-        }
+        project.pyfaro(["type", &relative]).run().success();
         project.pyfaro(["check"]).run().success();
-        // ty ignores the exclusion for a named file on Windows (#109).
-        #[cfg(not(windows))]
-        {
-            project.pyfaro(["check", &relative]).run().success();
-        }
+        project.pyfaro(["check", &relative]).run().success();
 
         // The same content in a file that is not excluded fails.
         project.write(
@@ -452,13 +444,9 @@ fn type_skips_excluded_files_even_when_named() {
     e2e_guard!();
     let sandbox = Sandbox::new();
     let project = sandbox.synced_project(Kind::Lib);
-    let _relative = with_excluded_file(&project);
+    let relative = with_excluded_file(&project);
     project.pyfaro(["type"]).run().success();
-    // ty ignores the exclusion for a named file on Windows (#109).
-    #[cfg(not(windows))]
-    {
-        project.pyfaro(["type", &_relative]).run().success();
-    }
+    project.pyfaro(["type", &relative]).run().success();
 }
 
 #[test]
