@@ -9,13 +9,15 @@ quality checks, tests, and development workflows into one cohesive CLI.
 **Latest published alpha: [`0.2.0-alpha.1`](https://crates.io/crates/pyfaro/0.2.0-alpha.1),
 published on 2026-10-22.** It implements `init`, `sync`, `run`, `tools`,
 `create`, `add`, `remove`, `python`, and `doctor`.
-The repository develops **unpublished `0.3.0-alpha.1`** with the v0.3.0 Code
-Quality work. Interfaces may change between alpha versions.
+The repository develops **unpublished `0.3.0-alpha.1`**, which adds `lint`,
+`fmt`, `type`, `test`, and `check` from the v0.3.0 Code Quality work.
+Interfaces may change between alpha versions.
 Completing a backlog milestone does not publish a stable or prerelease crate.
 The annotated [`v0.2.0-alpha.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.2.0-alpha.1)
 marks the published source. Its [GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.2.0-alpha.1)
 offers unsigned standalone archives for Linux (x86_64, arm64), macOS (arm64,
-x86_64), and Windows (x86_64), with `SHA256SUMS`.
+x86_64), and Windows (x86_64), with `SHA256SUMS`. GitHub Releases provide
+these downloadable archives alongside `cargo install`.
 
 The current alpha series targets **Linux** for `init --apply`. macOS and Windows
 retain builds, help/version, and non-writing previews; applying initialization
@@ -114,6 +116,16 @@ Its probes use temporary files and may trigger interpreter or tool startup
 side effects. Blocking findings return a non-zero exit code. See the
 [doctor guide](docs/doctor.md) for scope, diagnostics, and fixes.
 
+The unpublished development version also adds quality checks and tests.
+`pyfaro lint` and `pyfaro fmt` run Ruff, and `fmt --check` verifies formatting
+without writing. `pyfaro type` runs ty, and `pyfaro test [PYTEST_ARGS]...`
+runs pytest in the project environment and returns pytest's exit code.
+`pyfaro check` runs the format check, lint, and type check, prints a summary,
+and exits 1 if any step fails. It writes files only with an explicit `--fix`.
+These tools must be installed in the project; none of the commands syncs
+implicitly. New `create` templates pin them in the `dev` group. See the
+[quality guide](docs/quality.md) and [test guide](docs/test.md).
+
 ## Planned experience
 
 - Create and initialize Python projects with opinionated, editable defaults.
@@ -123,12 +135,11 @@ side effects. Blocking findings return a non-zero exit code. See the
 - Combine non-destructive quality checks with clear diagnostics.
 - Build Python distributions through uv; later add workspaces and task graphs.
 
-Remaining planned commands: `dev`, `lint`, `fmt`, `type`, `check`, `test`, and
-`build`.
+Remaining planned commands: `dev` and `build`.
 These commands are roadmap items, not working functionality. The published
 `0.2.0-alpha.1` includes `init`, `sync`, `run`, `tools`, `create`, `add`,
 `remove`, `python`, and `doctor`. The `0.3.0-alpha.1` development version adds
-no new commands yet.
+`lint`, `fmt`, `type`, `test`, and `check`.
 
 ## Integration over reimplementation
 
