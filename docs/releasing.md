@@ -255,6 +255,51 @@ agree on yanking it and publishing a corrected alpha with a new version;
 never retag or silently reuse a published version. Rotate/revoke credentials
 if compromised.
 
+## Manual release workflow
+
+`.github/workflows/release.yml` automates the publication steps above. It
+only runs when started by hand (**Actions → Release → Run workflow**, or
+`gh workflow run release.yml -f version=<version> -f publish=true`) from
+`main`. It does not replace the approval gate: merging the preparation PR
+first sets the version and dates its `## <version>` changelog section.
+
+1. **Preflight** rejects a non-`main` ref, a version that differs from
+   `Cargo.toml`, a missing `## <version>` changelog heading, an existing
+   `v<version>` tag, and a version already known to crates.io.
+2. **Checks** and **Audit** reuse the CI and Security workflows on all three
+   platforms.
+3. **Package** builds the archive, runs all-target tests from the unpacked
+   package, runs `cargo publish --dry-run`, and keeps the `.crate` and its
+   SHA-256 as the `crate` workflow artifact for review.
+4. **Publish** runs only with `publish` checked. It waits for approval on the
+   `crates-io` environment, obtains a short-lived token through crates.io
+   trusted publishing, uploads, and fails if the registry checksum differs
+   from the reviewed archive. It then creates the annotated `v<version>` tag
+   on the exact workflow commit and, unless `github-release` is unchecked, a
+   GitHub Release whose notes are the changelog section and checksum.
+   Versions with a pre-release suffix become GitHub prereleases. No
+   standalone binaries are attached.
+5. **Install from crates.io** installs the published version with `--locked`
+   and checks its `--version` output.
+
+Run it once with `publish` unchecked to obtain the archive and checksum for
+review, then run it again with `publish` checked after approval. Afterward,
+record the release in a follow-up PR as for earlier versions and move the
+development version forward.
+
+One-time setup, done by a crates.io owner and a repository admin:
+
+- On crates.io, add a trusted publisher for `pyfaro`: repository
+  `pyfaro/pyfaro`, workflow `release.yml`, environment `crates-io`.
+  No long-lived registry token is stored in GitHub.
+- In GitHub, keep the `crates-io` environment restricted to `main` with the
+  maintainer as a required reviewer.
+
+If the upload succeeds but tagging or the GitHub Release fails, do not rerun
+the workflow: preflight rejects the published version. Create the missing
+tag on the workflow's commit and the release manually, following the
+approval steps above.
+
 ## Public beta distribution remains B02/B06
 
 The existing beta work retains responsibility for a supported-platform
