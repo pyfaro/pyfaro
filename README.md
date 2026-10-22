@@ -8,7 +8,7 @@
   <a href="https://crates.io/crates/pyfaro"><img src="https://img.shields.io/crates/v/pyfaro?include_prereleases&label=crates.io" alt="crates.io version"></a>
   <a href="https://github.com/pyfaro/pyfaro/actions/workflows/ci.yml"><img src="https://github.com/pyfaro/pyfaro/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
   <a href="https://github.com/pyfaro/pyfaro/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache-2.0"></a>
-  <a href="https://pyfaro.github.io/pyfaro/"><img src="https://img.shields.io/badge/docs-pyfaro.github.io-D4A017" alt="Documentation"></a>
+  <a href="https://pyfaro.dev/"><img src="https://img.shields.io/badge/docs-pyfaro.dev-D4A017" alt="Documentation"></a>
 </p>
 
 Pyfaro brings project creation, dependencies, Python versions, linting,
@@ -94,7 +94,7 @@ Check the installation:
 pyfaro --version
 ```
 
-More detail: [Installation](https://pyfaro.github.io/pyfaro/getting-started/installation/).
+More detail: [Installation](https://pyfaro.dev/getting-started/installation/).
 
 ## Quick start
 
@@ -115,32 +115,32 @@ pyfaro init --apply
 ```
 
 Walk through it step by step in
-[First steps](https://pyfaro.github.io/pyfaro/getting-started/first-steps/), or
-follow a full [workflow](https://pyfaro.github.io/pyfaro/workflows/).
+[First steps](https://pyfaro.dev/getting-started/first-steps/), or
+follow a full [workflow](https://pyfaro.dev/workflows/).
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| [`create`](https://pyfaro.github.io/pyfaro/commands/create/) | Scaffold a packaged library (`lib`) or command-line app (`cli`) |
-| [`init`](https://pyfaro.github.io/pyfaro/commands/init/) | Preview or apply Pyfaro initialization of an existing project |
-| [`sync`](https://pyfaro.github.io/pyfaro/commands/sync/) | Create or update `.venv` and `uv.lock` through uv |
-| [`add` / `remove`](https://pyfaro.github.io/pyfaro/commands/add-remove/) | Edit dependencies and dependency groups through uv |
-| [`run`](https://pyfaro.github.io/pyfaro/commands/run/) | Run a program in the project environment |
-| [`python`](https://pyfaro.github.io/pyfaro/commands/python/) | List, install and pin Python versions through uv |
-| [`tools`](https://pyfaro.github.io/pyfaro/commands/tools/) | Show the resolved path and version of uv, Ruff, ty and pytest |
-| [`doctor`](https://pyfaro.github.io/pyfaro/commands/doctor/) | Diagnose configuration, environment and tools |
-| [`lint`](https://pyfaro.github.io/pyfaro/commands/lint/) / [`fmt`](https://pyfaro.github.io/pyfaro/commands/fmt/) | Lint and format with Ruff |
-| [`type`](https://pyfaro.github.io/pyfaro/commands/type/) | Type-check with ty |
-| [`check`](https://pyfaro.github.io/pyfaro/commands/check/) | Format check, lint and type check in one run; `--fix` applies safe fixes |
-| [`test`](https://pyfaro.github.io/pyfaro/commands/test/) | Run pytest in the project environment |
+| [`create`](https://pyfaro.dev/commands/create/) | Scaffold a packaged library (`lib`) or command-line app (`cli`) |
+| [`init`](https://pyfaro.dev/commands/init/) | Preview or apply Pyfaro initialization of an existing project |
+| [`sync`](https://pyfaro.dev/commands/sync/) | Create or update `.venv` and `uv.lock` through uv |
+| [`add` / `remove`](https://pyfaro.dev/commands/add-remove/) | Edit dependencies and dependency groups through uv |
+| [`run`](https://pyfaro.dev/commands/run/) | Run a program in the project environment |
+| [`python`](https://pyfaro.dev/commands/python/) | List, install and pin Python versions through uv |
+| [`tools`](https://pyfaro.dev/commands/tools/) | Show the resolved path and version of uv, Ruff, ty and pytest |
+| [`doctor`](https://pyfaro.dev/commands/doctor/) | Diagnose configuration, environment and tools |
+| [`lint`](https://pyfaro.dev/commands/lint/) / [`fmt`](https://pyfaro.dev/commands/fmt/) | Lint and format with Ruff |
+| [`type`](https://pyfaro.dev/commands/type/) | Type-check with ty |
+| [`check`](https://pyfaro.dev/commands/check/) | Format check, lint and type check in one run; `--fix` applies safe fixes |
+| [`test`](https://pyfaro.dev/commands/test/) | Run pytest in the project environment |
 
-Recipes live in the [workflows](https://pyfaro.github.io/pyfaro/workflows/)
-section: a [new library](https://pyfaro.github.io/pyfaro/workflows/new-library/),
-a [new CLI](https://pyfaro.github.io/pyfaro/workflows/new-cli/),
-[adopting an existing project](https://pyfaro.github.io/pyfaro/workflows/adopt-existing-project/),
-[CI](https://pyfaro.github.io/pyfaro/workflows/continuous-integration/) and
-[troubleshooting](https://pyfaro.github.io/pyfaro/workflows/troubleshooting/).
+Recipes live in the [workflows](https://pyfaro.dev/workflows/)
+section: a [new library](https://pyfaro.dev/workflows/new-library/),
+a [new CLI](https://pyfaro.dev/workflows/new-cli/),
+[adopting an existing project](https://pyfaro.dev/workflows/adopt-existing-project/),
+[CI](https://pyfaro.dev/workflows/continuous-integration/) and
+[troubleshooting](https://pyfaro.dev/workflows/troubleshooting/).
 
 ## How it works
 
@@ -158,7 +158,7 @@ Everything else stays with the tool built for it.
 There is no second resolver, lock file format, package manager, linter or test
 engine: Pyfaro calls the real tools and passes their output and exit status
 through. Read more in
-[How it works](https://pyfaro.github.io/pyfaro/concepts/how-it-works/) and the
+[How it works](https://pyfaro.dev/concepts/how-it-works/) and the
 [architecture decision record](docs/architecture/0001-project-architecture.md).
 
 ## Project status
