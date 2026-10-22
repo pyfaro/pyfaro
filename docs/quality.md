@@ -93,3 +93,66 @@ pyfaro type [PATHS]... [--project <PATH>]   # ty check
 ## Tested version
 
 Tested with ty 0.0.85. Other versions are not rejected.
+
+# Combined check
+
+`pyfaro check` runs the three verification steps and summarizes the result.
+
+```sh
+pyfaro check [PATHS]... [--fix] [--project <PATH>]
+```
+
+## Steps
+
+Without `--fix`, `check` runs these steps in order and always runs all of them,
+even when an earlier one fails:
+
+1. `format`: `ruff format --check`
+2. `lint`: `ruff check`
+3. `type`: `ty check` (same `--python` and `--force-exclude` handling as
+   `pyfaro type`)
+
+Paths and `--project` apply to every step. Each tool's own output streams
+through unchanged. A missing tool marks its step `unavailable` and counts as a
+failure; the other steps still run.
+
+## Summary and exit codes
+
+After the steps, `check` prints a summary to **stderr** (stdout carries only
+the tools' own output), after a blank line and a `== pyfaro check summary ==`
+header:
+
+```text
+== pyfaro check summary ==
+format: ok
+lint: failed (exit 1)
+type: unavailable (ty not found in the project environment, VIRTUAL_ENV, or PATH; run `pyfaro add --dev ty` then `pyfaro sync`)
+check: failed (lint, type)
+```
+
+The last line is `check: ok` when every step passed. The exit code is 0 when
+every step passed and 1 when any step failed or was unavailable (the tools'
+individual exit codes appear in the summary, not in the exit code). Pyfaro's own
+failures, such as no project, exit 1; cancellation stops immediately and exits
+130.
+
+## No writes without `--fix`
+
+Plain `check` never modifies files: it passes `--check` to `ruff format`, never
+passes `--fix` to `ruff check`, and `ty check` does not write.
+
+## `--fix`
+
+`pyfaro check --fix` first applies automatic fixes, then verifies:
+
+1. Print which checks can be fixed automatically: format and lint can; type has
+   no automatic fixes.
+2. Run `ruff check --fix` (safe fixes only; Pyfaro never passes
+   `--unsafe-fixes`), then `ruff format` (writes). This is Ruff's recommended
+   order: formatting last keeps lint fixes from leaving unformatted code. A
+   failure here is reported (`fix lint: failed (exit 2)`) but does not stop the
+   next step.
+3. Rerun the full non-writing verification above and print its summary.
+
+The exit code follows the verification rerun, exactly as for plain `check`, so
+remaining problems (for example a type error) exit 1.

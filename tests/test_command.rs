@@ -59,9 +59,12 @@ fn pyfaro(
     command.output().unwrap()
 }
 
+/// The most recent invocation; the fixture appends one block per run.
 fn recorded(fixture: &Fixture) -> (PathBuf, Vec<String>) {
     let text = fs::read_to_string(&fixture.record).unwrap();
-    let mut lines = text.lines();
+    let block = text.trim_end().trim_end_matches("--end--");
+    let block = block.rsplit("--end--\n").next().unwrap();
+    let mut lines = block.lines();
     let cwd = PathBuf::from(lines.next().unwrap());
     (fs::canonicalize(cwd).unwrap(), lines.map(String::from).collect())
 }

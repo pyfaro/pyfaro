@@ -38,6 +38,18 @@ fn project(with_ruff: bool) -> Fixture {
 }
 
 fn pyfaro(fixture: &Fixture, cwd: &Path, args: &[&str], exit: &str) -> Output {
+    pyfaro_when(fixture, cwd, args, exit, "")
+}
+
+/// Like `pyfaro`, but `when` ("<tool> <args>=<code>") overrides the exit code
+/// of one exact tool invocation.
+fn pyfaro_when(
+    fixture: &Fixture,
+    cwd: &Path,
+    args: &[&str],
+    exit: &str,
+    when: &str,
+) -> Output {
     let empty = fixture.record.parent().unwrap().join("empty");
     fs::create_dir_all(&empty).unwrap();
     Command::new(env!("CARGO_BIN_EXE_pyfaro"))
@@ -48,16 +60,30 @@ fn pyfaro(fixture: &Fixture, cwd: &Path, args: &[&str], exit: &str) -> Output {
         .env_remove("UV_PROJECT_ENVIRONMENT")
         .env("PYFARO_FIXTURE_TOOL_RECORD", &fixture.record)
         .env("PYFARO_FIXTURE_TOOL_EXIT", exit)
+        .env("PYFARO_FIXTURE_TOOL_EXIT_WHEN", when)
         .output()
         .unwrap()
 }
 
-/// Returns the recorded (cwd, argv).
-fn recorded(fixture: &Fixture) -> (PathBuf, Vec<String>) {
+/// Every recorded invocation, in order, as (cwd, argv).
+fn calls(fixture: &Fixture) -> Vec<(PathBuf, Vec<String>)> {
     let text = fs::read_to_string(&fixture.record).unwrap();
     let mut lines = text.lines();
-    let cwd = PathBuf::from(lines.next().unwrap());
-    (fs::canonicalize(cwd).unwrap(), lines.map(String::from).collect())
+    let mut calls = Vec::new();
+    while let Some(cwd) = lines.next() {
+        let argv: Vec<String> = lines
+            .by_ref()
+            .take_while(|line| *line != "--end--")
+            .map(String::from)
+            .collect();
+        calls.push((fs::canonicalize(cwd).unwrap(), argv));
+    }
+    calls
+}
+
+/// Returns the last recorded (cwd, argv).
+fn recorded(fixture: &Fixture) -> (PathBuf, Vec<String>) {
+    calls(fixture).pop().unwrap()
 }
 
 fn same(a: &str, b: &Path) -> bool {
@@ -230,5 +256,186 @@ fn missing_ty_is_actionable() {
     assert_eq!(output.status.code(), Some(1), "{output:?}");
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(stderr.contains("pyfaro add --dev ty"), "{stderr}");
+    assert!(!fixture.record.exists());
+}
+
+fn checked_project() -> Fixture {
+    let fixture = project(true);
+    with_ty(&fixture);
+    fixture
+}
+
+fn argvs(fixture: &Fixture) -> Vec<Vec<String>> {
+    calls(fixture).into_iter().map(|(_, argv)| argv).collect()
+}
+
+/// Assert a ty argv: `check --python <venv> [rest...]`.
+fn assert_ty(fixture: &Fixture, argv: &[String], rest: &[&str]) {
+    assert_eq!(argv[0], "check", "{argv:?}");
+    assert_eq!(argv[1], "--python", "{argv:?}");
+    assert!(same(&argv[2], &fixture.project.join(".venv")), "{argv:?}");
+    assert_eq!(&argv[3..], rest, "{argv:?}");
+}
+
+fn tree(root: &Path) -> Vec<(PathBuf, Vec<u8>)> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for entry in fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if !path.starts_with(root.join(".venv")) {
+                out.push((path.clone(), fs::read(path).unwrap()));
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+#[test]
+fn check_runs_all_steps_in_order_and_never_writes() {
+    let fixture = checked_project();
+    let before = tree(&fixture.project);
+    let output = pyfaro(&fixture, &fixture.project, &["check"], "0");
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    let all = argvs(&fixture);
+    assert_eq!(all.len(), 3, "{all:?}");
+    assert_eq!(all[0], ["format", "--check"]);
+    assert_eq!(all[1], ["check"]);
+    assert_ty(&fixture, &all[2], &[]);
+    assert!(all.iter().flatten().all(|arg| arg != "--fix"));
+    assert_eq!(tree(&fixture.project), before);
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    for line in ["format: ok", "lint: ok", "type: ok", "check: ok"] {
+        assert!(stderr.lines().any(|l| l == line), "{stderr}");
+    }
+    assert!(output.stdout.is_empty());
+}
+
+#[test]
+fn check_runs_every_step_even_when_the_first_fails() {
+    let fixture = checked_project();
+    let output = pyfaro_when(
+        &fixture,
+        &fixture.project,
+        &["check"],
+        "0",
+        "ruff format --check=1",
+    );
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    let all = argvs(&fixture);
+    assert_eq!(all.len(), 3, "{all:?}");
+    assert_eq!(all[0], ["format", "--check"]);
+    assert_eq!(all[1], ["check"]);
+    assert_ty(&fixture, &all[2], &[]);
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.lines().any(|l| l == "format: failed (exit 1)"), "{stderr}");
+    assert!(stderr.lines().any(|l| l == "lint: ok"), "{stderr}");
+    assert!(stderr.lines().any(|l| l == "check: failed (format)"), "{stderr}");
+}
+
+#[test]
+fn check_failing_type_step_is_marked_and_exits_one() {
+    let fixture = checked_project();
+    let output =
+        pyfaro_when(&fixture, &fixture.project, &["check"], "0", "ty check=2");
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.lines().any(|l| l == "format: ok"), "{stderr}");
+    assert!(stderr.lines().any(|l| l == "type: failed (exit 2)"), "{stderr}");
+    assert!(stderr.lines().any(|l| l == "check: failed (type)"), "{stderr}");
+}
+
+#[test]
+fn check_missing_ty_is_unavailable_but_ruff_still_runs() {
+    let fixture = project(true);
+    let output = pyfaro(&fixture, &fixture.project, &["check"], "0");
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    let all = argvs(&fixture);
+    assert_eq!(all, [vec!["format", "--check"], vec!["check"]]);
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.lines().any(|l| l == "format: ok"), "{stderr}");
+    assert!(stderr.lines().any(|l| l == "lint: ok"), "{stderr}");
+    assert!(stderr.contains("type: unavailable (ty not found"), "{stderr}");
+    assert!(stderr.lines().any(|l| l == "check: failed (type)"), "{stderr}");
+}
+
+#[test]
+fn check_forwards_paths_to_every_step() {
+    let fixture = checked_project();
+    let sub = fixture.project.join("src");
+    let output = pyfaro(&fixture, &sub, &["check", "nested"], "0");
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    let all = argvs(&fixture);
+    assert_eq!(all.len(), 3);
+    let target = sub.join("nested");
+    assert_eq!(all[0][..2], ["format", "--check"]);
+    assert_eq!(all[0][2], "--force-exclude");
+    assert!(same(&all[0][3], &target));
+    assert_eq!(all[1][..2], ["check", "--force-exclude"]);
+    assert!(same(&all[1][2], &target));
+    assert_eq!(all[2][..1], ["check"]);
+    assert_eq!(all[2][3], "--force-exclude");
+    assert!(same(&all[2][4], &target));
+}
+
+#[test]
+fn check_fix_fixes_formats_then_reverifies_without_writing() {
+    let fixture = checked_project();
+    let output = pyfaro(&fixture, &fixture.project, &["check", "--fix"], "0");
+    assert_eq!(output.status.code(), Some(0), "{output:?}");
+    let all = argvs(&fixture);
+    assert_eq!(all.len(), 5, "{all:?}");
+    assert_eq!(all[0], ["check", "--fix"]);
+    assert_eq!(all[1], ["format"]);
+    assert_eq!(all[2], ["format", "--check"]);
+    assert_eq!(all[3], ["check"]);
+    assert_ty(&fixture, &all[4], &[]);
+    assert!(!all[4].iter().any(|arg| arg == "--fix"));
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("type has no automatic fixes"), "{stderr}");
+    assert!(stderr.lines().any(|l| l == "check: ok"), "{stderr}");
+}
+
+#[test]
+fn check_fix_failure_does_not_skip_verification_and_reports_remaining() {
+    let fixture = checked_project();
+    let output = pyfaro_when(
+        &fixture,
+        &fixture.project,
+        &["check", "--fix"],
+        "0",
+        "ruff check --fix=2",
+    );
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "verification passes: {output:?}"
+    );
+    let all = argvs(&fixture);
+    assert_eq!(all.len(), 5, "{all:?}");
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("fix lint: failed (exit 2)"), "{stderr}");
+
+    let output = pyfaro_when(
+        &fixture,
+        &fixture.project,
+        &["check", "--fix"],
+        "0",
+        "ruff format --check=1",
+    );
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(stderr.contains("check: failed (format)"), "{stderr}");
+}
+
+#[test]
+fn check_without_a_project_fails_before_running_anything() {
+    let fixture = checked_project();
+    let elsewhere = fixture.record.parent().unwrap().to_path_buf();
+    let output = pyfaro(&fixture, &elsewhere, &["check"], "0");
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
     assert!(!fixture.record.exists());
 }
