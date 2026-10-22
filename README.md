@@ -76,8 +76,11 @@ Pyfaro needs [uv](https://docs.astral.sh/uv/getting-started/installation/)
 **From crates.io** (Rust 1.90 or newer):
 
 ```sh
-cargo install pyfaro --locked
+cargo install pyfaro --version 0.3.0-alpha.1 --locked
 ```
+
+While every published version is an alpha, Cargo needs the explicit
+`--version`; a bare `cargo install pyfaro` finds no stable release.
 
 **Prebuilt binaries** for Linux (x86_64, aarch64), macOS (arm64, x86_64) and
 Windows (x86_64) are attached to each

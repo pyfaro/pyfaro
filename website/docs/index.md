@@ -32,9 +32,11 @@ pytest, from creating a project to running its quality checks and tests.
     Requires Rust 1.90 or newer.
 
     ```sh
-    cargo install pyfaro --locked
+    cargo install pyfaro --version 0.3.0-alpha.1 --locked
     pyfaro --version
     ```
+
+    The explicit version is needed while every release is an alpha.
 
 === "Prebuilt binaries"
 
