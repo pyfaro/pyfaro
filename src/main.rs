@@ -34,6 +34,7 @@ fn main() {
         cli::Command::Lint(args) => quality::lint(args),
         cli::Command::Fmt(args) => quality::fmt(args),
         cli::Command::Type(args) => quality::type_check(args),
+        cli::Command::Test(args) => quality::test(args),
         cli::Command::Python(args) => python::run(args),
         cli::Command::Tools(args) => tools::run(args),
         cli::Command::Doctor(args) => doctor::run(args),

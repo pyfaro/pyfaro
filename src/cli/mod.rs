@@ -8,7 +8,7 @@ use clap::{Args, Parser, Subcommand};
 #[command(version, about, long_about = None)]
 #[command(arg_required_else_help = true)]
 #[command(
-    after_help = "Experimental alpha: create, init, sync, run, add, remove, python, tools, doctor, lint, fmt, and type are implemented; other workflow commands are not implemented yet."
+    after_help = "Experimental alpha: create, init, sync, run, add, remove, python, tools, doctor, lint, fmt, type, and test are implemented; other workflow commands are not implemented yet."
 )]
 pub(crate) struct Cli {
     #[command(subcommand)]
@@ -35,6 +35,8 @@ pub(crate) enum Command {
     Fmt(FmtArgs),
     /// Type-check project files with ty
     Type(TypeArgs),
+    /// Run pytest in the project environment
+    Test(TestArgs),
     /// List, install, or pin Python versions through uv
     Python(PythonArgs),
     /// Show resolved paths and versions of external tools
@@ -75,6 +77,17 @@ pub(crate) struct FmtArgs {
     /// Explicit project directory; otherwise discover the nearest project
     #[arg(long)]
     pub project: Option<PathBuf>,
+}
+
+#[derive(Args)]
+pub(crate) struct TestArgs {
+    /// Explicit project directory; otherwise discover the nearest project
+    #[arg(long)]
+    pub project: Option<PathBuf>,
+
+    /// Arguments forwarded verbatim to pytest (paths are relative to the project root)
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0..)]
+    pub pytest_args: Vec<OsString>,
 }
 
 #[derive(Args)]
