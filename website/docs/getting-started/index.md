@@ -1,4 +1,46 @@
 # Getting started
 
-!!! note "Work in progress"
-    This page is being written.
+Pyfaro is a single command-line tool that puts one workflow on top of
+[uv](https://docs.astral.sh/uv/), [Ruff](https://docs.astral.sh/ruff/),
+[ty](https://docs.astral.sh/ty/) and [pytest](https://docs.pytest.org/).
+It creates projects, manages dependencies and environments, and runs the
+quality gate, without resolving packages or linting code itself.
+
+!!! warning "Experimental alpha"
+    The latest published version is `0.3.0-alpha.1`. Interfaces may change
+    between alpha versions. Only the commands listed under
+    [Features](features.md) exist today.
+
+<div class="grid cards" markdown>
+
+-   :material-download: **[Installation](installation.md)**
+
+    Install Pyfaro with Cargo or a prebuilt archive, and install uv.
+
+-   :material-timer-outline: **[First steps](first-steps.md)**
+
+    A five-minute tour: create, sync, add, run, check, test and doctor.
+
+-   :material-view-list: **[Features](features.md)**
+
+    Every implemented command, with a link to its page.
+
+-   :material-lightbulb-outline: **[Concepts](../concepts/index.md)**
+
+    How Pyfaro delegates to the tools it wraps.
+
+</div>
+
+## What you need
+
+- A supported platform: Linux, macOS or Windows (see
+  [platform support](../concepts/platform-support.md)).
+- [uv](https://docs.astral.sh/uv/) 0.9.26 or newer. Pyfaro never installs it.
+- A Python interpreter that uv can find. Pyfaro never downloads one unless
+  you ask with [`pyfaro python install`](../commands/python.md).
+
+## Next steps
+
+- [Install Pyfaro](installation.md).
+- Follow the [first steps](first-steps.md).
+- Browse the [commands](../commands/index.md) or the [workflows](../workflows/index.md).
