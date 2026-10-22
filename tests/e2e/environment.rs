@@ -13,6 +13,35 @@ const UV_LINE_END: &str = " (uv 0.9.26)";
 const DOCTOR_FAILED: &str =
     "follow the actions above and run pyfaro doctor again";
 
+/// Runs a command and drops the build metadata uv, ty and others append to
+/// their version (`ty 0.0.85 (d7fc5ef88 2026-10-06)`), which changes by
+/// platform and is not under test.
+trait RunPlain {
+    fn run_plain(self) -> Outcome;
+}
+
+impl RunPlain for Cmd {
+    fn run_plain(self) -> Outcome {
+        let mut out = self.run();
+        let plain = out
+            .stdout
+            .split_inclusive('\n')
+            .map(|line| {
+                let body = line.trim_end_matches(['\r', '\n']);
+                match body.strip_suffix("))").and_then(|head| head.rfind(" ("))
+                {
+                    Some(start) => {
+                        format!("{}){}", &body[..start], &line[body.len()..])
+                    }
+                    None => line.to_owned(),
+                }
+            })
+            .collect::<String>();
+        out.stdout = plain;
+        out
+    }
+}
+
 fn scripts_directory() -> &'static str {
     if cfg!(windows) { "Scripts" } else { "bin" }
 }
@@ -66,13 +95,13 @@ fn ruff_environment(sandbox: &Sandbox, directory: &Path, version: &str) {
     sandbox
         .uv(["venv", "--no-python-downloads", "--quiet"])
         .arg(directory)
-        .run()
+        .run_plain()
         .success();
     sandbox
         .uv(["pip", "install", "--quiet", "--python"])
         .arg(directory)
         .arg(format!("ruff=={version}"))
-        .run()
+        .run_plain()
         .success();
 }
 
@@ -92,7 +121,7 @@ fn venv_python_minor(project: &Project) -> String {
 }
 
 fn pyfaro_in(sandbox: &Sandbox, project: &Project, args: &[&str]) -> Outcome {
-    sandbox.pyfaro(args).arg("--project").arg(&project.root).run()
+    sandbox.pyfaro(args).arg("--project").arg(&project.root).run_plain()
 }
 
 // ---------------------------------------------------------------- python
@@ -101,7 +130,8 @@ fn pyfaro_in(sandbox: &Sandbox, project: &Project, args: &[&str]) -> Outcome {
 fn python_list_only_installed_hides_downloads() {
     e2e_guard!();
     let sandbox = Sandbox::new();
-    let out = sandbox.pyfaro(["python", "list", "--only-installed"]).run();
+    let out =
+        sandbox.pyfaro(["python", "list", "--only-installed"]).run_plain();
     out.success();
     assert!(!out.stdout.trim().is_empty(), "no interpreter listed");
     assert!(!out.stdout.contains("<download available>"), "{}", out.stdout);
@@ -111,7 +141,7 @@ fn python_list_only_installed_hides_downloads() {
 fn python_list_with_a_request_shows_matching_downloads_only() {
     e2e_guard!();
     let sandbox = Sandbox::new();
-    let out = sandbox.pyfaro(["python", "list", "3.12"]).run();
+    let out = sandbox.pyfaro(["python", "list", "3.12"]).run_plain();
     out.success()
         .stdout_contains("cpython-3.12")
         .stdout_contains("<download available>");
@@ -128,9 +158,10 @@ fn python_list_with_a_request_shows_matching_downloads_only() {
 fn python_list_all_versions_includes_older_patch_releases() {
     e2e_guard!();
     let sandbox = Sandbox::new();
-    let latest = sandbox.pyfaro(["python", "list", "3.12"]).run();
-    let all =
-        sandbox.pyfaro(["python", "list", "--all-versions", "3.12"]).run();
+    let latest = sandbox.pyfaro(["python", "list", "3.12"]).run_plain();
+    let all = sandbox
+        .pyfaro(["python", "list", "--all-versions", "3.12"])
+        .run_plain();
     latest.success();
     all.success();
     assert!(
@@ -146,7 +177,8 @@ fn python_list_all_versions_includes_older_patch_releases() {
 fn python_list_offline_reads_the_catalog_and_installs_nothing() {
     e2e_guard!();
     let sandbox = Sandbox::new();
-    let out = sandbox.pyfaro(["python", "list", "--offline", "3.12"]).run();
+    let out =
+        sandbox.pyfaro(["python", "list", "--offline", "3.12"]).run_plain();
     out.success().stdout_contains("cpython-3.12").stderr_empty();
     assert!(!sandbox.join("python").exists());
 }
@@ -157,7 +189,7 @@ fn python_list_only_installed_with_an_unmatched_request_is_empty() {
     let sandbox = Sandbox::new();
     sandbox
         .pyfaro(["python", "list", "--only-installed", "3.99"])
-        .run()
+        .run_plain()
         .success()
         .stdout_empty();
 }
@@ -167,7 +199,7 @@ fn python_list_is_not_filtered_by_requires_python() {
     e2e_guard!();
     let sandbox = Sandbox::new();
     let project = sandbox.project(Kind::Lib);
-    let out = project.pyfaro(["python", "list", "3.10"]).run();
+    let out = project.pyfaro(["python", "list", "3.10"]).run_plain();
     out.success().stdout_contains("cpython-3.10");
 }
 
@@ -175,7 +207,7 @@ fn python_list_is_not_filtered_by_requires_python() {
 fn python_install_downloads_an_explicit_version_into_the_sandbox() {
     e2e_guard!();
     let sandbox = Sandbox::new();
-    let install = sandbox.pyfaro(["python", "install", "3.13"]).run();
+    let install = sandbox.pyfaro(["python", "install", "3.13"]).run_plain();
     install.success().stderr_contains("Installed Python 3.13");
 
     let installed = fs::read_dir(sandbox.join("python"))
@@ -186,15 +218,16 @@ fn python_install_downloads_an_explicit_version_into_the_sandbox() {
         installed.iter().any(|name| name.starts_with("cpython-3.13")),
         "no CPython 3.13 in {installed:?}"
     );
-    let listed =
-        sandbox.pyfaro(["python", "list", "--only-installed", "3.13"]).run();
+    let listed = sandbox
+        .pyfaro(["python", "list", "--only-installed", "3.13"])
+        .run_plain();
     listed.success().stdout_contains("cpython-3.13");
     assert!(!listed.stdout.contains("<download available>"));
 
     // Installing again is a no-op that still succeeds.
     sandbox
         .pyfaro(["python", "install", "3.13"])
-        .run()
+        .run_plain()
         .success()
         .stderr_contains("Python 3.13 is already installed");
 }
@@ -207,7 +240,7 @@ fn python_install_without_targets_reads_python_version() {
     project.write(".python-version", "3.13\n");
     project
         .pyfaro(["python", "install"])
-        .run()
+        .run_plain()
         .success()
         .stderr_contains("Installed Python 3.13");
     assert!(fs::read_dir(sandbox.join("python")).unwrap().any(|entry| {
@@ -221,14 +254,14 @@ fn python_install_failure_forwards_uv_status() {
     e2e_guard!();
     let sandbox = Sandbox::new();
     let unknown =
-        sandbox.pyfaro(["python", "install", "--offline", "3.99"]).run();
+        sandbox.pyfaro(["python", "install", "--offline", "3.99"]).run_plain();
     unknown
         .code(2)
         .stderr_contains("No download found for request")
         .stderr_contains("uv python install failed")
         .stdout_empty();
 
-    let invalid = sandbox.pyfaro(["python", "install", "--", "-x"]).run();
+    let invalid = sandbox.pyfaro(["python", "install", "--", "-x"]).run_plain();
     invalid
         .code(2)
         .stderr_contains("`-x` is not a valid Python download request")
@@ -237,7 +270,8 @@ fn python_install_failure_forwards_uv_status() {
     // Offline with nothing cached: uv fails to download and exits 1.
     let project = sandbox.project(Kind::Lib);
     project.write(".python-version", "3.11\n");
-    let offline = project.pyfaro(["python", "install", "--offline"]).run();
+    let offline =
+        project.pyfaro(["python", "install", "--offline"]).run_plain();
     offline
         .code(1)
         .stderr_contains("Failed to install")
@@ -253,7 +287,7 @@ fn python_pin_writes_python_version() {
     assert!(!project.path(".python-version").exists());
     project
         .pyfaro(["python", "pin", "3.12"])
-        .run()
+        .run_plain()
         .success()
         .stdout_contains("Pinned `.python-version` to `3.12`");
     assert_eq!(project.read(".python-version").trim(), "3.12");
@@ -266,7 +300,7 @@ fn python_pin_without_a_request_displays_the_pin() {
     let project = sandbox.project(Kind::Lib);
     project.write(".python-version", "3.12\n");
     let before = project.snapshot();
-    project.pyfaro(["python", "pin"]).run().success().stdout_eq("3.12\n");
+    project.pyfaro(["python", "pin"]).run_plain().success().stdout_eq("3.12\n");
     assert_eq!(project.snapshot(), before);
 }
 
@@ -277,7 +311,7 @@ fn python_pin_without_a_pin_file_fails() {
     let project = sandbox.project(Kind::Lib);
     project
         .pyfaro(["python", "pin"])
-        .run()
+        .run_plain()
         .code(2)
         .stderr_contains("No Python version file found")
         .stderr_contains("uv python pin failed")
@@ -292,14 +326,14 @@ fn python_pin_rm_removes_the_pin() {
     project.write(".python-version", "3.12\n");
     project
         .pyfaro(["python", "pin", "--rm"])
-        .run()
+        .run_plain()
         .success()
         .stdout_contains("Removed Python version file");
     assert!(!project.path(".python-version").exists());
 
     project
         .pyfaro(["python", "pin", "--rm"])
-        .run()
+        .run_plain()
         .code(2)
         .stderr_contains("No Python version file found");
 }
@@ -313,7 +347,7 @@ fn python_pin_rm_conflicts_with_a_request() {
     let before = project.snapshot();
     project
         .pyfaro(["python", "pin", "--rm", "3.12"])
-        .run()
+        .run_plain()
         .code(2)
         .stderr_contains("the argument '--rm' cannot be used with '[REQUEST]'")
         .stdout_empty();
@@ -328,7 +362,7 @@ fn python_pin_outside_requires_python_is_rejected_by_uv() {
     let before = project.snapshot();
     project
         .pyfaro(["python", "pin", "3.10"])
-        .run()
+        .run_plain()
         .code(2)
         .stderr_contains(
             "The requested Python version `3.10` is incompatible with the \
@@ -347,7 +381,7 @@ fn python_pin_rejects_a_request_that_starts_with_a_dash() {
     let project = sandbox.project(Kind::Lib);
     project
         .pyfaro(["python", "pin", "--", "-3"])
-        .run()
+        .run_plain()
         .code(2)
         .stderr_contains("Requests for arbitrary names (e.g., `-3`)");
     assert!(!project.path(".python-version").exists());
@@ -385,7 +419,7 @@ fn python_pin_respects_the_project_requires_python_when_selected() {
 fn python_pin_works_outside_a_project() {
     e2e_guard!();
     let sandbox = Sandbox::new();
-    sandbox.pyfaro(["python", "pin", "3.12"]).run().success();
+    sandbox.pyfaro(["python", "pin", "3.12"]).run_plain().success();
     assert_eq!(
         fs::read_to_string(sandbox.join(".python-version")).unwrap().trim(),
         "3.12"
@@ -398,7 +432,7 @@ fn python_project_must_be_an_existing_project_directory() {
     let sandbox = Sandbox::new();
     sandbox
         .pyfaro(["python", "pin", "3.12", "--project", "missing"])
-        .run()
+        .run_plain()
         .code(1)
         .stderr_contains("could not resolve project directory missing")
         .stdout_empty();
@@ -407,7 +441,7 @@ fn python_project_must_be_an_existing_project_directory() {
     fs::create_dir(sandbox.join("empty")).unwrap();
     sandbox
         .pyfaro(["python", "pin", "3.12", "--project", "empty"])
-        .run()
+        .run_plain()
         .code(1)
         .stderr_contains("pyproject.toml");
     assert!(!sandbox.join("empty").join(".python-version").exists());
@@ -421,7 +455,7 @@ fn python_uv_selects_the_executable() {
         sandbox
             .pyfaro(args)
             .args(["--uv", "missing-uv-binary"])
-            .run()
+            .run_plain()
             .code(1)
             .stderr_contains("could not find uv at missing-uv-binary")
             .stdout_empty();
@@ -432,7 +466,7 @@ fn python_uv_selects_the_executable() {
     sandbox
         .pyfaro(["python", "list", "--only-installed", "--uv"])
         .arg(&copy)
-        .run()
+        .run_plain()
         .success();
 }
 
@@ -444,7 +478,7 @@ fn tools_lists_every_tool_with_exact_paths_and_versions() {
     let sandbox = Sandbox::new();
     let project = sandbox.synced_project(Kind::Lib);
     let venv = project.path(".venv");
-    let out = project.pyfaro(["tools"]).run();
+    let out = project.pyfaro(["tools"]).run_plain();
     out.success().stderr_empty();
     let lines = lines(&out.stdout);
     assert_eq!(lines.len(), 4, "{}", out.stdout);
@@ -464,12 +498,12 @@ fn tools_named_prints_only_that_tool() {
     for (name, version) in [("ruff", RUFF), ("ty", TY), ("pytest", PYTEST)] {
         project
             .pyfaro(["tools", name])
-            .run()
+            .run_plain()
             .success()
             .stdout_eq(&format!("{}\n", tool_line(&venv, name, version)))
             .stderr_empty();
     }
-    let uv = project.pyfaro(["tools", "uv"]).run();
+    let uv = project.pyfaro(["tools", "uv"]).run_plain();
     uv.success().stderr_empty();
     assert_eq!(uv.stdout.lines().count(), 1);
     assert!(uv.stdout.starts_with("uv: "), "{}", uv.stdout);
@@ -481,8 +515,10 @@ fn tools_lists_missing_tools_as_unavailable_with_exit_zero() {
     e2e_guard!();
     let sandbox = Sandbox::new();
     let project = sandbox.project(Kind::Lib); // never synced: no .venv
-    let out =
-        project.pyfaro(["tools"]).env("PATH", uv_only_path(&sandbox)).run();
+    let out = project
+        .pyfaro(["tools"])
+        .env("PATH", uv_only_path(&sandbox))
+        .run_plain();
     out.success().stderr_empty();
     let lines = lines(&out.stdout);
     assert_eq!(lines.len(), 4, "{}", out.stdout);
@@ -501,7 +537,7 @@ fn tools_named_missing_tool_is_an_error() {
         project
             .pyfaro(["tools", name])
             .env("PATH", uv_only_path(&sandbox))
-            .run()
+            .run_plain()
             .code(1)
             .stderr_contains(&format!("error: {}", not_found(name)))
             .stdout_empty();
@@ -516,11 +552,13 @@ fn tools_lists_a_partially_installed_environment() {
     sandbox
         .uv(["venv", "--no-python-downloads", "--quiet"])
         .arg(project.path(".venv"))
-        .run()
+        .run_plain()
         .success();
     project.install_tools(&[("ruff", RUFF)]);
-    let out =
-        project.pyfaro(["tools"]).env("PATH", uv_only_path(&sandbox)).run();
+    let out = project
+        .pyfaro(["tools"])
+        .env("PATH", uv_only_path(&sandbox))
+        .run_plain();
     out.success();
     let lines = lines(&out.stdout);
     assert_eq!(lines[1], tool_line(&project.path(".venv"), "ruff", RUFF));
@@ -536,7 +574,7 @@ fn tools_resolves_project_venv_then_virtual_env_then_path() {
     e2e_guard!();
     let sandbox = Sandbox::new();
     let project = sandbox.project(Kind::Lib);
-    project.pyfaro(["sync"]).run().success();
+    project.pyfaro(["sync"]).run_plain().success();
     let active = sandbox.join("active-env");
     let on_path = sandbox.join("path-env");
     ruff_environment(&sandbox, &active, "0.16.9");
@@ -550,7 +588,7 @@ fn tools_resolves_project_venv_then_virtual_env_then_path() {
             .pyfaro(["tools", "ruff"])
             .env("VIRTUAL_ENV", &active)
             .env("PATH", &path)
-            .run()
+            .run_plain()
     };
 
     // 1. The project environment wins over both.
@@ -564,7 +602,7 @@ fn tools_resolves_project_venv_then_virtual_env_then_path() {
         .uv(["pip", "uninstall", "--quiet", "--python"])
         .arg(project.path(".venv"))
         .arg("ruff")
-        .run()
+        .run_plain()
         .success();
     ruff(&project)
         .success()
@@ -575,7 +613,7 @@ fn tools_resolves_project_venv_then_virtual_env_then_path() {
         .pyfaro(["tools", "ruff"])
         .env_remove("VIRTUAL_ENV")
         .env("PATH", &path)
-        .run()
+        .run_plain()
         .success()
         .stdout_eq(&format!("{}\n", tool_line(&on_path, "ruff", "0.16.8")));
 }
@@ -596,13 +634,13 @@ fn tools_without_a_project_uses_virtual_env_then_path() {
         .pyfaro(["tools", "ruff"])
         .env("VIRTUAL_ENV", &active)
         .env("PATH", &path)
-        .run()
+        .run_plain()
         .success()
         .stdout_eq(&format!("{}\n", tool_line(&active, "ruff", "0.16.9")));
     sandbox
         .pyfaro(["tools", "ruff"])
         .env("PATH", &path)
-        .run()
+        .run_plain()
         .success()
         .stdout_eq(&format!("{}\n", tool_line(&on_path, "ruff", "0.16.8")));
 }
@@ -617,7 +655,7 @@ fn tools_honors_a_relative_uv_project_environment() {
         .pyfaro(["tools", "ruff"])
         .env("UV_PROJECT_ENVIRONMENT", "custom-env")
         .env("PATH", uv_only_path(&sandbox))
-        .run()
+        .run_plain()
         .success()
         .stdout_eq(&format!(
             "{}\n",
@@ -635,7 +673,7 @@ fn tools_honors_an_absolute_uv_project_environment() {
     project
         .pyfaro(["tools", "ruff"])
         .env("UV_PROJECT_ENVIRONMENT", &elsewhere)
-        .run()
+        .run_plain()
         .success()
         .stdout_eq(&format!("{}\n", tool_line(&elsewhere, "ruff", "0.16.9")));
     // The variable replaces `.venv`: ty is not installed in that environment.
@@ -643,7 +681,7 @@ fn tools_honors_an_absolute_uv_project_environment() {
         .pyfaro(["tools", "ty"])
         .env("UV_PROJECT_ENVIRONMENT", &elsewhere)
         .env("PATH", uv_only_path(&sandbox))
-        .run()
+        .run_plain()
         .code(1)
         .stderr_contains(&format!("error: {}", not_found("ty")));
 }
@@ -660,7 +698,7 @@ fn tools_project_selects_the_project_from_elsewhere() {
     sandbox
         .pyfaro(["tools", "pytest"])
         .env("PATH", &path)
-        .run()
+        .run_plain()
         .code(1)
         .stderr_contains(&format!("error: {}", not_found("pytest")));
 
@@ -668,14 +706,14 @@ fn tools_project_selects_the_project_from_elsewhere() {
         .pyfaro(["tools", "pytest", "--project"])
         .arg(&project.root)
         .env("PATH", &path)
-        .run()
+        .run_plain()
         .success()
         .stdout_eq(&format!("{}\n", tool_line(&venv, "pytest", PYTEST)));
     sandbox
         .pyfaro(["tools", "--project"])
         .arg(&project.root)
         .env("PATH", &path)
-        .run()
+        .run_plain()
         .success()
         .stdout_contains(&tool_line(&venv, "ruff", RUFF));
 }
@@ -688,7 +726,7 @@ fn tools_discovers_the_nearest_project_from_a_subdirectory() {
     let venv = project.path(".venv");
     Cmd::pyfaro(&project.path("src"), ["tools", "ty"])
         .env("PATH", uv_only_path(&sandbox))
-        .run()
+        .run_plain()
         .success()
         .stdout_eq(&format!("{}\n", tool_line(&venv, "ty", TY)));
 }
@@ -700,7 +738,7 @@ fn tools_project_without_pyproject_is_an_error() {
     fs::create_dir(sandbox.join("empty")).unwrap();
     sandbox
         .pyfaro(["tools", "--project", "empty"])
-        .run()
+        .run_plain()
         .code(1)
         .stderr_contains("pyproject.toml")
         .stdout_empty();
@@ -713,7 +751,7 @@ fn tools_uv_selects_the_uv_executable() {
     let copy = sandbox.join(executable("my-uv"));
     fs::copy(which::which("uv").unwrap(), &copy).unwrap();
 
-    let named = sandbox.pyfaro(["tools", "uv", "--uv"]).arg(&copy).run();
+    let named = sandbox.pyfaro(["tools", "uv", "--uv"]).arg(&copy).run_plain();
     named.success().stderr_empty();
     assert!(named.stdout.starts_with("uv: "), "{}", named.stdout);
     assert!(
@@ -725,7 +763,7 @@ fn tools_uv_selects_the_uv_executable() {
         named.stdout
     );
 
-    let listing = sandbox.pyfaro(["tools", "--uv"]).arg(&copy).run();
+    let listing = sandbox.pyfaro(["tools", "--uv"]).arg(&copy).run_plain();
     listing.success();
     assert!(
         listing.stdout.lines().next().unwrap().contains("my-uv"),
@@ -735,13 +773,14 @@ fn tools_uv_selects_the_uv_executable() {
 
     sandbox
         .pyfaro(["tools", "uv", "--uv", "missing-uv-binary"])
-        .run()
+        .run_plain()
         .code(1)
         .stderr_contains("could not inspect uv at missing-uv-binary")
         .stdout_empty();
 
     // In the listing a bad uv is reported, not fatal.
-    let listing = sandbox.pyfaro(["tools", "--uv", "missing-uv-binary"]).run();
+    let listing =
+        sandbox.pyfaro(["tools", "--uv", "missing-uv-binary"]).run_plain();
     listing.success();
     assert!(
         listing.stdout.starts_with(
@@ -758,12 +797,12 @@ fn tools_output_stays_on_one_line_per_tool() {
     let sandbox = Sandbox::new();
     let hostile = "bad\nuv\tpath";
 
-    let strict = sandbox.pyfaro(["tools", "uv", "--uv", hostile]).run();
+    let strict = sandbox.pyfaro(["tools", "uv", "--uv", hostile]).run_plain();
     strict.code(1).stdout_empty();
     assert_eq!(strict.stderr.lines().count(), 1, "{}", strict.stderr);
     strict.stderr_contains("could not inspect uv at bad\\nuv\\tpath");
 
-    let listing = sandbox.pyfaro(["tools", "--uv", hostile]).run();
+    let listing = sandbox.pyfaro(["tools", "--uv", hostile]).run_plain();
     listing.success();
     assert_eq!(listing.stdout.lines().count(), 4, "{}", listing.stdout);
     listing.stdout_contains(
@@ -777,13 +816,13 @@ fn tools_does_not_write_to_the_project() {
     let sandbox = Sandbox::new();
     let project = sandbox.synced_project(Kind::Lib);
     let before = project.snapshot();
-    project.pyfaro(["tools"]).run().success();
+    project.pyfaro(["tools"]).run_plain().success();
     assert_eq!(project.snapshot(), before);
 
     let unsynced = Sandbox::new();
     let project = unsynced.project(Kind::Cli);
     let before = project.snapshot();
-    project.pyfaro(["tools"]).run().success();
+    project.pyfaro(["tools"]).run_plain().success();
     assert_eq!(project.snapshot(), before);
     assert!(!project.path(".venv").exists());
     assert!(!project.path("uv.lock").exists());
@@ -809,7 +848,7 @@ fn doctor_reports_a_healthy_project() {
     let project = sandbox.synced_project(Kind::Lib);
     let venv = project.path(".venv");
     let before = project.snapshot();
-    let out = project.pyfaro(["doctor"]).run();
+    let out = project.pyfaro(["doctor"]).run_plain();
     out.success().stderr_empty();
     let lines = lines(&out.stdout);
     assert_eq!(lines.len(), 9, "{}", out.stdout);
@@ -840,7 +879,7 @@ fn doctor_accepts_a_matching_python_version_pin() {
         ".python-version",
         &format!("{}\n", venv_python_minor(&project)),
     );
-    let out = project.pyfaro(["doctor"]).run();
+    let out = project.pyfaro(["doctor"]).run_plain();
     out.success()
         .stderr_empty()
         .stdout_contains("OK: doctor: no blocking issues");
@@ -854,7 +893,7 @@ fn doctor_works_on_a_cli_project() {
     let project = sandbox.synced_project(Kind::Cli);
     project
         .pyfaro(["doctor"])
-        .run()
+        .run_plain()
         .success()
         .stdout_contains("OK: doctor: no blocking issues")
         .stderr_empty();
@@ -871,7 +910,7 @@ fn doctor_blocks_on_an_invalid_pyfaro_configuration() {
         &pyproject.replace("schema-version = 1", "schema-version = 9"),
     );
     let before = project.snapshot();
-    let out = project.pyfaro(["doctor"]).run();
+    let out = project.pyfaro(["doctor"]).run_plain();
     assert_blocking(&out, "ERROR: configuration: invalid ", 1);
     out.stdout_contains("tool.pyfaro.schema-version must be the integer 1; correct pyproject.toml");
     assert_eq!(project.snapshot(), before);
@@ -883,7 +922,7 @@ fn doctor_blocks_on_malformed_pyproject_toml() {
     let sandbox = Sandbox::new();
     let project = sandbox.synced_project(Kind::Lib);
     project.write("pyproject.toml", "[project\n");
-    let out = project.pyfaro(["doctor"]).run();
+    let out = project.pyfaro(["doctor"]).run_plain();
     assert_blocking(&out, "ERROR: configuration: invalid ", 1);
     out.stdout_contains("TOML parse error at line 1")
         .stdout_contains("correct pyproject.toml");
@@ -904,7 +943,7 @@ fn doctor_blocks_when_the_environment_is_missing() {
     let sandbox = Sandbox::new();
     let project = sandbox.project(Kind::Lib); // not synced
     let before = project.snapshot();
-    let out = project.pyfaro(["doctor"]).run();
+    let out = project.pyfaro(["doctor"]).run_plain();
     assert_blocking(&out, "ERROR: dependencies: project interpreter ", 1);
     out.stdout_contains("is missing; run pyfaro sync");
     assert_eq!(project.snapshot(), before);
@@ -922,7 +961,7 @@ fn doctor_blocks_on_missing_runtime_distributions() {
         &pyproject.replace("dependencies = []", "dependencies = [\"idna\"]"),
     );
     let before = project.snapshot();
-    let out = project.pyfaro(["doctor"]).run();
+    let out = project.pyfaro(["doctor"]).run_plain();
     assert_blocking(
         &out,
         "ERROR: dependencies: idna is missing from .venv; run pyfaro sync",
@@ -940,10 +979,12 @@ fn doctor_blocks_on_missing_default_group_distributions() {
         .uv(["pip", "uninstall", "--quiet", "--python"])
         .arg(project.path(".venv"))
         .arg("pytest")
-        .run()
+        .run_plain()
         .success();
-    let out =
-        project.pyfaro(["doctor"]).env("PATH", uv_only_path(&sandbox)).run();
+    let out = project
+        .pyfaro(["doctor"])
+        .env("PATH", uv_only_path(&sandbox))
+        .run_plain();
     assert_blocking(
         &out,
         "ERROR: dependencies: pytest is missing from .venv; run pyfaro sync",
@@ -962,13 +1003,13 @@ fn doctor_ignores_default_groups_switched_off_by_uv_environment() {
         .uv(["pip", "uninstall", "--quiet", "--python"])
         .arg(project.path(".venv"))
         .arg("pytest")
-        .run()
+        .run_plain()
         .success();
     let out = project
         .pyfaro(["doctor"])
         .env("UV_NO_DEV", "1")
         .env("PATH", uv_only_path(&sandbox))
-        .run();
+        .run_plain();
     out.success().stdout_contains("OK: doctor: no blocking issues");
 }
 
@@ -981,7 +1022,7 @@ fn doctor_blocks_on_layout_conflicts() {
     // A file where `src` must be a directory.
     fs::rename(project.path("src"), sandbox.join("src.moved")).unwrap();
     project.write("src", "not a directory\n");
-    let out = project.pyfaro(["doctor"]).run();
+    let out = project.pyfaro(["doctor"]).run_plain();
     assert_blocking(&out, "ERROR: layout: ", 1);
     out.stdout_contains(
         "src must be a directory; move or remove the conflicting file",
@@ -992,7 +1033,7 @@ fn doctor_blocks_on_layout_conflicts() {
     // A file where `tests` must be a directory.
     fs::rename(project.path("tests"), sandbox.join("tests.moved")).unwrap();
     project.write("tests", "not a directory\n");
-    let out = project.pyfaro(["doctor"]).run();
+    let out = project.pyfaro(["doctor"]).run_plain();
     assert_blocking(&out, "ERROR: layout: ", 1);
     out.stdout_contains(
         "must be a directory; move or remove the conflicting file",
@@ -1003,7 +1044,7 @@ fn doctor_blocks_on_layout_conflicts() {
     // A file where the environment must be a directory.
     fs::rename(project.path(".venv"), sandbox.join("venv.moved")).unwrap();
     project.write(".venv", "not a directory\n");
-    let out = project.pyfaro(["doctor"]).run();
+    let out = project.pyfaro(["doctor"]).run_plain();
     out.code(1).stdout_contains("ERROR: layout: ").stdout_contains(
         ".venv must be a directory; move or remove the conflicting file",
     );
@@ -1016,7 +1057,7 @@ fn doctor_blocks_on_an_environment_without_an_interpreter() {
     let project = sandbox.project(Kind::Lib);
     fs::create_dir_all(project.path(".venv").join(scripts_directory()))
         .unwrap();
-    let out = project.pyfaro(["doctor"]).run();
+    let out = project.pyfaro(["doctor"]).run_plain();
     out.code(1)
         .stdout_contains(
             "has no Python interpreter; repair it with pyfaro sync",
@@ -1032,7 +1073,7 @@ fn doctor_blocks_on_conflicting_tool_configuration() {
 
     project.write("ruff.toml", "line-length = 100\n");
     assert_blocking(
-        &project.pyfaro(["doctor"]).run(),
+        &project.pyfaro(["doctor"]).run_plain(),
         "ERROR: configuration: [tool.ruff] and ruff.toml both configure ruff; keep one source of configuration",
         1,
     );
@@ -1040,7 +1081,7 @@ fn doctor_blocks_on_conflicting_tool_configuration() {
 
     project.write("pytest.ini", "[pytest]\n");
     assert_blocking(
-        &project.pyfaro(["doctor"]).run(),
+        &project.pyfaro(["doctor"]).run_plain(),
         "ERROR: configuration: [tool.pytest] and pytest.ini both configure pytest; keep one source of configuration",
         1,
     );
@@ -1050,7 +1091,7 @@ fn doctor_blocks_on_conflicting_tool_configuration() {
     project.write("pyproject.toml", &format!("{pyproject}\n[tool.ty.rules]\n"));
     project.write("ty.toml", "[rules]\n");
     assert_blocking(
-        &project.pyfaro(["doctor"]).run(),
+        &project.pyfaro(["doctor"]).run_plain(),
         "ERROR: configuration: [tool.ty] and ty.toml both configure ty; keep one source of configuration",
         1,
     );
@@ -1063,7 +1104,7 @@ fn doctor_blocks_on_a_python_pin_the_interpreter_does_not_match() {
     let project = sandbox.synced_project(Kind::Lib);
     project.write(".python-version", "3.9\n");
     let before = project.snapshot();
-    let out = project.pyfaro(["doctor"]).run();
+    let out = project.pyfaro(["doctor"]).run_plain();
     assert_blocking(&out, "ERROR: Python: Python 3.", 1);
     out.stdout_contains(
         "does not match .python-version \"3.9\"; select a matching interpreter or update the pin",
@@ -1084,7 +1125,7 @@ fn doctor_blocks_when_python_is_outside_requires_python() {
             "requires-python = \">=3.99\"",
         ),
     );
-    let out = project.pyfaro(["doctor"]).run();
+    let out = project.pyfaro(["doctor"]).run_plain();
     assert_blocking(&out, "ERROR: Python: Python 3.", 1);
     out.stdout_contains("does not satisfy requires-python \">=3.99\"; select a compatible interpreter");
 }
@@ -1097,7 +1138,7 @@ fn doctor_warns_about_a_pin_it_cannot_compare_without_failing() {
     project.write(".python-version", "foo\n");
     project
         .pyfaro(["doctor"])
-        .run()
+        .run_plain()
         .success()
         .stdout_contains(
             "WARN: Python: cannot compare .python-version request \"foo\" with the selected interpreter; verify the pin",
@@ -1122,8 +1163,10 @@ fn doctor_warnings_for_missing_optional_tools_do_not_fail() {
         .unwrap();
     }
     let before = project.snapshot();
-    let out =
-        project.pyfaro(["doctor"]).env("PATH", uv_only_path(&sandbox)).run();
+    let out = project
+        .pyfaro(["doctor"])
+        .env("PATH", uv_only_path(&sandbox))
+        .run_plain();
     out.success().stderr_empty();
     for name in ["ruff", "ty", "pytest"] {
         out.stdout_contains(&format!("WARN: {name}: {}", not_found(name)));
@@ -1139,7 +1182,8 @@ fn doctor_project_selects_the_project_from_elsewhere() {
     let sandbox = Sandbox::new();
     let project = sandbox.synced_project(Kind::Lib);
     let before = project.snapshot();
-    let out = sandbox.pyfaro(["doctor", "--project"]).arg(&project.root).run();
+    let out =
+        sandbox.pyfaro(["doctor", "--project"]).arg(&project.root).run_plain();
     out.success()
         .stderr_empty()
         .stdout_contains("OK: doctor: no blocking issues")
@@ -1150,7 +1194,7 @@ fn doctor_project_selects_the_project_from_elsewhere() {
     assert_eq!(project.snapshot(), before);
 
     // From the sandbox root alone there is no project to diagnose.
-    let alone = sandbox.pyfaro(["doctor"]).run();
+    let alone = sandbox.pyfaro(["doctor"]).run_plain();
     alone
         .code(1)
         .stdout_contains("ERROR: project: no pyproject.toml found from ")
@@ -1158,7 +1202,7 @@ fn doctor_project_selects_the_project_from_elsewhere() {
 
     // From inside the project the nearest project is found.
     Cmd::pyfaro(&project.path("tests"), ["doctor"])
-        .run()
+        .run_plain()
         .success()
         .stdout_contains("OK: doctor: no blocking issues");
 }
@@ -1171,7 +1215,7 @@ fn doctor_uv_selects_the_uv_executable() {
     let copy = sandbox.join(executable("my-uv"));
     fs::copy(which::which("uv").unwrap(), &copy).unwrap();
 
-    let out = project.pyfaro(["doctor", "--uv"]).arg(&copy).run();
+    let out = project.pyfaro(["doctor", "--uv"]).arg(&copy).run_plain();
     out.success();
     assert!(
         out.stdout
@@ -1182,7 +1226,8 @@ fn doctor_uv_selects_the_uv_executable() {
     );
 
     let before = project.snapshot();
-    let out = project.pyfaro(["doctor", "--uv", "missing-uv-binary"]).run();
+    let out =
+        project.pyfaro(["doctor", "--uv", "missing-uv-binary"]).run_plain();
     assert_blocking(
         &out,
         "ERROR: uv: could not inspect uv at missing-uv-binary: could not find uv at missing-uv-binary",
@@ -1199,14 +1244,14 @@ fn doctor_honors_uv_project_environment() {
     project
         .pyfaro(["sync"])
         .env("UV_PROJECT_ENVIRONMENT", "custom-env")
-        .run()
+        .run_plain()
         .success();
     assert!(!project.path(".venv").exists());
 
     // Without the variable doctor looks in `.venv`, which does not exist.
     project
         .pyfaro(["doctor"])
-        .run()
+        .run_plain()
         .code(1)
         .stdout_contains("is missing; run pyfaro sync");
 
@@ -1214,7 +1259,7 @@ fn doctor_honors_uv_project_environment() {
     let out = project
         .pyfaro(["doctor"])
         .env("UV_PROJECT_ENVIRONMENT", "custom-env")
-        .run();
+        .run_plain();
     out.success()
         .stdout_contains("OK: doctor: no blocking issues")
         .stdout_contains(&format!(
