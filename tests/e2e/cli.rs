@@ -73,7 +73,10 @@ fn help_subcommand_and_help_flag_work_for_every_command() {
     let sandbox = Sandbox::new();
     for command in COMMANDS {
         let via_help = sandbox.pyfaro(["help", command]).run();
-        via_help.success().stdout_contains(&format!("Usage: pyfaro {command}"));
+        via_help.success().stdout_contains(&format!(
+            "Usage: pyfaro{} {command}",
+            std::env::consts::EXE_SUFFIX
+        ));
         let via_flag = sandbox.pyfaro([command, "--help"]).run();
         via_flag.success().stdout_eq(&via_help.stdout);
     }
