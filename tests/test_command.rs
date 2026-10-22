@@ -24,10 +24,7 @@ fn project(with_python: bool) -> Fixture {
         .unwrap();
     if with_python {
         let directory = project.join(".venv").join(scripts());
-        fs::create_dir_all(&directory).unwrap();
-        let binary =
-            directory.join(format!("python{}", std::env::consts::EXE_SUFFIX));
-        fs::copy(support::fixture_uv(), binary).unwrap();
+        support::install_fixture(&directory, "python");
     }
     let record = sandbox.path().join("record.txt");
     Fixture { _sandbox: sandbox, project, record }

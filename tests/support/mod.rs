@@ -32,3 +32,21 @@ pub fn fixture_uv() -> &'static Path {
         })
         .executable
 }
+
+/// Install the fixture executable as `<directory>/<stem><EXE_SUFFIX>`.
+///
+/// A hard link never opens the file for writing, so a concurrently forked
+/// child cannot inherit a writable descriptor and make `exec` fail with
+/// "Text file busy". Copying is only a fallback for filesystems that cannot
+/// link.
+#[allow(dead_code)]
+pub fn install_fixture(directory: &Path, stem: &str) -> PathBuf {
+    std::fs::create_dir_all(directory).unwrap();
+    let binary =
+        directory.join(format!("{stem}{}", std::env::consts::EXE_SUFFIX));
+    let source = fixture_uv();
+    if std::fs::hard_link(source, &binary).is_err() {
+        std::fs::copy(source, &binary).unwrap();
+    }
+    binary
+}

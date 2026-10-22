@@ -7,11 +7,7 @@ use std::process::{Command, Output};
 use tempfile::tempdir;
 
 fn install(directory: &Path, name: &str) -> PathBuf {
-    fs::create_dir_all(directory).unwrap();
-    let binary =
-        directory.join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
-    fs::copy(support::fixture_uv(), &binary).unwrap();
-    binary
+    support::install_fixture(directory, name)
 }
 
 fn doctor_command(project: &Path, path: &Path, uv: &Path) -> Command {

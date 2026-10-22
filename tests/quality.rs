@@ -17,10 +17,7 @@ fn scripts() -> &'static str {
 }
 
 fn install(directory: &Path, name: &str) {
-    fs::create_dir_all(directory).unwrap();
-    let binary =
-        directory.join(format!("{name}{}", std::env::consts::EXE_SUFFIX));
-    fs::copy(support::fixture_uv(), binary).unwrap();
+    support::install_fixture(directory, name);
 }
 
 fn project(with_ruff: bool) -> Fixture {
