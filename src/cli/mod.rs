@@ -8,7 +8,7 @@ use clap::{Args, Parser, Subcommand};
 #[command(version, about, long_about = None)]
 #[command(arg_required_else_help = true)]
 #[command(
-    after_help = "Experimental alpha: create, init, sync, run, add, remove, python, tools, and doctor are implemented; other workflow commands are not implemented yet."
+    after_help = "Experimental alpha: create, init, sync, run, add, remove, python, tools, doctor, lint, and fmt are implemented; other workflow commands are not implemented yet."
 )]
 pub(crate) struct Cli {
     #[command(subcommand)]
@@ -29,12 +29,40 @@ pub(crate) enum Command {
     Remove(DependencyArgs),
     /// Run a command in the project environment through uv
     Run(RunArgs),
+    /// Lint project files with Ruff
+    Lint(LintArgs),
+    /// Format project files with Ruff
+    Fmt(FmtArgs),
     /// List, install, or pin Python versions through uv
     Python(PythonArgs),
     /// Show resolved paths and versions of external tools
     Tools(ToolsArgs),
     /// Diagnose project configuration, environment, and tool availability
     Doctor(DoctorArgs),
+}
+
+#[derive(Args)]
+pub(crate) struct LintArgs {
+    /// Files or directories relative to the current directory (default: the project)
+    pub paths: Vec<PathBuf>,
+
+    /// Explicit project directory; otherwise discover the nearest project
+    #[arg(long)]
+    pub project: Option<PathBuf>,
+}
+
+#[derive(Args)]
+pub(crate) struct FmtArgs {
+    /// Files or directories relative to the current directory (default: the project)
+    pub paths: Vec<PathBuf>,
+
+    /// Report files that would change without modifying them
+    #[arg(long)]
+    pub check: bool,
+
+    /// Explicit project directory; otherwise discover the nearest project
+    #[arg(long)]
+    pub project: Option<PathBuf>,
 }
 
 #[derive(Args)]
