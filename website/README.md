@@ -2,7 +2,7 @@
 
 Source of the Pyfaro documentation, built with [MkDocs](https://www.mkdocs.org/)
 and [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/).
-The site is published at <https://pyfaro.github.io/pyfaro/>.
+The site is published at <https://pyfaro.dev/>.
 
 ## Preview and build
 

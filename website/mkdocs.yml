@@ -1,6 +1,6 @@
 site_name: Pyfaro
 site_description: The unified Python development toolchain, built with Rust.
-site_url: https://pyfaro.github.io/pyfaro/
+site_url: https://pyfaro.dev/
 repo_url: https://github.com/pyfaro/pyfaro
 repo_name: pyfaro/pyfaro
 edit_uri: edit/main/website/docs/
