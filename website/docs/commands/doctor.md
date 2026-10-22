@@ -59,9 +59,9 @@ OK: project: ~/bare
 OK: pyproject.toml: valid Pyfaro configuration
 OK: Python: /usr/bin/python3.14 (Python 3.14.8)
 OK: uv: /home/you/.local/bin/uv (uv 0.9.26)
-WARN: ruff: ruff: not found; install ruff in the project environment (.venv by default), activate an environment, or add it to PATH
-WARN: ty: ty: not found; install ty in the project environment (.venv by default), activate an environment, or add it to PATH
-WARN: pytest: pytest: not found; install pytest in the project environment (.venv by default), activate an environment, or add it to PATH
+WARN: ruff: not found; install ruff in the project environment (.venv by default), activate an environment, or add it to PATH
+WARN: ty: not found; install ty in the project environment (.venv by default), activate an environment, or add it to PATH
+WARN: pytest: not found; install pytest in the project environment (.venv by default), activate an environment, or add it to PATH
 ERROR: dependencies: project interpreter ~/bare/.venv/bin/python is missing; run pyfaro sync
 error: doctor found 1 blocking issue(s); follow the actions above and run pyfaro doctor again
 ```
@@ -75,10 +75,10 @@ as an error:
 
 ```console
 $ cd /tmp && pyfaro doctor
-ERROR: project: no pyproject.toml found from /tmp; use --project <PATH>; use --project <PATH> to select a project
+ERROR: project: no pyproject.toml found from /tmp; use --project <PATH>
 OK: Python: /usr/bin/python3.14 (Python 3.14.8)
 OK: uv: /home/you/.local/bin/uv (uv 0.9.26)
-WARN: ruff: ruff: not found; …
+WARN: ruff: not found; …
 error: doctor found 1 blocking issue(s); follow the actions above and run pyfaro doctor again
 ```
 
@@ -217,7 +217,7 @@ extras or lockfile freshness; use `pyfaro sync --locked` for that. After
 removing pytest from the environment:
 
 ```console
-WARN: pytest: pytest: not found; install pytest in the project environment (.venv by default), activate an environment, or add it to PATH
+WARN: pytest: not found; install pytest in the project environment (.venv by default), activate an environment, or add it to PATH
 ERROR: dependencies: pytest is missing from .venv; run pyfaro sync
 ```
 
