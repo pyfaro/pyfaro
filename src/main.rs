@@ -8,6 +8,7 @@ mod init;
 mod process;
 mod project;
 mod python;
+mod quality;
 mod run;
 mod sync;
 mod tools;
@@ -30,6 +31,8 @@ fn main() {
         cli::Command::Add(args) => deps::run(deps::Action::Add, args),
         cli::Command::Remove(args) => deps::run(deps::Action::Remove, args),
         cli::Command::Run(args) => run::run(args),
+        cli::Command::Lint(args) => quality::lint(args),
+        cli::Command::Fmt(args) => quality::fmt(args),
         cli::Command::Python(args) => python::run(args),
         cli::Command::Tools(args) => tools::run(args),
         cli::Command::Doctor(args) => doctor::run(args),

@@ -146,7 +146,10 @@ pub(crate) fn inspect_python(
     Ok((binary, version))
 }
 
-fn resolve(tool: &'static str, root: Option<&Path>) -> Result<PathBuf> {
+pub(crate) fn resolve(
+    tool: &'static str,
+    root: Option<&Path>,
+) -> Result<PathBuf> {
     let mut directories = Vec::new();
     if let Some(root) = root {
         directories.push(project_environment(root).join(scripts_directory()));
