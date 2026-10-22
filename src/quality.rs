@@ -248,8 +248,8 @@ fn apply_fixes(context: &Context, paths: &[PathBuf]) -> Result<()> {
         "fix: format and lint can be fixed automatically; type has no automatic fixes",
     );
     for (name, step) in [
-        ("format", Step::Format { check: false }),
         ("lint", Step::Lint { fix: true }),
+        ("format", Step::Format { check: false }),
     ] {
         let outcome = attempt(step, context, paths)?;
         say(&format!("fix {name}: {}", outcome.describe()));

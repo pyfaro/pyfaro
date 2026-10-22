@@ -147,9 +147,11 @@ passes `--fix` to `ruff check`, and `ty check` does not write.
 
 1. Print which checks can be fixed automatically: format and lint can; type has
    no automatic fixes.
-2. Run `ruff format` (writes), then `ruff check --fix` (safe fixes only; Pyfaro
-   never passes `--unsafe-fixes`). A failure here is reported
-   (`fix lint: failed (exit 2)`) but does not stop the next step.
+2. Run `ruff check --fix` (safe fixes only; Pyfaro never passes
+   `--unsafe-fixes`), then `ruff format` (writes). This is Ruff's recommended
+   order: formatting last keeps lint fixes from leaving unformatted code. A
+   failure here is reported (`fix lint: failed (exit 2)`) but does not stop the
+   next step.
 3. Rerun the full non-writing verification above and print its summary.
 
 The exit code follows the verification rerun, exactly as for plain `check`, so

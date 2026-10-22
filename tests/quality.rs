@@ -382,14 +382,14 @@ fn check_forwards_paths_to_every_step() {
 }
 
 #[test]
-fn check_fix_formats_fixes_then_reverifies_without_writing() {
+fn check_fix_fixes_formats_then_reverifies_without_writing() {
     let fixture = checked_project();
     let output = pyfaro(&fixture, &fixture.project, &["check", "--fix"], "0");
     assert_eq!(output.status.code(), Some(0), "{output:?}");
     let all = argvs(&fixture);
     assert_eq!(all.len(), 5, "{all:?}");
-    assert_eq!(all[0], ["format"]);
-    assert_eq!(all[1], ["check", "--fix"]);
+    assert_eq!(all[0], ["check", "--fix"]);
+    assert_eq!(all[1], ["format"]);
     assert_eq!(all[2], ["format", "--check"]);
     assert_eq!(all[3], ["check"]);
     assert_ty(&fixture, &all[4], &[]);
