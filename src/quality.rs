@@ -44,7 +44,7 @@ fn normalize(path: &Path) -> PathBuf {
 }
 
 /// `\\?\C:\dir` becomes `C:\dir`. UNC and device paths are kept verbatim.
-fn strip_verbatim(path: &Path) -> PathBuf {
+pub(crate) fn strip_verbatim(path: &Path) -> PathBuf {
     let Some(text) = path.to_str() else {
         return path.to_owned();
     };

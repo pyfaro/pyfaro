@@ -169,6 +169,22 @@ impl Uv {
         self.execute_with_input(root, operation, args, cancelled, true, false)
     }
 
+    /// Like [`Uv::execute_interactive`], with an explicit working directory
+    /// and extra environment variables for the uv process (and so the child).
+    pub(crate) fn execute_task<A: AsRef<OsStr>>(
+        &self,
+        cwd: &Path,
+        env: &[(OsString, OsString)],
+        operation: &'static str,
+        args: &[A],
+        cancelled: &AtomicBool,
+    ) -> Result<()> {
+        let mut command = self.command(cwd, true);
+        command.envs(env.iter().map(|(key, value)| (key, value)));
+        command.args(args);
+        self.run_command(command, operation, cancelled, true)
+    }
+
     fn execute_with_input<A: AsRef<OsStr>>(
         &self,
         root: &Path,

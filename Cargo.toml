@@ -37,6 +37,7 @@ include = [
     "/docs/quality.md",
     "/docs/releasing.md",
     "/docs/architecture/0001-project-architecture.md",
+    "/docs/architecture/0002-task-invocation.md",
 ]
 
 [dependencies]

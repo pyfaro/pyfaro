@@ -10,6 +10,14 @@ Version `0.4.0-alpha.1` has not been published.
   a pinned test HTTP client (`httpx2`, or `httpx` on Python 3.10) in the
   `dev` group, validated and rolled back like the other
   templates.
+- Add named tasks. `[tool.pyfaro.tasks]` defines argument-vector tasks (an
+  array, or a table with `command`, `cwd`, `env` and `description`) and
+  explicit shell tasks (`shell`, run with `sh -c` or `cmd.exe /d /s /c`).
+  `pyfaro run <task> [-- extra...]` runs one in the project environment with
+  the same exit-code and cancellation behavior as `pyfaro run -- ...`.
+  A name before `--` is always a task, a program always follows `--`, and
+  a program spelled like a task prints a note. Invalid tasks fail before
+  launch with the dotted key. The invocation model is recorded in ADR 0002.
 
 ## 0.3.0-alpha.1 — 2026-10-22
 

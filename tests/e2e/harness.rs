@@ -308,6 +308,12 @@ impl Cmd {
         self
     }
 
+    /// The configured process, for tests that manage it themselves (a
+    /// long-lived process, signals).
+    pub fn into_command(self) -> Command {
+        self.command
+    }
+
     pub fn run(mut self) -> Outcome {
         let output = match self.stdin.take() {
             None => self.command.output().expect("start process"),

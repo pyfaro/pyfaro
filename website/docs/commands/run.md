@@ -2,7 +2,13 @@
 
 `pyfaro run` runs a command inside the project's environment, by delegating to
 `uv run` with an explicit project directory. Use it to run tools, scripts or
-the project's own entry points without activating `.venv`.
+the project's own entry points without activating `.venv`. It also runs
+[named tasks](#named-tasks) that you define in `pyproject.toml`.
+
+| Form | Meaning |
+| --- | --- |
+| `pyfaro run <task> [-- extra...]` | Run the task `<task>` from `[tool.pyfaro.tasks]`. |
+| `pyfaro run -- <program> [args...]` | Run a program. Everything after `--` is the command. |
 
 ## Quick example
 
@@ -29,13 +35,14 @@ $ pyfaro run -- ruff --version
 ruff 0.16.10
 ```
 
-Forgetting the separator is an error:
+Forgetting the separator is an error. A name before the `--` is always a
+[task](#named-tasks), so Pyfaro tells you how to run a program instead:
 
 ```console
-$ pyfaro run python --version
-error: unexpected argument 'python' found
-
-Usage: pyfaro run [OPTIONS] -- <COMMAND>...
+$ pyfaro run python
+error: no task named "python" in ~/work/acme-widget/pyproject.toml
+no tasks are defined under [tool.pyfaro.tasks]
+to run a program, use pyfaro run -- python
 ```
 
 ### 2. Run a `.py` script
@@ -107,6 +114,134 @@ $ echo $?
 7
 ```
 
+## Named tasks
+
+A task gives a name to a command you run often. Define it under
+`[tool.pyfaro.tasks]` in `pyproject.toml`:
+
+```toml
+[tool.pyfaro.tasks]
+lint-all = ["ruff", "check", "."]
+serve-docs = { command = ["python", "-m", "http.server", "8001"], cwd = "docs", env = { PYTHONUNBUFFERED = "1" }, description = "Serve the docs folder" }
+changes = { shell = "git log --oneline | head -n 5" }
+```
+
+```console
+$ pyfaro run lint-all
+All checks passed!
+$ pyfaro run lint-all -- --fix
+All checks passed!
+```
+
+A task runs exactly like `pyfaro run -- ...` does: in the project environment,
+through `uv run`, with output streamed, stdin passed through, the command's
+exit code returned unchanged and Ctrl-C stopping the whole process tree.
+
+### 6. Short form and table form
+
+An array is the short form: the program followed by its arguments. A table
+adds options, and has exactly one of `command` (the same array) or `shell`:
+
+| Key | Meaning |
+| --- | --- |
+| `command` | Program and arguments, a non-empty array of non-empty strings. |
+| `shell` | A script for a shell. See [shell tasks](#8-shell-tasks-are-an-explicit-opt-in). |
+| `cwd` | Directory relative to the project root. Default: the project root. |
+| `env` | Variables added to the environment; task values win. |
+| `description` | Shown when Pyfaro lists the tasks. |
+
+Task names use letters, digits, `_`, `.` and `-`, start with a letter or a
+digit and have at most 64 characters. Mistakes are reported before anything
+runs, with the file and the key:
+
+```console
+$ pyfaro run serve-docs
+error: invalid ~/work/acme-widget/pyproject.toml: unknown task setting: tool.pyfaro.tasks.serve-docs.colour (supported: command, shell, cwd, env, description)
+```
+
+### 7. Arguments are literal
+
+A command task never goes through a shell. Pyfaro hands every element to uv as
+a separate argument, so nothing is globbed or expanded: `*`, `~`, `$HOME`
+and `%PATH%` reach the program as written, on Linux, macOS and Windows alike.
+Arguments after the first `--` on the command line are appended:
+
+```console
+$ pyfaro run lint-all -- --select I src
+```
+
+Spaces, quotes, `&`, `|`, `;`, Unicode, leading dashes and empty strings
+arrive untouched.
+
+By default a task runs in the **project root**, even if you start `pyfaro`
+from a subdirectory. `cwd` moves it to another directory, relative to the
+project root. Absolute paths and paths that climb above the root are
+rejected, and the directory must exist when the task runs. `env` is added to
+the inherited environment (the task's value wins) with no interpolation.
+
+### 8. Shell tasks are an explicit opt-in
+
+Use `shell` when you really want pipes, `&&` or variable expansion. Pyfaro
+runs the script with `sh -c` on Unix and `cmd.exe /d /s /c` on Windows, inside
+the project environment:
+
+```console
+$ pyfaro run changes
+a1b2c3d Add the greeting
+9f8e7d6 Initial commit
+```
+
+Because the script is handed to a shell, Pyfaro refuses to append anything
+to it:
+
+```console
+$ pyfaro run changes -- --stat
+error: task "changes" is a shell task and does not accept extra arguments; remove them, or define a command task to pass arguments
+```
+
+On Windows a script containing a double quote (`"`) is rejected before
+launch, because `cmd.exe` cannot receive one through argument quoting
+unchanged. Use a command task or a script file instead. Scripts are shell
+specific: a project that must work on every platform should prefer command
+tasks.
+
+### 9. Tasks and programs never collide silently
+
+The `--` decides. A name before it is always a task; a program always comes
+after it:
+
+```console
+$ pyfaro run test              # the task "test"
+$ pyfaro run -- test           # the program "test"
+pyfaro: running the program "test"; a task with the same name exists, run it with pyfaro run test
+```
+
+An unknown task name is an error that lists the defined tasks and the hint
+`to run a program, use pyfaro run -- <name>`. With neither a task nor `--`,
+Pyfaro exits with status 2 and lists the tasks:
+
+```console
+$ pyfaro run
+error: the following required arguments were not provided:
+  <TASK> or -- <PROGRAM>...
+
+Usage: pyfaro run [OPTIONS] <TASK> [-- <ARGS>...]
+       pyfaro run [OPTIONS] -- <PROGRAM> [ARGS]...
+
+Tasks defined in ~/work/acme-widget/pyproject.toml:
+  lint-all    ruff check .
+  serve-docs  Serve the docs folder
+  changes     shell: git log --oneline | head -n 5
+
+For more information, try '--help'.
+```
+
+Pyfaro never consults `PATH` or the file system to decide, so adding or
+renaming a task cannot change what an existing `pyfaro run -- ...` does.
+Task dependencies, tasks that call tasks, parallel runs and a task listing
+command are not available yet. The design is recorded in
+[ADR 0002](https://github.com/pyfaro/pyfaro/blob/main/docs/architecture/0002-task-invocation.md).
+
 ## Project selection
 
 | Form | Meaning |
@@ -142,10 +277,13 @@ Output is streamed live and redirected stdin is passed through.
 
 | Message | Fix |
 | --- | --- |
-| `unexpected argument '…' found` | Put `--` before the command. |
+| `no task named "…" in …` | The name before `--` is a task. Define it, or run a program with `pyfaro run -- <name>`. |
+| `unexpected argument '…' found` | Put `--` before the arguments, for example `pyfaro run <task> -- --flag`. |
+| `… is a shell task and does not accept extra arguments` | Remove the arguments after `--`, or use a command task. |
+| `invalid …/pyproject.toml: tool.pyfaro.tasks…` | Fix the key it names; see [named tasks](#named-tasks). |
 | `no pyproject.toml found from …` | Run inside a project or pass `--project`. |
 | `Failed to spawn: nosuchprog` | The program is not in the environment or on `PATH`. Add it with [`pyfaro add`](add-remove.md) and sync. |
-| `the following required arguments were not provided: <COMMAND>...` | Give a command after `--`. |
+| `the following required arguments were not provided: <TASK> or -- <PROGRAM>...` | Name a task, or give a program after `--`. |
 | `--locked` failures | See [`pyfaro sync`](sync.md#2-locked-fail-if-the-lock-is-stale). |
 
 ## Exit codes
@@ -153,7 +291,7 @@ Output is streamed live and redirected stdin is passed through.
 | Code | Meaning |
 | --- | --- |
 | `0` | The command succeeded. |
-| `1` | A Pyfaro error such as no project found, or the command exited 1. |
+| `1` | A Pyfaro error such as no project found, an unknown task or an invalid task, or the command exited 1. |
 | `2` | A usage error, or uv could not spawn the program. |
 | other | The command's own status is forwarded unchanged. |
 | `130` | Cancelled. The delegated process tree is stopped. |
