@@ -135,7 +135,9 @@ fn write_project(
         "\n[dependency-groups]\ndev = [\"pytest==9.1.1\", \"ruff==0.16.10\", \"ty==0.0.85\"",
     );
     if matches!(kind, TemplateKind::FastApi) {
-        metadata.push_str(", \"httpx==0.28.1\"");
+        metadata.push_str(
+            ", \"httpx2==2.16.0; python_full_version >= '3.11'\", \"httpx==0.28.1; python_full_version < '3.11'\"",
+        );
     }
     metadata.push_str("]\n");
     metadata.push_str("\n[tool.pyfaro]\nschema-version = 1\n");

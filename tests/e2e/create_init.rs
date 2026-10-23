@@ -701,7 +701,7 @@ fn create_fastapi_writes_the_documented_pyproject_and_sources() {
     assert_eq!(
         metadata,
         format!(
-            "[project]\nname = \"acme-api\"\nversion = \"0.1.0\"\nreadme = \"README.md\"\nrequires-python = \">=3.12\"\ndependencies = [\"fastapi>=0.161.1\", \"uvicorn[standard]>=0.54.0\"]\n\n[build-system]\nrequires = [\"uv_build>=0.9.26,<0.10.0\"]\nbuild-backend = \"uv_build\"\n\n[dependency-groups]\ndev = [\"pytest=={PYTEST}\", \"ruff=={RUFF}\", \"ty=={TY}\", \"httpx==0.28.1\"]\n\n[tool.pyfaro]\nschema-version = 1\n\n[tool.ruff]\nline-length = 88\nsrc = [\"src\", \"tests\"]\n\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n"
+            "[project]\nname = \"acme-api\"\nversion = \"0.1.0\"\nreadme = \"README.md\"\nrequires-python = \">=3.12\"\ndependencies = [\"fastapi>=0.161.1\", \"uvicorn[standard]>=0.54.0\"]\n\n[build-system]\nrequires = [\"uv_build>=0.9.26,<0.10.0\"]\nbuild-backend = \"uv_build\"\n\n[dependency-groups]\ndev = [\"pytest=={PYTEST}\", \"ruff=={RUFF}\", \"ty=={TY}\", \"httpx2==2.16.0; python_full_version >= '3.11'\", \"httpx==0.28.1; python_full_version < '3.11'\"]\n\n[tool.pyfaro]\nschema-version = 1\n\n[tool.ruff]\nline-length = 88\nsrc = [\"src\", \"tests\"]\n\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n"
         )
     );
     assert!(!metadata.contains("[tool.pyfaro.dev]"));
@@ -899,14 +899,15 @@ fn created_fastapi_syncs_checks_tests_builds_and_imports_its_app() {
         ["acme_api-0.1.0-py3-none-any.whl", "acme_api-0.1.0.tar.gz"]
     );
     let lock = read(root.join("uv.lock"));
-    for package in ["fastapi", "uvicorn", "httpx"] {
+    for package in ["fastapi", "uvicorn", "httpx2"] {
         assert!(
             lock.contains(&format!("name = \"{package}\"\n")),
             "{package} missing from uv.lock"
         );
     }
-    assert!(lock.contains("name = \"httpx\"\nversion = \"0.28.1\""));
+    assert!(lock.contains("name = \"httpx2\"\nversion = \"2.16.0\""));
     assert_title(&root, "acme_api", "acme-api");
+    assert_test_run_has_no_warnings(&root);
 }
 
 #[test]
@@ -923,6 +924,7 @@ fn created_fastapi_with_a_distinct_package_builds_and_imports_its_app() {
         ["acme_api-0.1.0-py3-none-any.whl", "acme_api-0.1.0.tar.gz"]
     );
     assert_title(&root, "backend", "acme-api");
+    assert_test_run_has_no_warnings(&root);
 }
 
 #[test]
@@ -935,6 +937,7 @@ fn created_numeric_fastapi_syncs_checks_tests_and_builds() {
         ["1api-0.1.0-py3-none-any.whl", "1api-0.1.0.tar.gz"]
     );
     assert_title(&root, "_1api", "1api");
+    assert_test_run_has_no_warnings(&root);
 }
 
 // ------------------------------------------------------------------ init
@@ -1560,4 +1563,15 @@ fn assert_title(root: &Path, package: &str, title: &str) {
             .run();
     out.success().stderr_empty();
     assert_eq!(out.stdout.replace("\r\n", "\n"), format!("{title}\n"));
+}
+
+/// The generated tests pass without any pytest warnings (the `httpx2` pin
+/// keeps Starlette's `TestClient` from warning about `httpx`).
+fn assert_test_run_has_no_warnings(root: &Path) {
+    let out = Cmd::pyfaro(root, ["test"]).run();
+    out.success().stdout_contains("2 passed");
+    for text in [&out.stdout, &out.stderr] {
+        assert!(!text.contains("DeprecationWarning"), "{text}");
+        assert!(!text.contains("warning"), "{text}");
+    }
 }

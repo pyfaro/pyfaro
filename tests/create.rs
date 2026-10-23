@@ -81,7 +81,7 @@ fn fastapi_template_has_the_documented_content() {
         "dependencies = [\"fastapi>=0.161.1\", \"uvicorn[standard]>=0.54.0\"]"
     ));
     assert!(metadata.contains(
-        "dev = [\"pytest==9.1.1\", \"ruff==0.16.10\", \"ty==0.0.85\", \"httpx==0.28.1\"]"
+        "dev = [\"pytest==9.1.1\", \"ruff==0.16.10\", \"ty==0.0.85\", \"httpx2==2.16.0; python_full_version >= '3.11'\", \"httpx==0.28.1; python_full_version < '3.11'\"]"
     ));
     assert!(metadata.contains("module-name = \"backend\""));
     assert!(metadata.contains("[tool.pyfaro]\nschema-version = 1"));

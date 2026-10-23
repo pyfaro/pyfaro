@@ -81,14 +81,16 @@ pyfaro create fastapi acme-api --package backend --path ./projects/acme-api \
 The FastAPI template takes the distribution name, `--path`, `--python`, and
 `--package`, with the same naming rules, rollback behavior, and
 "no uv, no network" guarantee as the other templates. It adds `fastapi` and
-`uvicorn[standard]` as runtime dependencies and `httpx==0.28.1` to the pinned
-`dev` group, which `fastapi.testclient.TestClient` needs:
+`uvicorn[standard]` as runtime dependencies and an HTTP client to the pinned
+`dev` group, which `fastapi.testclient.TestClient` needs: `httpx2==2.16.0` on
+Python 3.11 and later, where current Starlette prefers it and warns about plain
+`httpx`, and `httpx==0.28.1` on Python 3.10:
 
 ```toml
 dependencies = ["fastapi>=0.161.1", "uvicorn[standard]>=0.54.0"]
 
 [dependency-groups]
-dev = ["pytest==9.1.1", "ruff==0.16.10", "ty==0.0.85", "httpx==0.28.1"]
+dev = ["pytest==9.1.1", "ruff==0.16.10", "ty==0.0.85", "httpx2==2.16.0; python_full_version >= '3.11'", "httpx==0.28.1; python_full_version < '3.11'"]
 ```
 
 `src/<package>/main.py` exposes `app = FastAPI(title="acme-api")` with
