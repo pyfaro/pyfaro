@@ -64,7 +64,7 @@ explicitly with `pyfaro add --dev ruff` and `pyfaro sync`.
 
 ## New projects
 
-`pyfaro create lib|cli` pins Ruff in the `dev` dependency group and writes a
+`pyfaro create lib|cli|fastapi` pins Ruff in the `dev` dependency group and writes a
 minimal `[tool.ruff]` section. Run `pyfaro sync` once (and commit `uv.lock`);
 `pyfaro fmt --check` and `pyfaro lint` then pass on the generated code.
 

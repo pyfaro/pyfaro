@@ -7,7 +7,7 @@ is implemented in `0.3.0-alpha.1` or on `main`.
 
 | Command | What it does | Delegates to |
 | --- | --- | --- |
-| [`create`](../commands/create.md) | Create a packaged library (`lib`) or command-line app (`cli`) | nothing, templates only |
+| [`create`](../commands/create.md) | Create a packaged library (`lib`), command-line app (`cli`) or FastAPI app (`fastapi`) | nothing, templates only |
 | [`init`](../commands/init.md) | Preview or apply Pyfaro initialization of a new or existing project | uv |
 | [`sync`](../commands/sync.md) | Create or update `uv.lock` and the project environment | uv |
 | [`add` and `remove`](../commands/add-remove.md) | Edit dependencies and the lock file | uv |

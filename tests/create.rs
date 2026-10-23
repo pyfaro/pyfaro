@@ -69,6 +69,35 @@ fn cli_uses_separate_distribution_package_and_command_names() {
 }
 
 #[test]
+fn fastapi_template_has_the_documented_content() {
+    let sandbox = tempdir().unwrap();
+    let project = sandbox.path().join("api with spaces é");
+    assert_success(pyfaro(
+        &["fastapi", "acme-api", "--package", "backend", "--python", "3.12"],
+        &project,
+    ));
+    let metadata = fs::read_to_string(project.join("pyproject.toml")).unwrap();
+    assert!(metadata.contains(
+        "dependencies = [\"fastapi>=0.161.1\", \"uvicorn[standard]>=0.54.0\"]"
+    ));
+    assert!(metadata.contains(
+        "dev = [\"pytest==9.1.1\", \"ruff==0.16.10\", \"ty==0.0.85\", \"httpx==0.28.1\"]"
+    ));
+    assert!(metadata.contains("module-name = \"backend\""));
+    assert!(metadata.contains("[tool.pyfaro]\nschema-version = 1"));
+    assert!(!metadata.contains("[tool.pyfaro.dev]"));
+    let main = fs::read_to_string(project.join("src/backend/main.py")).unwrap();
+    assert!(main.contains("app = FastAPI(title=\"acme-api\")"));
+    assert!(main.contains("\"Hello from acme-api!\""));
+    assert!(main.contains("\"status\": \"ok\""));
+    assert!(project.join("src/backend/__init__.py").is_file());
+    assert!(project.join("src/backend/py.typed").is_file());
+    assert!(project.join("tests/test_main.py").is_file());
+    assert!(!project.join("uv.lock").exists());
+    assert!(!project.join(".venv").exists());
+}
+
+#[test]
 fn invalid_inputs_do_not_create_a_project() {
     let sandbox = tempdir().unwrap();
     for (args, expected) in [
@@ -82,6 +111,10 @@ fn invalid_inputs_do_not_create_a_project() {
         (vec!["cli", "hello", "--package", "__main__"], "package name"),
         (vec!["cli", "hello", "--package", "__hello__"], "package name"),
         (vec!["cli", "hello", "--package", "con"], "package name"),
+        (vec!["fastapi", "hello", "--package", "for"], "package name"),
+        (vec!["fastapi", "hello", "--python", "3.7"], "Python version"),
+        (vec!["fastapi", "unittest"], "package name"),
+        (vec!["fastapi", "foo-stubs"], "project name"),
         (vec!["lib", "unittest"], "package name"),
         (vec!["lib", "cgi"], "package name"),
         (vec!["cli", "hello", "--command", "bad/name"], "command name"),

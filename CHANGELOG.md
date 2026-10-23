@@ -2,7 +2,13 @@
 
 ## Unreleased — 0.4.0-alpha.1 development
 
-Version `0.4.0-alpha.1` has not been published. It has no changes yet.
+Version `0.4.0-alpha.1` has not been published.
+
+- Add `pyfaro create fastapi`, a FastAPI project preset with `--path`,
+  `--python`, and `--package`: a typed application with `GET /` and
+  `GET /health`, `TestClient` tests, and `fastapi`, `uvicorn[standard]`, and a
+  pinned `httpx` in the `dev` group, validated and rolled back like the other
+  templates.
 
 ## 0.3.0-alpha.1 — 2026-10-22
 

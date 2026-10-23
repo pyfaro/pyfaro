@@ -1,7 +1,8 @@
 # pyfaro create
 
 `pyfaro create` generates a small, packaged Python project: a **library**
-(`create lib`) or an installable **command-line application** (`create cli`).
+(`create lib`), an installable **command-line application** (`create cli`) or
+a **FastAPI application** (`create fastapi`).
 Use it to start a new project that already has a `src/` layout, a smoke test,
 and the quality tools wired into `pyproject.toml`. Creation only writes files.
 It never runs uv, installs Python, resolves dependencies or touches the
@@ -18,15 +19,16 @@ $ pyfaro check
 $ pyfaro test
 ```
 
-## Library or command-line project?
+## Library, command-line or FastAPI project?
 
-| | `create lib` | `create cli` |
-| --- | --- | --- |
-| Purpose | A package other code imports | A package that installs an executable |
-| Extra options | none | `--package`, `--command` |
-| `[project.scripts]` | absent | present |
+| | `create lib` | `create cli` | `create fastapi` |
+| --- | --- | --- | --- |
+| Purpose | A package other code imports | A package that installs an executable | A web API served by uvicorn |
+| Extra options | none | `--package`, `--command` | `--package` |
+| `[project.scripts]` | absent | present | absent |
+| Runtime dependencies | none | none | `fastapi`, `uvicorn[standard]` |
 
-Both subcommands take the distribution name as their only argument, plus
+All subcommands take the distribution name as their only argument, plus
 `--path` and `--python`.
 
 ## Scenarios
@@ -133,6 +135,55 @@ my_tool
 The CLI project contains `src/<package>/cli.py` with a `main()` function that
 prints a greeting and returns `0`, and `tests/test_cli.py` that calls it.
 
+### 5. Create a FastAPI project
+
+```console
+$ pyfaro create fastapi acme-api --python 3.12
+Created FastAPI app at ~/work/acme-api
+```
+
+The generated tree:
+
+```text
+acme-api/
+├── pyproject.toml
+├── README.md
+├── src/acme_api/
+│   ├── __init__.py
+│   ├── main.py
+│   └── py.typed
+└── tests/
+    └── test_main.py
+```
+
+`src/acme_api/main.py` exposes `app = FastAPI(title="acme-api")` with two
+routes: `GET /` returns `{"message": "Hello from acme-api!"}` and
+`GET /health` returns `{"status": "ok"}`. `tests/test_main.py` checks both
+with FastAPI's `TestClient`. `--package` works as for `create cli` and adds
+`[tool.uv.build-backend] module-name` when it differs from the normalized name.
+
+The `pyproject.toml` adds the application dependencies, and `httpx`, which
+`TestClient` needs, to the pinned `dev` group:
+
+```toml
+dependencies = ["fastapi>=0.161.1", "uvicorn[standard]>=0.54.0"]
+
+[dependency-groups]
+dev = ["pytest==9.1.1", "ruff==0.16.10", "ty==0.0.85", "httpx==0.28.1"]
+```
+
+Sync once, then check, test and serve the application:
+
+```console
+$ cd acme-api
+$ pyfaro sync
+$ pyfaro check
+$ pyfaro test
+$ pyfaro run --locked -- uvicorn acme_api.main:app --reload
+```
+
+`create fastapi` is new in `0.4.0-alpha.1`.
+
 ## Naming rules
 
 The **distribution name** must:
@@ -153,7 +204,7 @@ standard-library module name (Python 3.10 to 3.13), a dunder module such as
 derived default, so pick another distribution name if it collides.
 
 `--command` accepts ASCII letters, digits, hyphens and underscores, minus
-reserved Windows device names.
+reserved Windows device names. `create fastapi` has no `--command`.
 
 ## What the generated project contains
 

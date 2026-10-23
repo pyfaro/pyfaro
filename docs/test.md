@@ -68,7 +68,7 @@ Cancellation exits 130.
 
 ## New projects
 
-`pyfaro create lib` and `pyfaro create cli` generate pytest-style tests, a
+`pyfaro create lib`, `create cli` and `create fastapi` generate pytest-style tests, a
 `dev` dependency group pinning pytest, and
 `[tool.pytest.ini_options] testpaths = ["tests"]`. After `pyfaro sync`,
 `pyfaro test` runs them with no further setup. An explicit selection that

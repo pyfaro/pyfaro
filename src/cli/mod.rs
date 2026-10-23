@@ -17,7 +17,7 @@ pub(crate) struct Cli {
 
 #[derive(Subcommand)]
 pub(crate) enum Command {
-    /// Create a packaged Python library or command-line project
+    /// Create a packaged Python library, command-line or FastAPI project
     Create(CreateArgs),
     /// Preview or apply uv-backed project initialization
     Init(InitArgs),
@@ -156,6 +156,8 @@ pub(crate) enum CreateKind {
     Lib(CreateProjectArgs),
     /// Create an installable command-line application
     Cli(CreateCliArgs),
+    /// Create a FastAPI application with tests
+    Fastapi(CreateFastApiArgs),
 }
 
 #[derive(Args)]
@@ -184,6 +186,16 @@ pub(crate) struct CreateCliArgs {
     /// Installed command name (defaults to the distribution name with dots replaced by hyphens)
     #[arg(long)]
     pub command: Option<String>,
+}
+
+#[derive(Args)]
+pub(crate) struct CreateFastApiArgs {
+    #[command(flatten)]
+    pub project: CreateProjectArgs,
+
+    /// Import package name (defaults to the normalized distribution name)
+    #[arg(long)]
+    pub package: Option<String>,
 }
 
 #[derive(Args)]

@@ -9,6 +9,7 @@ use crate::project;
 enum TemplateKind {
     Library,
     Cli(String),
+    FastApi,
 }
 
 pub(crate) fn run(args: CreateArgs) -> Result<()> {
@@ -19,6 +20,9 @@ pub(crate) fn run(args: CreateArgs) -> Result<()> {
                 .command
                 .unwrap_or_else(|| args.project.name.replace('.', "-"));
             (args.project, args.package, TemplateKind::Cli(command))
+        }
+        CreateKind::Fastapi(args) => {
+            (args.project, args.package, TemplateKind::FastApi)
         }
     };
     create(project, package, kind)
@@ -52,17 +56,17 @@ fn create(
             parent.display()
         )));
     }
-    let command = match &kind {
-        TemplateKind::Library => None,
-        TemplateKind::Cli(command) => Some(command.as_str()),
-    };
     create_directory(&root, |root| {
-        write_project(root, &project.name, &package, &project.python, command)
+        write_project(root, &project.name, &package, &project.python, &kind)
     })?;
     writeln!(
         io::stdout().lock(),
         "Created {} at {}",
-        if matches!(kind, TemplateKind::Cli(_)) { "CLI" } else { "library" },
+        match kind {
+            TemplateKind::Library => "library",
+            TemplateKind::Cli(_) => "CLI",
+            TemplateKind::FastApi => "FastAPI app",
+        },
         root.display()
     )
     .map_err(Error::Output)?;
@@ -96,7 +100,7 @@ fn write_project(
     name: &str,
     package: &str,
     python: &str,
-    command: Option<&str>,
+    kind: &TemplateKind,
 ) -> Result<()> {
     let module = root.join("src").join(package);
     let tests = root.join("tests");
@@ -107,9 +111,14 @@ fn write_project(
         .map_err(|error| Error::io("create test directory", &tests, error))?;
 
     let mut metadata = format!(
-        "[project]\nname = \"{name}\"\nversion = \"0.1.0\"\nreadme = \"README.md\"\nrequires-python = \">={python}\"\ndependencies = []\n"
+        "[project]\nname = \"{name}\"\nversion = \"0.1.0\"\nreadme = \"README.md\"\nrequires-python = \">={python}\"\ndependencies = {}\n",
+        if matches!(kind, TemplateKind::FastApi) {
+            "[\"fastapi>=0.161.1\", \"uvicorn[standard]>=0.54.0\"]"
+        } else {
+            "[]"
+        }
     );
-    if let Some(command) = command {
+    if let TemplateKind::Cli(command) = kind {
         metadata.push_str(&format!(
             "\n[project.scripts]\n{command} = \"{package}.cli:main\"\n"
         ));
@@ -123,8 +132,12 @@ fn write_project(
         ));
     }
     metadata.push_str(
-        "\n[dependency-groups]\ndev = [\"pytest==9.1.1\", \"ruff==0.16.10\", \"ty==0.0.85\"]\n",
+        "\n[dependency-groups]\ndev = [\"pytest==9.1.1\", \"ruff==0.16.10\", \"ty==0.0.85\"",
     );
+    if matches!(kind, TemplateKind::FastApi) {
+        metadata.push_str(", \"httpx==0.28.1\"");
+    }
+    metadata.push_str("]\n");
     metadata.push_str("\n[tool.pyfaro]\nschema-version = 1\n");
     metadata.push_str(
         "\n[tool.ruff]\nline-length = 88\nsrc = [\"src\", \"tests\"]\n",
@@ -133,49 +146,74 @@ fn write_project(
     write(&root.join("pyproject.toml"), &metadata)?;
     let mut readme = format!(
         "# {name}\n\nA {} created with Pyfaro.\n\n## Development\n\nRun `pyfaro sync` first. It creates `.venv` and `uv.lock` with the pinned Ruff, ty, and pytest from the `dev` dependency group. Commit `uv.lock`, then check and test:\n\n```sh\npyfaro sync\npyfaro check\npyfaro test\nuv build\n```\n",
-        if command.is_some() {
-            "command-line project"
-        } else {
-            "Python library"
+        match kind {
+            TemplateKind::Library => "Python library",
+            TemplateKind::Cli(_) => "command-line project",
+            TemplateKind::FastApi => "FastAPI application",
         }
     );
-    if let Some(command) = command {
-        readme.push_str(&format!(
+    match kind {
+        TemplateKind::Library => {}
+        TemplateKind::Cli(command) => readme.push_str(&format!(
             "\nRun the installed command with `pyfaro run --locked -- {command}`.\n"
-        ));
+        )),
+        TemplateKind::FastApi => readme.push_str(&format!(
+            "\nServe the application with auto-reload using `pyfaro run --locked -- uvicorn {package}.main:app --reload`, then open http://127.0.0.1:8000/ (the health check is at `/health`).\n"
+        )),
     }
     write(&root.join("README.md"), &readme)?;
     write(&module.join("py.typed"), "")?;
-    if command.is_some() {
-        write(
-            &module.join("__init__.py"),
-            "\"\"\"Command-line application.\"\"\"\n",
-        )?;
-        write(
-            &module.join("cli.py"),
-            &format!(
-                "\"\"\"Console entry point for {name}.\"\"\"\n\n\ndef main() -> int:\n    print(\"Hello from {name}!\")\n    return 0\n"
-            ),
-        )?;
-        write(
-            &tests.join("test_cli.py"),
-            &format!(
-                "\"\"\"Smoke test for the installed command.\"\"\"\n\nimport pytest\n\nfrom {package}.cli import main\n\n\ndef test_main(capsys: pytest.CaptureFixture[str]) -> None:\n    message = \"Hello from {name}!\\n\"\n    assert main() == 0\n    assert capsys.readouterr().out == message\n"
-            ),
-        )?;
-    } else {
-        write(
-            &module.join("__init__.py"),
-            &format!(
-                "\"\"\"Public API for {name}.\"\"\"\n\n\ndef hello() -> str:\n    return \"Hello from {name}!\"\n"
-            ),
-        )?;
-        write(
-            &tests.join("test_library.py"),
-            &format!(
-                "\"\"\"Smoke test for the public API.\"\"\"\n\nfrom {package} import hello\n\n\ndef test_hello() -> None:\n    message = \"Hello from {name}!\"\n    assert hello() == message\n"
-            ),
-        )?;
+    match kind {
+        TemplateKind::Library => {
+            write(
+                &module.join("__init__.py"),
+                &format!(
+                    "\"\"\"Public API for {name}.\"\"\"\n\n\ndef hello() -> str:\n    return \"Hello from {name}!\"\n"
+                ),
+            )?;
+            write(
+                &tests.join("test_library.py"),
+                &format!(
+                    "\"\"\"Smoke test for the public API.\"\"\"\n\nfrom {package} import hello\n\n\ndef test_hello() -> None:\n    message = \"Hello from {name}!\"\n    assert hello() == message\n"
+                ),
+            )?;
+        }
+        TemplateKind::Cli(_) => {
+            write(
+                &module.join("__init__.py"),
+                "\"\"\"Command-line application.\"\"\"\n",
+            )?;
+            write(
+                &module.join("cli.py"),
+                &format!(
+                    "\"\"\"Console entry point for {name}.\"\"\"\n\n\ndef main() -> int:\n    print(\"Hello from {name}!\")\n    return 0\n"
+                ),
+            )?;
+            write(
+                &tests.join("test_cli.py"),
+                &format!(
+                    "\"\"\"Smoke test for the installed command.\"\"\"\n\nimport pytest\n\nfrom {package}.cli import main\n\n\ndef test_main(capsys: pytest.CaptureFixture[str]) -> None:\n    message = \"Hello from {name}!\\n\"\n    assert main() == 0\n    assert capsys.readouterr().out == message\n"
+                ),
+            )?;
+        }
+        TemplateKind::FastApi => {
+            write(
+                &module.join("__init__.py"),
+                "\"\"\"FastAPI application.\"\"\"\n",
+            )?;
+            write(
+                &module.join("main.py"),
+                &format!(
+                    "\"\"\"HTTP application for {name}.\"\"\"\n\nfrom fastapi import FastAPI\n\napp = FastAPI(title=\"{name}\")\n\n\n@app.get(\"/\")\ndef read_root() -> dict[str, str]:\n    return {{\"message\": \"Hello from {name}!\"}}\n\n\n@app.get(\"/health\")\ndef read_health() -> dict[str, str]:\n    return {{\"status\": \"ok\"}}\n"
+                ),
+            )?;
+            write(
+                &tests.join("test_main.py"),
+                &format!(
+                    "\"\"\"Smoke tests for the HTTP routes.\"\"\"\n\nfrom fastapi.testclient import TestClient\n\nfrom {package}.main import app\n\nclient = TestClient(app)\n\n\ndef test_read_root() -> None:\n    response = client.get(\"/\")\n    assert response.status_code == 200\n    assert response.json() == {{\"message\": \"Hello from {name}!\"}}\n\n\ndef test_read_health() -> None:\n    response = client.get(\"/health\")\n    assert response.status_code == 200\n    assert response.json() == {{\"status\": \"ok\"}}\n"
+                ),
+            )?;
+        }
     }
     Ok(())
 }
