@@ -3,9 +3,9 @@
 use crate::harness::Sandbox;
 
 /// Every implemented subcommand, as listed by `pyfaro --help`.
-const COMMANDS: [&str; 14] = [
-    "create", "init", "sync", "add", "remove", "run", "lint", "fmt", "type",
-    "test", "check", "python", "tools", "doctor",
+const COMMANDS: [&str; 15] = [
+    "create", "init", "sync", "add", "remove", "run", "dev", "lint", "fmt",
+    "type", "test", "check", "python", "tools", "doctor",
 ];
 
 #[test]
