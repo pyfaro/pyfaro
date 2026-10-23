@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use toml_edit::{Array, Item};
 
 use crate::error::{Error, Result};
+use crate::quality;
 
 const MAX_NAME_LENGTH: usize = 64;
 const TASK_KEYS: [&str; 5] = ["command", "shell", "cwd", "env", "description"];
@@ -165,22 +166,8 @@ fn shell_command(
 
 /// Drop the `\\?\` prefix of a canonical drive path: `cmd.exe` refuses it as a
 /// working directory.
-#[cfg(windows)]
 fn for_process(path: PathBuf) -> PathBuf {
-    let Some(text) = path.to_str() else {
-        return path;
-    };
-    match text.strip_prefix(r"\\?\") {
-        Some(rest) if matches!(rest.as_bytes(), [letter, b':', b'\\', ..] if letter.is_ascii_alphabetic()) => {
-            PathBuf::from(rest)
-        }
-        _ => path,
-    }
-}
-
-#[cfg(not(windows))]
-fn for_process(path: PathBuf) -> PathBuf {
-    path
+    if cfg!(windows) { quality::strip_verbatim(&path) } else { path }
 }
 
 fn display_argument(argument: &str) -> String {
@@ -599,7 +586,7 @@ changes = { shell = "git log | head" }
             invocation.command,
             ["ruff", "check", "--fix", "a b"].map(OsString::from)
         );
-        assert_eq!(invocation.cwd, root);
+        assert_eq!(invocation.cwd, for_process(root.clone()));
         let error =
             match tasks.get("s").unwrap().invocation(&root, vec!["x".into()]) {
                 Ok(_) => panic!("extra arguments were accepted"),

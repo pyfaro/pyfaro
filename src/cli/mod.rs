@@ -315,9 +315,6 @@ pub(crate) struct SyncArgs {
 }
 
 #[derive(Args)]
-#[command(
-    override_usage = "pyfaro run [OPTIONS] <TASK> [-- <ARGS>...]\n       pyfaro run [OPTIONS] -- <PROGRAM> [ARGS]..."
-)]
 pub(crate) struct RunArgs {
     /// Explicit project directory (otherwise discover from the current directory)
     #[arg(long)]

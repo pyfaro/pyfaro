@@ -163,14 +163,16 @@ Usage: pyfaro remove [OPTIONS] <PACKAGES>...
 Run a named task or a command in the project environment through uv. Guide: [`run`](../commands/run.md)
 
 ```text
-Usage: pyfaro run [OPTIONS] <TASK> [-- <ARGS>...]
-       pyfaro run [OPTIONS] -- <PROGRAM> [ARGS]...
+Usage: pyfaro run [OPTIONS] [TASK] [-- [ARGS]...]
 ```
+
+Either name a task (`pyfaro run <task> [-- <extra>...]`) or give a program after
+`--` (`pyfaro run -- <program> [args...]`). Giving neither is a usage error.
 
 | Argument or option | Description |
 | --- | --- |
-| `<TASK>` | Task defined in `[tool.pyfaro.tasks]`; omit it to run a program after `--` |
-| `<ARGS>...` | Program and arguments after `--`, or extra arguments for the task |
+| `[TASK]` | Task defined in `[tool.pyfaro.tasks]`; omit it to run a program after `--` |
+| `[ARGS]...` | Program and arguments after `--`, or extra arguments for the task |
 | `--project <PROJECT>` | Explicit project directory (otherwise discover from the current directory) |
 | `--locked` | Refuse to update an absent or stale `uv.lock` |
 | `--frozen` | Use `uv.lock` without checking it against project metadata |

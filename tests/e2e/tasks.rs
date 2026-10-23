@@ -166,8 +166,11 @@ fn the_default_cwd_is_the_project_root_even_from_a_subdirectory() {
         &format!("where = [\"python\", \"-c\", {}]\n", toml_string(PRINT_CWD)),
     );
     project.write("src/deep/.keep", "");
-    let outcome =
-        project.pyfaro(["run", "where"]).cwd(project.path("src/deep")).run();
+    let outcome = project
+        .pyfaro(["run", "where"])
+        .cwd(project.path("src/deep"))
+        .env("PYTHONIOENCODING", "utf-8")
+        .run();
     outcome.success();
     assert!(
         same_directory(&outcome.stdout, &project.root),
@@ -178,6 +181,7 @@ fn the_default_cwd_is_the_project_root_even_from_a_subdirectory() {
     let program = project
         .pyfaro(["run", "--", "python", "-c", PRINT_CWD])
         .cwd(project.path("src/deep"))
+        .env("PYTHONIOENCODING", "utf-8")
         .run();
     program.success();
     assert!(same_directory(&program.stdout, &project.path("src/deep")));
@@ -196,7 +200,11 @@ fn an_explicit_cwd_is_resolved_against_the_project_root() {
     );
     project.write("docs/site/.keep", "");
     for caller in [project.root.clone(), project.path("docs")] {
-        let outcome = project.pyfaro(["run", "where"]).cwd(caller).run();
+        let outcome = project
+            .pyfaro(["run", "where"])
+            .cwd(caller)
+            .env("PYTHONIOENCODING", "utf-8")
+            .run();
         outcome.success();
         assert!(
             same_directory(&outcome.stdout, &project.path("docs/site")),
