@@ -167,4 +167,11 @@ not take a Ctrl-C for a stop request at once:
 - A second Ctrl-C while the first is still pending stops the tree at once, by
   terminating the job: use it for a process that ignores Ctrl-C.
 
+While it supervises, `pyfaro dev` also opens the console (`CONOUT$`) every
+20 ms. A console hands out a Ctrl-C that one of its processes generated, such
+as Uvicorn's, only when something next uses the console; a terminal window
+always does, but a console reached only through pipes (an IDE, a service, a
+test harness) may hold the event back indefinitely, and Uvicorn's worker would
+never restart. The open delivers it at once and has no other effect.
+
 Other commands keep terminating their job immediately on Ctrl-C, as before.

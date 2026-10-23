@@ -33,6 +33,10 @@ Version `0.4.0-alpha.1` has not been published.
   now waits about five seconds for the tree to end by itself before treating
   it as a stop (`pyfaro dev: stopped`, exit 130), carries on when it does not,
   and stops the tree at once on a second Ctrl-C. Other commands are unchanged.
+- Make Uvicorn reloads under `pyfaro dev` reliable on Windows: a console only
+  delivers the Ctrl-C that Uvicorn's reloader generates once something uses
+  it, so on a console reached only through pipes the worker never restarted.
+  `pyfaro dev` now touches the console while it supervises.
 - Wire `pyfaro dev` into the FastAPI template: `pyfaro create fastapi` now
   writes `[tool.pyfaro.dev]` with `preset = "fastapi"` and the
   `<package>.main:app` entry point (following `--package`), and the generated

@@ -847,7 +847,10 @@ fn the_fastapi_template_is_served_by_pyfaro_dev() {
 }
 
 // On Windows, Uvicorn's reloader restarts its worker with a console Ctrl-C
-// that reaches `pyfaro dev` too: it must keep running across the reloads.
+// that reaches `pyfaro dev` too: it must keep running across the reloads. The
+// process has a console of its own reached only through pipes, which holds
+// that Ctrl-C back unless `pyfaro dev` touches the console (issue #129). Every
+// step waits for what it caused, never for a fixed time.
 #[test]
 fn editing_the_template_reloads_and_a_syntax_error_is_visible() {
     e2e_guard!();

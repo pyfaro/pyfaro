@@ -158,6 +158,12 @@ again.
     rest is terminated. Press Ctrl+C a second time to stop the tree at once,
     for example when the process ignores the first.
 
+    While it supervises, `pyfaro dev` also touches the console every 20 ms. A
+    console delivers a Ctrl+C that one of its processes generated (Uvicorn's
+    reload restart) only when something next uses it; a terminal window always
+    does, but a console reached only through pipes (an IDE, a service, a test
+    harness) can hold the event back, and the worker would never restart.
+
 ## Options
 
 | Option | Meaning |
