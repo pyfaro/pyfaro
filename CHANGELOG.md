@@ -28,6 +28,11 @@ Version `0.4.0-alpha.1` has not been published.
   `reload`), validated before launch. The `fastapi` preset runs Uvicorn with
   its own reloader after checking that `uvicorn` is declared and that the port
   is free; without a preset the entry point is run with `python -m`.
+- Keep `pyfaro dev` running across Uvicorn reloads on Windows. The console
+  delivers Uvicorn's reload Ctrl-C to every attached process, so `pyfaro dev`
+  now waits about five seconds for the tree to end by itself before treating
+  it as a stop (`pyfaro dev: stopped`, exit 130), carries on when it does not,
+  and stops the tree at once on a second Ctrl-C. Other commands are unchanged.
 - Wire `pyfaro dev` into the FastAPI template: `pyfaro create fastapi` now
   writes `[tool.pyfaro.dev]` with `preset = "fastapi"` and the
   `<package>.main:app` entry point (following `--package`), and the generated

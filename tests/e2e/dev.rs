@@ -7,14 +7,13 @@
 
 use std::net::TcpListener;
 use std::path::PathBuf;
-#[cfg(unix)]
+#[cfg(windows)]
+use std::thread;
 use std::time::{Duration, Instant};
 
-#[cfg(unix)]
-use crate::harness::process_exists;
 use crate::harness::{
-    Cmd, SHORT, STARTUP, Sandbox, free_port, wait_until_port_is_free,
-    wait_until_process_is_gone,
+    Cmd, SHORT, STARTUP, Sandbox, free_port, process_exists,
+    wait_until_port_is_free, wait_until_process_is_gone,
 };
 
 const GUIDE: &str = "https://pyfaro.dev/commands/dev/";
@@ -124,9 +123,7 @@ fn stop_and_assert_clean(
 ) {
     live.interrupt();
     let out = live.finish(SHORT);
-    if cfg!(unix) {
-        out.code(130).stderr_contains("pyfaro dev: stopped");
-    }
+    out.code(130).stderr_contains("pyfaro dev: stopped");
     assert_no_survivors(root);
     assert!(
         wait_until_port_is_free(port, SHORT),
@@ -431,7 +428,6 @@ fn offline_reaches_uv() {
         .stderr_contains("--no-progress --offline run --project ");
 }
 
-#[cfg(unix)]
 #[test]
 fn ctrl_c_stops_a_module_and_leaves_no_process() {
     e2e_guard!();
@@ -448,7 +444,6 @@ fn ctrl_c_stops_a_module_and_leaves_no_process() {
     wait_until_process_is_gone(pid, SHORT);
 }
 
-#[cfg(unix)]
 #[test]
 fn a_cooperative_process_gets_time_to_shut_down() {
     e2e_guard!();
@@ -483,6 +478,52 @@ fn a_process_that_ignores_ctrl_c_is_killed_after_the_grace_period() {
     assert!(
         waited >= Duration::from_secs(4) && waited < Duration::from_secs(20),
         "stopped after {waited:?}, expected about the 5 s grace period"
+    );
+    wait_until_process_is_gone(pid, SHORT);
+}
+
+/// The console delivers Ctrl-C to every attached process, so a process that
+/// survives it was not asked to stop: Pyfaro keeps supervising it.
+#[cfg(windows)]
+#[test]
+fn a_ctrl_c_the_process_survives_is_not_a_stop_request() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let root = module_project(&sandbox, SERVE);
+    let mut live = Cmd::pyfaro(&root, ["dev", "--", "stubborn"]).spawn();
+    live.wait_for_stdout("ready", STARTUP);
+    let pid = pid_line(&live.stdout());
+    live.interrupt();
+    // Past the 5 s grace period.
+    thread::sleep(Duration::from_secs(8));
+    assert!(live.is_running(), "pyfaro dev stopped: {}", live.stderr());
+    assert!(process_exists(pid));
+    assert!(!live.stderr().contains("stopped"), "{}", live.stderr());
+    // The window closed, so this is a first Ctrl-C again, then a second.
+    live.interrupt_twice(Duration::from_secs(1));
+    live.finish(SHORT).code(130).stderr_contains("pyfaro dev: stopped\n");
+    wait_until_process_is_gone(pid, SHORT);
+}
+
+#[cfg(windows)]
+#[test]
+fn a_second_ctrl_c_forces_a_process_that_ignores_the_first_to_stop() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let root = module_project(&sandbox, SERVE);
+    let mut live = Cmd::pyfaro(&root, ["dev", "--", "stubborn"]).spawn();
+    live.wait_for_stdout("ready", STARTUP);
+    let pid = pid_line(&live.stdout());
+    live.interrupt_twice(Duration::from_secs(1));
+    // The first Ctrl-C was sent a second earlier: waiting out its window
+    // would take about four seconds more.
+    let interrupted = Instant::now();
+    let out = live.finish(SHORT);
+    out.code(130).stderr_contains("pyfaro dev: stopped\n");
+    assert!(
+        interrupted.elapsed() < Duration::from_secs(2),
+        "stopped after {:?}, expected at once",
+        interrupted.elapsed()
     );
     wait_until_process_is_gone(pid, SHORT);
 }
@@ -768,10 +809,7 @@ fn stop_template(live: crate::harness::Live, port: u16, sandbox: &Sandbox) {
     );
     let mut live = live;
     live.interrupt();
-    let out = live.finish(SHORT);
-    if cfg!(unix) {
-        out.code(130).stderr_contains("pyfaro dev: stopped\n");
-    }
+    live.finish(SHORT).code(130).stderr_contains("pyfaro dev: stopped\n");
     assert!(
         wait_until_port_is_free(port, SHORT),
         "port {port} is still bound after stopping"
@@ -808,10 +846,8 @@ fn the_fastapi_template_is_served_by_pyfaro_dev() {
     stop_template(live, port, &sandbox);
 }
 
-// Unix only: Uvicorn's reloader restarts its worker on file changes, which
-// takes the whole Windows CI job down; start, answer and termination are
-// covered on every OS by the neighbouring tests.
-#[cfg(unix)]
+// On Windows, Uvicorn's reloader restarts its worker with a console Ctrl-C
+// that reaches `pyfaro dev` too: it must keep running across the reloads.
 #[test]
 fn editing_the_template_reloads_and_a_syntax_error_is_visible() {
     e2e_guard!();
@@ -833,6 +869,7 @@ fn editing_the_template_reloads_and_a_syntax_error_is_visible() {
     )
     .unwrap();
     live.wait_for_http(port, "/", "Reloaded by Uvicorn.", SHORT);
+    assert!(live.is_running(), "pyfaro dev stopped: {}", live.stderr());
 
     // A syntax error shows its traceback; fixing it serves again.
     std::fs::write(&main, "def broken(:\n    pass\n").unwrap();
@@ -843,6 +880,7 @@ fn editing_the_template_reloads_and_a_syntax_error_is_visible() {
     )
     .unwrap();
     live.wait_for_http(port, "/", "Fixed again.", SHORT);
+    assert!(live.is_running(), "pyfaro dev stopped: {}", live.stderr());
 
     stop_template(live, port, &sandbox);
 }

@@ -34,7 +34,11 @@ cancellation. The mechanism depends on the platform:
 - **Windows** places the child in a Job Object that is closed with the process.
 
 On Linux and macOS, `pyfaro dev` gives the process tree about five seconds to
-shut down after Ctrl+C; on Windows the job is terminated immediately.
+shut down after Ctrl+C. On Windows, the console delivers Ctrl+C to every
+attached process, which Uvicorn's reloader also relies on; `pyfaro dev` waits
+about five seconds for the tree to end by itself and keeps running if it does
+not, so a reload does not stop it. A second Ctrl+C terminates the job at once.
+Every other command terminates the job immediately.
 
 On Windows, Pyfaro refuses to start `.bat` and `.cmd` wrappers, since they
 would invoke a shell. Run the underlying executable instead.
