@@ -16,6 +16,11 @@ was run with a real uv and the real output is shown.
     Scaffold a command-line app, run it in the project environment and
     install it as a tool.
 
+-   :material-api: **[A FastAPI app](fastapi.md)**
+
+    From install to a running server and a passing CI workflow: create,
+    add, dev, check, test, tasks and build.
+
 -   :material-folder-swap: **[Adopt an existing project](adopt-existing-project.md)**
 
     Preview and apply `init`, then bring quality tools into a project you

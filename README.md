@@ -29,6 +29,12 @@ git hook all run exactly the same commands.
 - **`pyfaro check` is your quality gate.** Format check, lint and type check
   in one run, with a clear summary and an honest exit code. It writes files
   only when you pass `--fix`.
+- **From scaffold to running server.** `pyfaro create fastapi` generates a
+  typed FastAPI app, and `pyfaro dev` runs it with Uvicorn and auto-reload,
+  supervised: Ctrl-C stops the whole process tree and nothing is left behind.
+- **Tasks without a second tool.** Name the commands you run often in
+  `[tool.pyfaro.tasks]` and run them with `pyfaro run <task>`, with no
+  implicit shell and the same behavior on Linux, macOS and Windows.
 - **No second ecosystem.** Standard `pyproject.toml` and uv's `uv.lock`.
   Pyfaro adds a tiny `[tool.pyfaro]` table and leaves everything else alone.
 - **Adopt it in place.** `pyfaro init` previews what it would change before
@@ -107,6 +113,19 @@ pyfaro check                  # format check, lint, type check
 pyfaro test                   # run pytest
 ```
 
+Building an API? A FastAPI project is ready to serve right after `sync` (on `main`;
+it ships in `0.4.0-alpha.1`):
+
+```sh
+pyfaro create fastapi my-api
+cd my-api
+pyfaro sync
+pyfaro dev                    # Uvicorn with reload on http://127.0.0.1:8000
+```
+
+The [FastAPI guide](https://pyfaro.dev/workflows/fastapi/) goes from install to
+a running app and a passing CI workflow.
+
 Adopting an existing project? Preview first, then apply (Linux only for now):
 
 ```sh
@@ -126,7 +145,7 @@ follow a full [workflow](https://pyfaro.dev/workflows/).
 | [`init`](https://pyfaro.dev/commands/init/) | Preview or apply Pyfaro initialization of an existing project |
 | [`sync`](https://pyfaro.dev/commands/sync/) | Create or update `.venv` and `uv.lock` through uv |
 | [`add` / `remove`](https://pyfaro.dev/commands/add-remove/) | Edit dependencies and dependency groups through uv |
-| [`run`](https://pyfaro.dev/commands/run/) | Run a program in the project environment |
+| [`run`](https://pyfaro.dev/commands/run/) | Run a program, or a named task, in the project environment |
 | [`dev`](https://pyfaro.dev/commands/dev/) | Run the development server or process with supervision |
 | [`python`](https://pyfaro.dev/commands/python/) | List, install and pin Python versions through uv |
 | [`tools`](https://pyfaro.dev/commands/tools/) | Show the resolved path and version of uv, Ruff, ty and pytest |
@@ -139,6 +158,7 @@ follow a full [workflow](https://pyfaro.dev/workflows/).
 Recipes live in the [workflows](https://pyfaro.dev/workflows/)
 section: a [new library](https://pyfaro.dev/workflows/new-library/),
 a [new CLI](https://pyfaro.dev/workflows/new-cli/),
+a [FastAPI app](https://pyfaro.dev/workflows/fastapi/),
 [adopting an existing project](https://pyfaro.dev/workflows/adopt-existing-project/),
 [CI](https://pyfaro.dev/workflows/continuous-integration/) and
 [troubleshooting](https://pyfaro.dev/workflows/troubleshooting/).
@@ -179,8 +199,8 @@ See the [changelog](CHANGELOG.md) for what each release contains.
 
 ## Roadmap
 
-Planned, **not yet available**: `pyfaro dev` (development mode), `pyfaro build`
-(distributions through uv), and later workspaces and tasks. Milestones are
+Planned, **not yet available**: `pyfaro build` (distributions through uv,
+use `uv build` meanwhile) and workspaces. Milestones are
 planning targets, not release announcements. Follow the
 [roadmap board](https://github.com/orgs/pyfaro/projects/1),
 [milestones](https://github.com/pyfaro/pyfaro/milestones) and

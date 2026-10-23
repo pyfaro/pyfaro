@@ -5,7 +5,7 @@ thin, predictable layer: Pyfaro picks the project, builds the arguments, runs
 the tool and forwards its exit status.
 
 <span class="pf-badge">alpha</span> The commands below are implemented. Others
-(such as `build`, workspaces and tasks) are planned and not available.
+(such as `build` and workspaces) are planned and not available.
 
 ## All commands
 
@@ -30,11 +30,11 @@ the tool and forwards its exit status.
 
 <div class="grid cards" markdown>
 
-- :material-folder-plus: **[create](create.md)**: start a new library or CLI.
+- :material-folder-plus: **[create](create.md)**: start a new library, CLI or FastAPI app.
 - :material-clipboard-check: **[init](init.md)**: adopt an existing project.
 - :material-sync: **[sync](sync.md)**: build the environment.
 - :material-package-variant: **[add and remove](add-remove.md)**: manage dependencies.
-- :material-play: **[run](run.md)**: run anything in the environment.
+- :material-play: **[run](run.md)**: run anything, or a named task, in the environment.
 - :material-server: **[dev](dev.md)**: run the development server.
 - :material-language-python: **[python](python.md)**: manage interpreters.
 

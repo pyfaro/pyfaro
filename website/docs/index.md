@@ -54,8 +54,8 @@ See [Installation](getting-started/installation.md) for details.
 
 -   :material-folder-plus-outline: **Create**
 
-    Start a library or CLI project, or bring an existing one under Pyfaro
-    with `init`.
+    Start a library, CLI or FastAPI project, or bring an existing one under
+    Pyfaro with `init`.
 
     [:octicons-arrow-right-24: create](commands/create.md) ·
     [init](commands/init.md)
@@ -73,6 +73,21 @@ See [Installation](getting-started/installation.md) for details.
     Run commands inside the project environment, without activating it.
 
     [:octicons-arrow-right-24: run](commands/run.md)
+
+-   :material-server: **Dev server**
+
+    `dev` runs your FastAPI app with Uvicorn and reload, supervised, and stops
+    the whole process tree on Ctrl-C.
+
+    [:octicons-arrow-right-24: dev](commands/dev.md) ·
+    [FastAPI guide](workflows/fastapi.md)
+
+-   :material-format-list-checks: **Tasks**
+
+    Name the commands you run often in `[tool.pyfaro.tasks]` and run them with
+    `pyfaro run <task>`.
+
+    [:octicons-arrow-right-24: tasks](commands/run.md#named-tasks)
 
 -   :material-shield-check-outline: **Quality gate**
 
@@ -117,13 +132,14 @@ Read more in [How it works](concepts/how-it-works.md).
 
 !!! warning "Alpha software"
     <span class="pf-badge">alpha</span> The latest published version is
-    `0.3.0-alpha.1`. Interfaces may change between alpha versions. Commands
-    that are planned but not implemented yet, such as `dev`, `build`,
-    workspaces and tasks, are not documented as available.
+    `0.3.0-alpha.1`. Interfaces may change between alpha versions. `dev`, the
+    FastAPI preset and named tasks are on `main` and ship in `0.4.0-alpha.1`.
+    Commands that are planned but not implemented yet, such as `build` and
+    workspaces, are not documented as available.
 
 Where to go next:
 
 - [Getting started](getting-started/index.md): install Pyfaro and run your first commands.
 - [Commands](commands/index.md): one tutorial per command.
-- [Workflows](workflows/index.md): end-to-end recipes.
+- [Workflows](workflows/index.md): end-to-end recipes, including a [FastAPI app](workflows/fastapi.md).
 - [Reference](reference/index.md): command line, environment variables, tested versions.

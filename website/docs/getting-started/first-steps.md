@@ -174,6 +174,7 @@ wrong. See [`pyfaro doctor`](../commands/doctor.md).
 
 - [Features](features.md): every command at a glance.
 - [Workflows](../workflows/index.md): a [new library](../workflows/new-library.md),
+  [a FastAPI app](../workflows/fastapi.md),
   [the quality gate](../workflows/quality-gate.md) and
   [continuous integration](../workflows/continuous-integration.md).
 - [How it works](../concepts/how-it-works.md).

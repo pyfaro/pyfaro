@@ -11,7 +11,8 @@ is implemented in `0.3.0-alpha.1` or on `main`.
 | [`init`](../commands/init.md) | Preview or apply Pyfaro initialization of a new or existing project | uv |
 | [`sync`](../commands/sync.md) | Create or update `uv.lock` and the project environment | uv |
 | [`add` and `remove`](../commands/add-remove.md) | Edit dependencies and the lock file | uv |
-| [`run`](../commands/run.md) | Run a command in the project environment | uv |
+| [`run`](../commands/run.md) | Run a command, or a named task from `[tool.pyfaro.tasks]`, in the project environment | uv |
+| [`dev`](../commands/dev.md) | Run the development server (the `fastapi` preset runs Uvicorn with reload) or process, supervised | uv, Uvicorn |
 | [`python`](../commands/python.md) | List, install or pin Python versions | uv |
 
 ## Code quality
@@ -44,11 +45,12 @@ is implemented in `0.3.0-alpha.1` or on `main`.
   [Exit codes](../concepts/exit-codes.md).
 
 !!! info "Planned, not available"
-    `dev`, `build`, workspaces and tasks are on the roadmap but are not
-    implemented. They do not appear in `pyfaro --help`.
+    `build` and workspaces are on the roadmap but are not implemented. They do
+    not appear in `pyfaro --help`. Build with `uv build` for now.
 
 ## Next steps
 
 - Start with the [first steps](first-steps.md).
+- Build an API end to end: [A FastAPI app](../workflows/fastapi.md).
 - Look up flags in the [command-line reference](../reference/cli.md).
 - Learn the [concepts](../concepts/index.md) behind the commands.
