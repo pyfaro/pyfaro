@@ -143,6 +143,28 @@ also be uv's own, for example when `--locked` finds a stale lock.
 On Ctrl-C Pyfaro stops the whole process tree, including Uvicorn's reloader
 and its worker, and leaves no process behind. On Unix the tree first receives
 SIGINT and has about five seconds to shut down cleanly (other commands wait
-only a fraction of a second) before it is killed. On Windows the job holding
-the tree is terminated immediately. On an interactive Unix terminal the
-terminal is relayed to the child as for `pyfaro run`.
+only a fraction of a second) before it is killed. On an interactive Unix
+terminal the terminal is relayed to the child as for `pyfaro run`.
+
+### Ctrl-C on Windows
+
+A Windows console delivers Ctrl-C to every process attached to it, Pyfaro
+included, and Uvicorn's reloader uses that to restart its worker after each
+file change (`os.kill(pid, signal.CTRL_C_EVENT)`). `pyfaro dev` therefore does
+not take a Ctrl-C for a stop request at once:
+
+- If the process tree ends by itself within about five seconds, that was a
+  stop: `pyfaro dev: stopped`, exit `130`, and the job holding the tree is
+  terminated to leave nothing behind.
+- If the tree is still running after five seconds, or a new process started
+  meanwhile (a restarted worker), the Ctrl-C was not meant to stop it. Pyfaro
+  forgets it and keeps supervising, so editing a file under the reloader does
+  not stop `pyfaro dev`.
+- If part of the tree ended but nothing replaced it by the end of the window
+  (Uvicorn's reloader can swallow a Ctrl-C after restarting a worker that had
+  crashed, leaving the reloader alone), the Ctrl-C was a stop request that was
+  only partly obeyed: the rest of the tree is terminated, as above.
+- A second Ctrl-C while the first is still pending stops the tree at once, by
+  terminating the job: use it for a process that ignores Ctrl-C.
+
+Other commands keep terminating their job immediately on Ctrl-C, as before.

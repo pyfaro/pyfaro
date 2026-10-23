@@ -10,6 +10,8 @@ use std::time::Duration;
 use crate::error::Error;
 use crate::error::Result;
 
+#[cfg(any(target_os = "windows", test))]
+mod console_stop;
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(target_os = "macos")]
@@ -55,27 +57,38 @@ pub(crate) fn run(
     command: Command,
     cancelled: &AtomicBool,
 ) -> Result<ExitStatus> {
-    run_with_input(command, cancelled, false, DEFAULT_GRACE)
+    run_with_input(command, cancelled, false, DEFAULT_GRACE, false)
 }
 
 pub(crate) fn run_interactive(
     command: Command,
     cancelled: &AtomicBool,
 ) -> Result<ExitStatus> {
-    run_supervised(command, cancelled, DEFAULT_GRACE)
+    interactive(command, cancelled, DEFAULT_GRACE, false)
 }
 
 /// Like [`run_interactive`] for long-lived commands that need `grace` to shut
-/// down after cancellation. Windows terminates the job immediately.
+/// down after cancellation. On Windows, where the console delivers Ctrl-C to
+/// every attached process, the command is not terminated at once: it gets
+/// `grace` to end by itself, and a Ctrl-C it survives is not a stop request.
 pub(crate) fn run_supervised(
+    command: Command,
+    cancelled: &AtomicBool,
+    grace: Duration,
+) -> Result<ExitStatus> {
+    interactive(command, cancelled, grace, true)
+}
+
+fn interactive(
     mut command: Command,
     cancelled: &AtomicBool,
     grace: Duration,
+    supervised: bool,
 ) -> Result<ExitStatus> {
     let relay = cfg!(any(target_os = "linux", target_os = "macos"))
         && std::io::stdin().is_terminal();
     command.stdin(if relay { Stdio::piped() } else { Stdio::inherit() });
-    run_with_input(command, cancelled, relay, grace)
+    run_with_input(command, cancelled, relay, grace, supervised)
 }
 
 fn run_with_input(
@@ -83,6 +96,8 @@ fn run_with_input(
     cancelled: &AtomicBool,
     relay: bool,
     grace: Duration,
+    #[cfg_attr(not(target_os = "windows"), allow(unused_variables))]
+    supervised: bool,
 ) -> Result<ExitStatus> {
     #[cfg(target_os = "linux")]
     {
@@ -95,8 +110,8 @@ fn run_with_input(
     }
     #[cfg(target_os = "windows")]
     {
-        let _ = (relay, grace);
-        windows::run(command, cancelled)
+        let _ = relay;
+        windows::run(command, cancelled, supervised.then_some(grace))
     }
     #[cfg(not(any(
         target_os = "linux",
@@ -104,7 +119,7 @@ fn run_with_input(
         target_os = "windows"
     )))]
     {
-        let _ = (command, cancelled, relay, grace);
+        let _ = (command, cancelled, relay, grace, supervised);
         Err(crate::error::Error::Project(
             "delegated commands are unavailable on this platform".into(),
         ))

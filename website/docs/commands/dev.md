@@ -144,8 +144,19 @@ launch. The check is skipped with `--uds` or `--fd`.
 
 On Unix, Ctrl+C sends SIGINT to the whole tree (Uvicorn's reloader and its
 worker included) and waits about five seconds for a clean shutdown before
-killing what is left. On Windows the tree is terminated immediately. Either way
-no process survives, and the port is free again.
+killing what is left. Either way no process survives, and the port is free
+again.
+
+!!! note "Ctrl+C on Windows"
+    A Windows console delivers Ctrl+C to every process attached to it, and
+    Uvicorn's reloader uses that event to restart its worker after each file
+    change. `pyfaro dev` therefore waits about five seconds after Ctrl+C for
+    the tree to end by itself: if it does, you get `pyfaro dev: stopped` and
+    exit 130; if it keeps running, or a new process starts (a restarted
+    worker), the event was not a stop request and `pyfaro dev` keeps
+    supervising. If only part of the tree ended and nothing replaced it, the
+    rest is terminated. Press Ctrl+C a second time to stop the tree at once,
+    for example when the process ignores the first.
 
 ## Options
 

@@ -321,6 +321,13 @@ impl Cmd {
 
     /// Start the process without waiting for it, for long-lived commands.
     pub fn spawn(mut self) -> Live {
+        // A console broadcast (Ctrl-C) must not reach the test runner: on
+        // Windows the process gets a console of its own.
+        #[cfg(windows)]
+        std::os::windows::process::CommandExt::creation_flags(
+            &mut self.command,
+            CREATE_NEW_CONSOLE,
+        );
         let mut child = self
             .command
             .stdin(Stdio::null())
@@ -399,6 +406,9 @@ pub struct Live {
     readers: Vec<JoinHandle<()>>,
     exited: Option<Option<i32>>,
 }
+
+#[cfg(windows)]
+const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
 
 /// Generous for CI: the first sync downloads FastAPI and Uvicorn.
 pub const STARTUP: Duration = Duration::from_secs(240);
@@ -496,8 +506,8 @@ impl Live {
         );
     }
 
-    /// Ctrl-C: SIGINT on Unix. Windows has no equivalent for a piped child, so
-    /// the process is terminated (its Job Object takes the tree with it).
+    /// Ctrl-C: SIGINT on Unix; on Windows a real `CTRL_C_EVENT` on the
+    /// console of the process, which reaches every process attached to it.
     pub fn interrupt(&mut self) {
         if cfg!(unix) {
             let status = Command::new("kill")
@@ -507,12 +517,25 @@ impl Live {
                 .expect("run kill");
             assert!(status.success(), "could not signal pyfaro");
         } else {
-            self.terminate();
+            send_ctrl_c(self.pid(), 1, Duration::ZERO);
         }
+    }
+
+    /// Two Ctrl-C events `gap` apart, sent by one helper process: starting a
+    /// helper takes seconds on a busy runner, so two `interrupt` calls could
+    /// not be timed.
+    #[cfg(windows)]
+    pub fn interrupt_twice(&mut self, gap: Duration) {
+        send_ctrl_c(self.pid(), 2, gap);
     }
 
     pub fn terminate(&mut self) {
         let _ = self.child.kill();
+    }
+
+    /// The process has not exited yet.
+    pub fn is_running(&mut self) -> bool {
+        self.exited().is_none()
     }
 
     fn exited(&mut self) -> Option<Option<i32>> {
@@ -568,6 +591,41 @@ impl Drop for Live {
             let _ = self.child.wait();
         }
     }
+}
+
+/// Deliver `CTRL_C_EVENT` `count` times, `gap` apart, to the console that
+/// process `pid` created. Safe code cannot call the console API, so a short
+/// PowerShell script detaches from its own console, attaches to that one,
+/// ignores the event itself and broadcasts it.
+fn send_ctrl_c(pid: u32, count: u32, gap: Duration) {
+    const SCRIPT: &str = r#"
+Add-Type -Namespace Pyfaro -Name Console -MemberDefinition '
+[DllImport("kernel32.dll")] public static extern bool FreeConsole();
+[DllImport("kernel32.dll")] public static extern bool AttachConsole(uint pid);
+[DllImport("kernel32.dll")] public static extern bool SetConsoleCtrlHandler(IntPtr handler, bool add);
+[DllImport("kernel32.dll")] public static extern bool GenerateConsoleCtrlEvent(uint event_, uint group);
+'
+[void][Pyfaro.Console]::FreeConsole()
+if (-not [Pyfaro.Console]::AttachConsole([uint32]$args[0])) { exit 2 }
+[void][Pyfaro.Console]::SetConsoleCtrlHandler([IntPtr]::Zero, $true)
+for ($i = 0; $i -lt [int]$args[1]; $i++) {
+    if ($i -gt 0) { Start-Sleep -Milliseconds ([int]$args[2]) }
+    if (-not [Pyfaro.Console]::GenerateConsoleCtrlEvent(0, 0)) { exit 3 }
+}
+Start-Sleep -Milliseconds 300
+"#;
+    let output = Command::new("powershell.exe")
+        .args(["-NoProfile", "-NonInteractive", "-Command"])
+        .arg(format!("& {{ {SCRIPT} }} {pid} {count} {}", gap.as_millis()))
+        .output()
+        .expect("run powershell");
+    assert!(
+        output.status.success(),
+        "could not send Ctrl-C to {pid}: {:?}\n{}{}",
+        output.status.code(),
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
 }
 
 /// A TCP port nothing is listening on right now.
