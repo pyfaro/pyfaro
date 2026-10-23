@@ -343,6 +343,6 @@ pub(crate) struct RunArgs {
     pub task: Option<OsString>,
 
     /// Program and arguments after --, or extra arguments for the task
-    #[arg(last = true, num_args = 0..)]
+    #[arg(last = true, num_args = 0.., value_name = "ARGS")]
     pub command: Vec<OsString>,
 }
