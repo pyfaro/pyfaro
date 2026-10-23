@@ -141,6 +141,11 @@ fn write_project(
     }
     metadata.push_str("]\n");
     metadata.push_str("\n[tool.pyfaro]\nschema-version = 1\n");
+    if matches!(kind, TemplateKind::FastApi) {
+        metadata.push_str(&format!(
+            "\n[tool.pyfaro.dev]\npreset = \"fastapi\"\nentry-point = \"{package}.main:app\"\n"
+        ));
+    }
     metadata.push_str(
         "\n[tool.ruff]\nline-length = 88\nsrc = [\"src\", \"tests\"]\n",
     );
@@ -159,9 +164,9 @@ fn write_project(
         TemplateKind::Cli(command) => readme.push_str(&format!(
             "\nRun the installed command with `pyfaro run --locked -- {command}`.\n"
         )),
-        TemplateKind::FastApi => readme.push_str(&format!(
-            "\nServe the application with auto-reload using `pyfaro run --locked -- uvicorn {package}.main:app --reload`, then open http://127.0.0.1:8000/ (the health check is at `/health`).\n"
-        )),
+        TemplateKind::FastApi => readme.push_str(
+            "\nServe the application with auto-reload using `pyfaro dev`, then open http://127.0.0.1:8000/ (the health check is at `/health`). The entry point is configured in `[tool.pyfaro.dev]`; pass Uvicorn options after `--`, for example `pyfaro dev -- --port 8001`.\n",
+        ),
     }
     write(&root.join("README.md"), &readme)?;
     write(&module.join("py.typed"), "")?;

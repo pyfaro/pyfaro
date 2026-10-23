@@ -91,15 +91,23 @@ dependencies = ["fastapi>=0.161.1", "uvicorn[standard]>=0.54.0"]
 
 [dependency-groups]
 dev = ["pytest==9.1.1", "ruff==0.16.10", "ty==0.0.85", "httpx2==2.16.0; python_full_version >= '3.11'", "httpx==0.28.1; python_full_version < '3.11'"]
+
+[tool.pyfaro.dev]
+preset = "fastapi"
+entry-point = "backend.main:app"
 ```
+
+The `[tool.pyfaro.dev]` table is what `pyfaro dev` reads (see
+[dev.md](dev.md)); its entry point follows `--package`.
 
 `src/<package>/main.py` exposes `app = FastAPI(title="acme-api")` with
 `GET /` returning `{"message": "Hello from acme-api!"}` and `GET /health`
 returning `{"status": "ok"}`; `tests/test_main.py` covers both routes with
 `TestClient`. After `pyfaro sync`, `pyfaro check`, `pyfaro test`, and
-`uv build` pass. Serve the application with
-`pyfaro run --locked -- uvicorn backend.main:app --reload`, or check the import
-with `pyfaro run -- python -c "from backend.main import app; print(app.title)"`.
+`uv build` pass. Serve the application with auto-reload using `pyfaro dev`
+(pass Uvicorn options after `--`, for example `pyfaro dev -- --port 8001`), or
+check the import with
+`pyfaro run -- python -c "from backend.main import app; print(app.title)"`.
 
 ## Develop and build
 

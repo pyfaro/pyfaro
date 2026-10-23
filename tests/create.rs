@@ -85,7 +85,9 @@ fn fastapi_template_has_the_documented_content() {
     ));
     assert!(metadata.contains("module-name = \"backend\""));
     assert!(metadata.contains("[tool.pyfaro]\nschema-version = 1"));
-    assert!(!metadata.contains("[tool.pyfaro.dev]"));
+    assert!(metadata.contains(
+        "[tool.pyfaro]\nschema-version = 1\n\n[tool.pyfaro.dev]\npreset = \"fastapi\"\nentry-point = \"backend.main:app\"\n"
+    ));
     let main = fs::read_to_string(project.join("src/backend/main.py")).unwrap();
     assert!(main.contains("app = FastAPI(title=\"acme-api\")"));
     assert!(main.contains("\"Hello from acme-api!\""));
