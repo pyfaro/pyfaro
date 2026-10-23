@@ -20,8 +20,13 @@
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::fs;
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Child, Command, Stdio};
+use std::sync::{Arc, Mutex};
+use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant};
 
 use sha2::{Digest, Sha256};
 use tempfile::TempDir;
@@ -314,6 +319,29 @@ impl Cmd {
         self.command
     }
 
+    /// Start the process without waiting for it, for long-lived commands.
+    pub fn spawn(mut self) -> Live {
+        let mut child = self
+            .command
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("start process");
+        let description = format!(
+            "{} {:?}",
+            self.description,
+            self.command.get_args().collect::<Vec<_>>()
+        );
+        let stdout = Arc::default();
+        let stderr = Arc::default();
+        let readers = vec![
+            collect(child.stdout.take().unwrap(), Arc::clone(&stdout)),
+            collect(child.stderr.take().unwrap(), Arc::clone(&stderr)),
+        ];
+        Live { child, description, stdout, stderr, readers, exited: None }
+    }
+
     pub fn run(mut self) -> Outcome {
         let output = match self.stdin.take() {
             None => self.command.output().expect("start process"),
@@ -342,6 +370,257 @@ impl Cmd {
             stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
             stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
         }
+    }
+}
+
+fn collect(
+    mut stream: impl Read + Send + 'static,
+    into: Arc<Mutex<Vec<u8>>>,
+) -> JoinHandle<()> {
+    thread::spawn(move || {
+        let mut chunk = [0_u8; 4096];
+        while let Ok(count) = stream.read(&mut chunk) {
+            if count == 0 {
+                break;
+            }
+            into.lock().unwrap().extend_from_slice(&chunk[..count]);
+        }
+    })
+}
+
+/// A running process whose output is collected in the background; see
+/// [`Cmd::spawn`]. Dropping it stops the process (with an interrupt on Unix,
+/// so that `pyfaro` can clean up its children).
+pub struct Live {
+    child: Child,
+    description: String,
+    stdout: Arc<Mutex<Vec<u8>>>,
+    stderr: Arc<Mutex<Vec<u8>>>,
+    readers: Vec<JoinHandle<()>>,
+    exited: Option<Option<i32>>,
+}
+
+/// Generous for CI: the first sync downloads FastAPI and Uvicorn.
+pub const STARTUP: Duration = Duration::from_secs(240);
+/// For things that should already be happening.
+pub const SHORT: Duration = Duration::from_secs(30);
+
+impl Live {
+    pub fn pid(&self) -> u32 {
+        self.child.id()
+    }
+
+    pub fn stdout(&self) -> String {
+        String::from_utf8_lossy(&self.stdout.lock().unwrap()).into_owned()
+    }
+
+    pub fn stderr(&self) -> String {
+        String::from_utf8_lossy(&self.stderr.lock().unwrap()).into_owned()
+    }
+
+    fn fail(&mut self, message: &str) -> ! {
+        let code = self.child.try_wait().ok().flatten().map(|s| s.code());
+        panic!(
+            "{message}\ncommand: {}\nexit: {code:?}\nstdout:\n{}\nstderr:\n{}",
+            self.description,
+            self.stdout(),
+            self.stderr()
+        )
+    }
+
+    /// Poll `condition` until it holds, failing early if the process exits.
+    pub fn wait_until(
+        &mut self,
+        timeout: Duration,
+        what: &str,
+        mut condition: impl FnMut(&Self) -> bool,
+    ) {
+        let deadline = Instant::now() + timeout;
+        loop {
+            if condition(self) {
+                return;
+            }
+            if self.exited().is_some() {
+                self.fail(&format!("process exited while waiting for {what}"));
+            }
+            if Instant::now() >= deadline {
+                self.fail(&format!("timed out waiting for {what}"));
+            }
+            thread::sleep(Duration::from_millis(100));
+        }
+    }
+
+    pub fn wait_for_stderr(&mut self, needle: &str, timeout: Duration) {
+        self.wait_until(timeout, &format!("stderr {needle:?}"), |live| {
+            live.stderr().contains(needle)
+        });
+    }
+
+    pub fn wait_for_stdout(&mut self, needle: &str, timeout: Duration) {
+        self.wait_until(timeout, &format!("stdout {needle:?}"), |live| {
+            live.stdout().contains(needle)
+        });
+    }
+
+    /// Wait until something accepts TCP connections on `127.0.0.1:port`.
+    pub fn wait_for_port(&mut self, port: u16, timeout: Duration) {
+        self.wait_until(timeout, &format!("port {port}"), |_| {
+            !port_is_free(port)
+        });
+    }
+
+    /// `GET path` on `127.0.0.1:port`: the status code and the body.
+    pub fn http_get(&mut self, port: u16, path: &str) -> (u16, String) {
+        match http_get(port, path) {
+            Ok(response) => response,
+            Err(error) => self.fail(&format!("GET {path} failed: {error}")),
+        }
+    }
+
+    /// Ctrl-C: SIGINT on Unix. Windows has no equivalent for a piped child, so
+    /// the process is terminated (its Job Object takes the tree with it).
+    pub fn interrupt(&mut self) {
+        if cfg!(unix) {
+            let status = Command::new("kill")
+                .arg("-INT")
+                .arg(self.pid().to_string())
+                .status()
+                .expect("run kill");
+            assert!(status.success(), "could not signal pyfaro");
+        } else {
+            self.terminate();
+        }
+    }
+
+    pub fn terminate(&mut self) {
+        let _ = self.child.kill();
+    }
+
+    fn exited(&mut self) -> Option<Option<i32>> {
+        if self.exited.is_none() {
+            self.exited =
+                self.child.try_wait().expect("poll process").map(|s| s.code());
+        }
+        self.exited
+    }
+
+    /// Wait for the process to exit on its own and collect its output.
+    pub fn finish(mut self, timeout: Duration) -> Outcome {
+        let deadline = Instant::now() + timeout;
+        while self.exited().is_none() {
+            if Instant::now() >= deadline {
+                self.fail("process did not exit in time");
+            }
+            thread::sleep(Duration::from_millis(50));
+        }
+        // A surviving descendant could keep the pipes open; do not wait on it.
+        let drained = Instant::now() + Duration::from_secs(5);
+        while self.readers.iter().any(|r| !r.is_finished())
+            && Instant::now() < drained
+        {
+            thread::sleep(Duration::from_millis(20));
+        }
+        Outcome {
+            description: self.description.clone(),
+            code: self.exited.flatten(),
+            stdout: self.stdout(),
+            stderr: self.stderr(),
+        }
+    }
+}
+
+impl Drop for Live {
+    fn drop(&mut self) {
+        if self.exited().is_some() {
+            return;
+        }
+        if cfg!(unix) {
+            let _ = Command::new("kill")
+                .arg("-INT")
+                .arg(self.pid().to_string())
+                .status();
+            let deadline = Instant::now() + SHORT;
+            while self.exited().is_none() && Instant::now() < deadline {
+                thread::sleep(Duration::from_millis(50));
+            }
+        }
+        if self.exited().is_none() {
+            let _ = self.child.kill();
+            let _ = self.child.wait();
+        }
+    }
+}
+
+/// A TCP port nothing is listening on right now.
+pub fn free_port() -> u16 {
+    let listener = TcpListener::bind(("127.0.0.1", 0)).expect("bind a port");
+    listener.local_addr().unwrap().port()
+}
+
+/// Nothing accepts connections on `127.0.0.1:port`.
+pub fn port_is_free(port: u16) -> bool {
+    TcpStream::connect_timeout(
+        &([127, 0, 0, 1], port).into(),
+        Duration::from_secs(2),
+    )
+    .is_err()
+}
+
+pub fn wait_until_port_is_free(port: u16, timeout: Duration) -> bool {
+    let deadline = Instant::now() + timeout;
+    while !port_is_free(port) {
+        if Instant::now() >= deadline {
+            return false;
+        }
+        thread::sleep(Duration::from_millis(100));
+    }
+    true
+}
+
+fn http_get(port: u16, path: &str) -> Result<(u16, String), String> {
+    let mut stream =
+        TcpStream::connect(("127.0.0.1", port)).map_err(|e| e.to_string())?;
+    stream.set_read_timeout(Some(SHORT)).map_err(|e| e.to_string())?;
+    write!(
+        stream,
+        "GET {path} HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"
+    )
+    .map_err(|e| e.to_string())?;
+    let mut raw = Vec::new();
+    stream.read_to_end(&mut raw).map_err(|e| e.to_string())?;
+    let text = String::from_utf8_lossy(&raw).into_owned();
+    let (head, body) = text.split_once("\r\n\r\n").ok_or("no HTTP headers")?;
+    let status = head
+        .split_whitespace()
+        .nth(1)
+        .and_then(|code| code.parse().ok())
+        .ok_or("no HTTP status")?;
+    Ok((status, body.to_owned()))
+}
+
+/// Whether process `pid` still exists.
+pub fn process_exists(pid: u32) -> bool {
+    if cfg!(unix) {
+        Command::new("kill")
+            .args(["-0", &pid.to_string()])
+            .stderr(Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success())
+    } else {
+        let listing = Command::new("tasklist")
+            .args(["/NH", "/FO", "CSV", "/FI", &format!("PID eq {pid}")])
+            .output()
+            .expect("run tasklist");
+        String::from_utf8_lossy(&listing.stdout).contains(&format!("\"{pid}\""))
+    }
+}
+
+/// Wait until process `pid` is gone.
+pub fn wait_until_process_is_gone(pid: u32, timeout: Duration) {
+    let deadline = Instant::now() + timeout;
+    while process_exists(pid) {
+        assert!(Instant::now() < deadline, "process {pid} survived");
+        thread::sleep(Duration::from_millis(100));
     }
 }
 

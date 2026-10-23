@@ -21,8 +21,8 @@ existing project.
 | `schema-version` | integer | Version of the configuration format. Must be `1`. |
 
 `schema-version` exists so that future versions can change the format without
-breaking existing projects. The other table under `[tool.pyfaro]` is
-[`tasks`](#toolpyfarotasks).
+breaking existing projects. The other tables under `[tool.pyfaro]` are
+[`tasks`](#toolpyfarotasks) and [`dev`](#toolpyfarodev).
 
 ## `[tool.pyfaro.tasks]`
 
@@ -49,6 +49,29 @@ Unknown task keys, a task with both or neither of `command` and `shell`, and
 wrong types are errors that name the dotted key, for example
 `tool.pyfaro.tasks.serve-docs.cwd`.
 
+## `[tool.pyfaro.dev]`
+
+`pyfaro dev` reads what to run from this table. It is optional; every other
+command works without it.
+
+```toml
+[tool.pyfaro.dev]
+preset = "fastapi"              # optional; the only preset
+entry-point = "demo.main:app"   # required
+args = ["--port", "8001"]       # optional array of strings
+reload = true                   # optional boolean; needs a preset
+```
+
+| Key | Type | Meaning |
+| --- | --- | --- |
+| `preset` | string | `"fastapi"` runs the entry point with Uvicorn. |
+| `entry-point` | string | Required. `package.module:attribute` with the preset, a module name `package.module` (run as `python -m`) without. |
+| `args` | array of strings | Appended after the entry point; command-line extras come after them. |
+| `reload` | boolean | Uvicorn's reload. Only with a preset; defaults to `true` for `fastapi`, and `false` wins. |
+
+Pyfaro has no file watcher, so `reload` without a preset is an error. See
+[`pyfaro dev`](../commands/dev.md) for the commands that run.
+
 ## Validation
 
 Pyfaro validates the file before it launches any tool. These cases fail with
@@ -57,7 +80,10 @@ exit code 1 and an error that names the file and the setting:
 - malformed TOML;
 - a missing `[project]` table, or one that is not a table;
 - `[tool]` or `[tool.pyfaro]` that is not a table;
-- an unknown key under `[tool.pyfaro]`;
+- an unknown key under `[tool.pyfaro]` or `[tool.pyfaro.dev]`;
+- an invalid `[tool.pyfaro.dev]` value: a preset other than `fastapi`, a
+  missing or malformed `entry-point`, `args` that is not an array of strings,
+  a non-boolean `reload`, or `reload` without a preset;
 - a `schema-version` other than `1`;
 - an invalid task under `[tool.pyfaro.tasks]`.
 

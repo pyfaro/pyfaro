@@ -33,6 +33,9 @@ cancellation. The mechanism depends on the platform:
 - **macOS** uses a process group and sends SIGINT before forcing cleanup.
 - **Windows** places the child in a Job Object that is closed with the process.
 
+On Linux and macOS, `pyfaro dev` gives the process tree about five seconds to
+shut down after Ctrl+C; on Windows the job is terminated immediately.
+
 On Windows, Pyfaro refuses to start `.bat` and `.cmd` wrappers, since they
 would invoke a shell. Run the underlying executable instead.
 

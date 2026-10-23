@@ -5,7 +5,7 @@ thin, predictable layer: Pyfaro picks the project, builds the arguments, runs
 the tool and forwards its exit status.
 
 <span class="pf-badge">alpha</span> The commands below are implemented. Others
-(such as `dev`, `build`, workspaces and tasks) are planned and not available.
+(such as `build`, workspaces and tasks) are planned and not available.
 
 ## All commands
 
@@ -16,6 +16,7 @@ the tool and forwards its exit status.
 | [`sync`](sync.md) | Synchronize the project environment through uv. |
 | [`add`, `remove`](add-remove.md) | Add or remove dependencies through uv, without syncing. |
 | [`run`](run.md) | Run a command, or a named task, in the project environment. |
+| [`dev`](dev.md) | Run the development server or process with supervision. |
 | [`python`](python.md) | List, install or pin Python versions through uv. |
 | [`tools`](tools.md) | Show resolved paths and versions of the external tools. |
 | [`doctor`](doctor.md) | Diagnose project configuration, environment and tool availability. |
@@ -34,6 +35,7 @@ the tool and forwards its exit status.
 - :material-sync: **[sync](sync.md)**: build the environment.
 - :material-package-variant: **[add and remove](add-remove.md)**: manage dependencies.
 - :material-play: **[run](run.md)**: run anything in the environment.
+- :material-server: **[dev](dev.md)**: run the development server.
 - :material-language-python: **[python](python.md)**: manage interpreters.
 
 </div>
@@ -51,6 +53,6 @@ path and never searches upward, and `create` writes a new directory.
 | --- | --- |
 | `--uv <path>` | Choose the uv executable (default `uv` from `PATH`). |
 | `--offline` | Disable uv network access. |
-| `--locked`, `--frozen` | Strict lock handling on `sync` and `run`. Mutually exclusive. |
+| `--locked`, `--frozen` | Strict lock handling on `sync`, `run` and `dev`. Mutually exclusive. |
 
 uv 0.9.26 or newer is required at runtime.

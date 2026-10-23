@@ -127,6 +127,7 @@ follow a full [workflow](https://pyfaro.dev/workflows/).
 | [`sync`](https://pyfaro.dev/commands/sync/) | Create or update `.venv` and `uv.lock` through uv |
 | [`add` / `remove`](https://pyfaro.dev/commands/add-remove/) | Edit dependencies and dependency groups through uv |
 | [`run`](https://pyfaro.dev/commands/run/) | Run a program in the project environment |
+| [`dev`](https://pyfaro.dev/commands/dev/) | Run the development server or process with supervision |
 | [`python`](https://pyfaro.dev/commands/python/) | List, install and pin Python versions through uv |
 | [`tools`](https://pyfaro.dev/commands/tools/) | Show the resolved path and version of uv, Ruff, ty and pytest |
 | [`doctor`](https://pyfaro.dev/commands/doctor/) | Diagnose configuration, environment and tools |
@@ -171,7 +172,7 @@ branch develops `0.4.0-alpha.1`. Interfaces may change between alpha versions.
 - **Platforms:** Linux, macOS and Windows are built and tested in CI.
   `init --apply` is **Linux-only** for now; on macOS and Windows `init`
   previews but does not apply.
-- **Implemented:** `create`, `init`, `sync`, `add`, `remove`, `run`, `python`,
+- **Implemented:** `create`, `init`, `sync`, `add`, `remove`, `run`, `dev`, `python`,
   `tools`, `doctor`, `lint`, `fmt`, `type`, `check` and `test`.
 
 See the [changelog](CHANGELOG.md) for what each release contains.

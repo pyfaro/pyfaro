@@ -11,6 +11,7 @@ mod harness;
 
 mod cli;
 mod create_init;
+mod dev;
 mod environment;
 mod project_env;
 mod quality;

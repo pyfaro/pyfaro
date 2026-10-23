@@ -15,7 +15,7 @@ schema-version = 1
 ```
 
 The supported settings are `schema-version`, which must be the integer `1`,
-and the optional `[tool.pyfaro.tasks]` table. Unknown Pyfaro keys, other
+and the optional `[tool.pyfaro.tasks]` and `[tool.pyfaro.dev]` tables. Unknown Pyfaro keys, other
 schema versions, malformed TOML, and non-table `[project]`, `[tool]`, or
 `[tool.pyfaro]` values fail before uv is launched. Errors identify the metadata path and invalid setting. Pyfaro
 does not interpret or rewrite `[tool.ruff]`, `[tool.ty]`, `[tool.pytest]`,
@@ -55,3 +55,25 @@ is launched, because it depends on the platform. The semantics, including how
 a task name differs from a program name, are in the
 [run guide](run.md#tasks) and in
 [ADR 0002](architecture/0002-task-invocation.md).
+
+## `[tool.pyfaro.dev]`
+
+`pyfaro dev` reads its development process from this optional table. Other
+commands do not need it.
+
+```toml
+[tool.pyfaro.dev]
+preset = "fastapi"              # optional; the only preset
+entry-point = "demo.main:app"   # required
+args = ["--port", "8001"]       # optional array of strings, appended
+reload = true                   # optional boolean; needs a preset
+```
+
+`entry-point` is required. With `preset = "fastapi"` it is an ASGI import
+string `package.module:attribute`; without a preset it is a module name
+`package.module` run with `python -m`. `args` must be an array of strings.
+`reload` is only valid with a preset, because Pyfaro has no file watcher of its
+own. Invalid values and unknown keys inside the table fail before anything is
+launched, naming the key (for example `tool.pyfaro.dev.reload must be a
+boolean`). The [dev guide](dev.md) lists the commands that are run and the
+precedence between the preset, these settings and command-line arguments.

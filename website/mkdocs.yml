@@ -97,6 +97,7 @@ nav:
       - sync: commands/sync.md
       - add and remove: commands/add-remove.md
       - run: commands/run.md
+      - dev: commands/dev.md
       - python: commands/python.md
       - tools: commands/tools.md
       - doctor: commands/doctor.md

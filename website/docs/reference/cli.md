@@ -16,6 +16,7 @@ Commands:
   add     Add requirements to the project through uv
   remove  Remove requirements from the project through uv
   run     Run a named task or a command in the project environment through uv
+  dev     Run the project's development server or process with supervision
   lint    Lint project files with Ruff
   fmt     Format project files with Ruff
   type    Type-check project files with ty
@@ -178,6 +179,25 @@ Either name a task (`pyfaro run <task> [-- <extra>...]`) or give a program after
 | `--frozen` | Use `uv.lock` without checking it against project metadata |
 | `--uv <UV>` | uv executable (default `uv`) |
 | `--offline` | Disable network access in uv |
+
+## `pyfaro dev`
+
+Run the project's development server or process with supervision. Guide:
+[`dev`](../commands/dev.md)
+
+```text
+Usage: pyfaro dev [OPTIONS] [-- [EXTRA]...]
+```
+
+| Argument or option | Description |
+| --- | --- |
+| `[EXTRA]...` | Extra arguments after `--`, appended after the configured arguments |
+| `--project <PROJECT>` | Explicit project directory (otherwise discover from the current directory) |
+| `--locked` | Refuse to update an absent or stale `uv.lock` |
+| `--frozen` | Use `uv.lock` without checking it against project metadata |
+| `--uv <UV>` | uv executable (default `uv`) |
+| `--offline` | Disable network access in uv |
+| `-v`, `--verbose` | Print the full uv command line before launching |
 
 ## `pyfaro python`
 

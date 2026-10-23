@@ -8,7 +8,7 @@ use clap::{Args, Parser, Subcommand};
 #[command(version, about, long_about = None)]
 #[command(arg_required_else_help = true)]
 #[command(
-    after_help = "Experimental alpha: create, init, sync, run, add, remove, python, tools, doctor, lint, fmt, type, test, and check are implemented; other workflow commands are not implemented yet."
+    after_help = "Experimental alpha: create, init, sync, run, dev, add, remove, python, tools, doctor, lint, fmt, type, test, and check are implemented; other workflow commands are not implemented yet."
 )]
 pub(crate) struct Cli {
     #[command(subcommand)]
@@ -29,6 +29,8 @@ pub(crate) enum Command {
     Remove(DependencyArgs),
     /// Run a named task or a command in the project environment through uv
     Run(RunArgs),
+    /// Run the project's development server or process with supervision
+    Dev(DevArgs),
     /// Lint project files with Ruff
     Lint(LintArgs),
     /// Format project files with Ruff
@@ -342,4 +344,35 @@ pub(crate) struct RunArgs {
     /// Program and arguments after --, or extra arguments for the task
     #[arg(last = true, num_args = 0.., value_name = "ARGS")]
     pub command: Vec<OsString>,
+}
+
+#[derive(Args)]
+pub(crate) struct DevArgs {
+    /// Explicit project directory (otherwise discover from the current directory)
+    #[arg(long)]
+    pub project: Option<PathBuf>,
+
+    /// Refuse to update an absent or stale uv.lock
+    #[arg(long, conflicts_with = "frozen")]
+    pub locked: bool,
+
+    /// Use uv.lock without checking it against project metadata
+    #[arg(long)]
+    pub frozen: bool,
+
+    /// uv executable (a path or a name found on PATH)
+    #[arg(long, default_value = "uv")]
+    pub uv: OsString,
+
+    /// Disable network access in uv
+    #[arg(long)]
+    pub offline: bool,
+
+    /// Print the full uv command line before launching
+    #[arg(short, long)]
+    pub verbose: bool,
+
+    /// Extra arguments after --, appended after the configured arguments
+    #[arg(last = true, num_args = 0..)]
+    pub extra: Vec<OsString>,
 }

@@ -3,6 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::AtomicBool;
+use std::time::Duration;
 
 use semver::Version;
 
@@ -185,6 +186,42 @@ impl Uv {
         self.run_command(command, operation, cancelled, true)
     }
 
+    /// Run a long-lived command interactively; `grace` is how long it may
+    /// take to shut down after cancellation.
+    pub(crate) fn execute_supervised<A: AsRef<OsStr>>(
+        &self,
+        root: &Path,
+        operation: &'static str,
+        args: &[A],
+        grace: Duration,
+        cancelled: &AtomicBool,
+    ) -> Result<()> {
+        let mut command = self.command(root, true);
+        command.args(args);
+        let status = process::run_supervised(command, cancelled, grace)?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(Error::UvStatus { operation, status })
+        }
+    }
+
+    /// The uv invocation `args` would run, for display.
+    pub(crate) fn command_line<A: AsRef<OsStr>>(&self, args: &[A]) -> String {
+        let mut words = vec![
+            self.binary.to_string_lossy().into_owned(),
+            "--no-python-downloads".to_owned(),
+            "--no-progress".to_owned(),
+        ];
+        if self.offline {
+            words.push("--offline".to_owned());
+        }
+        words.extend(
+            args.iter().map(|arg| arg.as_ref().to_string_lossy().into_owned()),
+        );
+        words.iter().map(|word| quote_word(word)).collect::<Vec<_>>().join(" ")
+    }
+
     fn execute_with_input<A: AsRef<OsStr>>(
         &self,
         root: &Path,
@@ -242,6 +279,14 @@ impl Uv {
         }
         command
     }
+}
+
+/// Quote a word for display when it is empty or contains spaces or quotes.
+fn quote_word(word: &str) -> String {
+    if !word.is_empty() && !word.contains([' ', '\t', '"', '\'']) {
+        return word.to_owned();
+    }
+    format!("\"{}\"", word.replace('"', "\\\""))
 }
 
 fn validate_version(output: &str) -> Result<()> {
@@ -303,6 +348,14 @@ mod tests {
                 "café"
             ]
         );
+    }
+
+    #[test]
+    fn displayed_command_lines_quote_ambiguous_words() {
+        assert_eq!(quote_word("plain"), "plain");
+        assert_eq!(quote_word(""), "\"\"");
+        assert_eq!(quote_word("a b"), "\"a b\"");
+        assert_eq!(quote_word("say \"hi\""), "\"say \\\"hi\\\"\"");
     }
 
     #[cfg(windows)]

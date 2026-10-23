@@ -18,6 +18,16 @@ Version `0.4.0-alpha.1` has not been published.
   A name before `--` is always a task, a program always follows `--`, and
   a program spelled like a task prints a note. Invalid tasks fail before
   launch with the dotted key. The invocation model is recorded in ADR 0002.
+- Add `pyfaro dev`, which runs the project's development process inside the
+  project environment and supervises it: child output streams through
+  unmodified, Pyfaro's own lines start with `pyfaro dev: ` on standard error,
+  `--verbose` prints the uv command line, Ctrl-C stops the whole process tree
+  (exit 130, `pyfaro dev: stopped`) after a longer graceful shutdown window on
+  Unix, and a failing process's exit status is forwarded.
+- Add the `[tool.pyfaro.dev]` table (`preset`, `entry-point`, `args`,
+  `reload`), validated before launch. The `fastapi` preset runs Uvicorn with
+  its own reloader after checking that `uvicorn` is declared and that the port
+  is free; without a preset the entry point is run with `python -m`.
 
 ## 0.3.0-alpha.1 — 2026-10-22
 
