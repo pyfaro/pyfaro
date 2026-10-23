@@ -1,8 +1,9 @@
 # Changelog
 
-## Unreleased — 0.4.0-alpha.1 development
+## 0.4.0-alpha.1 — 2026-10-23
 
-Version `0.4.0-alpha.1` has not been published.
+This experimental release adds these developer-experience capabilities to
+`0.3.0-alpha.1`:
 
 - Add `pyfaro create fastapi`, a FastAPI project preset with `--path`,
   `--python`, and `--package`: a typed application with `GET /` and
