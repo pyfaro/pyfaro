@@ -86,6 +86,10 @@ pub(crate) enum Error {
     /// `check` already printed its summary; main prints nothing more.
     #[error("check failed")]
     CheckFailed,
+    /// The command already printed its diagnostic; main prints nothing more
+    /// and exits with `code`.
+    #[error("already reported")]
+    Reported { code: i32 },
     #[error("operation cancelled")]
     Cancelled,
     #[error("could not write command output: {0}")]
@@ -161,6 +165,7 @@ impl Error {
             Self::UvStatus { status, .. }
             | Self::UvProbe { status, .. }
             | Self::ToolStatus { status, .. } => status.code().unwrap_or(1),
+            Self::Reported { code } => *code,
             Self::Cancelled => 130,
             Self::Usage(_) => 2,
             _ => 1,

@@ -19,6 +19,7 @@ pub(super) fn run(
     command: &mut Command,
     cancelled: &AtomicBool,
     relay: bool,
+    grace: Duration,
 ) -> Result<ExitStatus> {
     if cancelled.load(Ordering::SeqCst) {
         return Err(Error::Cancelled);
@@ -43,7 +44,7 @@ pub(super) fn run(
             // Graceful cancellation is best effort; forced termination and its
             // errors are handled unconditionally by cleanup below.
             let _ = killpg(group, Signal::SIGINT);
-            let deadline = Instant::now() + Duration::from_millis(250);
+            let deadline = Instant::now() + grace;
             while Instant::now() < deadline {
                 if matches!(leader_state(group), Ok(super::LeaderState::Exited))
                 {

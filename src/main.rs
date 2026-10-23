@@ -2,6 +2,7 @@ mod cli;
 mod config;
 mod create;
 mod deps;
+mod dev;
 mod doctor;
 mod error;
 mod init;
@@ -32,6 +33,7 @@ fn main() {
         cli::Command::Add(args) => deps::run(deps::Action::Add, args),
         cli::Command::Remove(args) => deps::run(deps::Action::Remove, args),
         cli::Command::Run(args) => run::run(args),
+        cli::Command::Dev(args) => dev::run(args),
         cli::Command::Lint(args) => quality::lint(args),
         cli::Command::Fmt(args) => quality::fmt(args),
         cli::Command::Type(args) => quality::type_check(args),
@@ -42,7 +44,10 @@ fn main() {
         cli::Command::Doctor(args) => doctor::run(args),
     };
     if let Err(error) = result {
-        if matches!(error, error::Error::CheckFailed) {
+        if matches!(
+            error,
+            error::Error::CheckFailed | error::Error::Reported { .. }
+        ) {
             std::process::exit(error.exit_code());
         }
         let diagnostic = format!("error: {error}");

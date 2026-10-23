@@ -19,6 +19,7 @@ pub(super) fn run(
     command: Command,
     cancelled: &AtomicBool,
     relay: bool,
+    grace: Duration,
 ) -> Result<ExitStatus> {
     if cancelled.load(Ordering::SeqCst) {
         return Err(Error::Cancelled);
@@ -43,7 +44,7 @@ pub(super) fn run(
     let result = loop {
         if cancelled.load(Ordering::SeqCst) {
             let _ = child.signal(Signal::SIGINT as i32);
-            let deadline = Instant::now() + Duration::from_millis(250);
+            let deadline = Instant::now() + grace;
             while Instant::now() < deadline {
                 if matches!(
                     leader_state(leader),
