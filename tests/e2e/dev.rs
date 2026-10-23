@@ -7,11 +7,14 @@
 
 use std::net::TcpListener;
 use std::path::PathBuf;
+#[cfg(unix)]
 use std::time::{Duration, Instant};
 
+#[cfg(unix)]
+use crate::harness::process_exists;
 use crate::harness::{
-    Cmd, SHORT, STARTUP, Sandbox, free_port, process_exists,
-    wait_until_port_is_free, wait_until_process_is_gone,
+    Cmd, SHORT, STARTUP, Sandbox, free_port, wait_until_port_is_free,
+    wait_until_process_is_gone,
 };
 
 const GUIDE: &str = "https://pyfaro.dev/commands/dev/";
