@@ -27,7 +27,7 @@ pub(crate) enum Command {
     Add(DependencyArgs),
     /// Remove requirements from the project through uv
     Remove(DependencyArgs),
-    /// Run a command in the project environment through uv
+    /// Run a named task or a command in the project environment through uv
     Run(RunArgs),
     /// Lint project files with Ruff
     Lint(LintArgs),
@@ -315,6 +315,9 @@ pub(crate) struct SyncArgs {
 }
 
 #[derive(Args)]
+#[command(
+    override_usage = "pyfaro run [OPTIONS] <TASK> [-- <ARGS>...]\n       pyfaro run [OPTIONS] -- <PROGRAM> [ARGS]..."
+)]
 pub(crate) struct RunArgs {
     /// Explicit project directory (otherwise discover from the current directory)
     #[arg(long)]
@@ -336,7 +339,10 @@ pub(crate) struct RunArgs {
     #[arg(long)]
     pub offline: bool,
 
-    /// Command and arguments after --
-    #[arg(last = true, required = true, num_args = 1..)]
+    /// Task defined in [tool.pyfaro.tasks]; omit it to run a program after --
+    pub task: Option<OsString>,
+
+    /// Program and arguments after --, or extra arguments for the task
+    #[arg(last = true, num_args = 0..)]
     pub command: Vec<OsString>,
 }

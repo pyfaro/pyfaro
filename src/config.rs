@@ -4,18 +4,23 @@ use std::path::{Path, PathBuf};
 use toml_edit::{DocumentMut, InlineTable, Item, Table, Value, value};
 
 use crate::error::{Error, Result};
+use crate::tasks::{self, Tasks};
 
 pub(crate) enum Config {
-    V1 { root: PathBuf },
+    V1 { root: PathBuf, tasks: Tasks },
 }
 
 impl Config {
     pub(crate) fn load(root: &Path) -> Result<Self> {
-        Self::load_document(root)?;
-        Ok(Self::V1 { root: root.to_owned() })
+        let (_, tasks) = Self::load_parsed(root)?;
+        Ok(Self::V1 { root: root.to_owned(), tasks })
     }
 
     pub(crate) fn load_document(root: &Path) -> Result<DocumentMut> {
+        Self::load_parsed(root).map(|(document, _)| document)
+    }
+
+    fn load_parsed(root: &Path) -> Result<(DocumentMut, Tasks)> {
         let metadata = root.join("pyproject.toml");
         let source = fs::read_to_string(&metadata).map_err(|error| {
             Error::io("read project metadata", &metadata, error)
@@ -23,13 +28,20 @@ impl Config {
         let document: DocumentMut = source.parse().map_err(|source| {
             Error::ConfigToml { path: metadata.clone(), source }
         })?;
-        validate(&document).map_err(|error| Error::config(&metadata, error))?;
-        Ok(document)
+        let tasks = validate(&document)
+            .map_err(|error| Error::config(&metadata, error))?;
+        Ok((document, tasks))
     }
 
     pub(crate) fn root(&self) -> &Path {
         match self {
-            Self::V1 { root } => root,
+            Self::V1 { root, .. } => root,
+        }
+    }
+
+    pub(crate) fn tasks(&self) -> &Tasks {
+        match self {
+            Self::V1 { tasks, .. } => tasks,
         }
     }
 }
@@ -83,26 +95,26 @@ pub(crate) fn prepare(original: &str) -> Result<String> {
     Ok(document.to_string())
 }
 
-fn validate(document: &DocumentMut) -> Result<()> {
+fn validate(document: &DocumentMut) -> Result<Tasks> {
     if document.get("project").and_then(Item::as_table_like).is_none() {
         return Err(Error::Project(
             "expected a standard [project] table in pyproject.toml".into(),
         ));
     }
     let Some(tool) = document.get("tool") else {
-        return Ok(());
+        return Ok(Tasks::default());
     };
     let tool = tool
         .as_table_like()
         .ok_or_else(|| Error::Project("tool must be a TOML table".into()))?;
     let Some(settings) = tool.get("pyfaro") else {
-        return Ok(());
+        return Ok(Tasks::default());
     };
     let settings = settings.as_table_like().ok_or_else(|| {
         Error::Project("[tool.pyfaro] must be a table".into())
     })?;
     for (key, _) in settings.iter() {
-        if key != "schema-version" {
+        if !matches!(key, "schema-version" | "tasks") {
             return Err(Error::Project(format!(
                 "unknown [tool.pyfaro] setting: {key}"
             )));
@@ -115,7 +127,10 @@ fn validate(document: &DocumentMut) -> Result<()> {
             "tool.pyfaro.schema-version must be the integer 1".into(),
         ));
     }
-    Ok(())
+    match settings.get("tasks") {
+        Some(item) => tasks::parse(item),
+        None => Ok(Tasks::default()),
+    }
 }
 
 #[cfg(test)]

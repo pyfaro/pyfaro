@@ -28,6 +28,9 @@ pub(crate) enum Error {
     },
     #[error("{0}")]
     Project(String),
+    /// A command line that clap accepted but Pyfaro cannot act on.
+    #[error("{0}")]
+    Usage(String),
     #[error(
         "doctor found {count} blocking issue(s); follow the actions above and run pyfaro doctor again"
     )]
@@ -159,6 +162,7 @@ impl Error {
             | Self::UvProbe { status, .. }
             | Self::ToolStatus { status, .. } => status.code().unwrap_or(1),
             Self::Cancelled => 130,
+            Self::Usage(_) => 2,
             _ => 1,
         }
     }

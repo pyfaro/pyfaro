@@ -11,6 +11,7 @@ mod python;
 mod quality;
 mod run;
 mod sync;
+mod tasks;
 mod tools;
 mod uv;
 
