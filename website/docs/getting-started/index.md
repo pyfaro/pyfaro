@@ -21,6 +21,11 @@ quality gate, without resolving packages or linting code itself.
 
     A five-minute tour: create, sync, add, run, check, test and doctor.
 
+-   :material-api: **[A FastAPI app](../workflows/fastapi.md)**
+
+    The end-to-end guide: create an API, run it with `dev`, test it and
+    check it in CI.
+
 -   :material-view-list: **[Features](features.md)**
 
     Every implemented command, with a link to its page.

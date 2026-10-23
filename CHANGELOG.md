@@ -33,6 +33,9 @@ Version `0.4.0-alpha.1` has not been published.
   `<package>.main:app` entry point (following `--package`), and the generated
   README serves the app with `pyfaro dev` instead of a hand-written Uvicorn
   command.
+- Add the FastAPI getting-started guide, from install to a running app and a
+  passing CI workflow, and update the README and the site so `dev`, named
+  tasks and the FastAPI preset are no longer described as planned.
 
 ## 0.3.0-alpha.1 — 2026-10-22
 

@@ -110,6 +110,7 @@ nav:
       - workflows/index.md
       - A new library: workflows/new-library.md
       - A new CLI: workflows/new-cli.md
+      - A FastAPI app: workflows/fastapi.md
       - Adopt an existing project: workflows/adopt-existing-project.md
       - The quality gate: workflows/quality-gate.md
       - Continuous integration: workflows/continuous-integration.md
