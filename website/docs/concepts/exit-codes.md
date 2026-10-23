@@ -85,6 +85,13 @@ check: failed (format, lint, type)
 - `pyfaro tools` lists tools and exits 0. With a tool name, as in
   `pyfaro tools ruff`, a missing or broken tool is an error with exit 1.
 
+## `dev`: the process's own code
+
+`pyfaro dev` runs a long-lived process. If it exits with status `N`, Pyfaro
+prints `pyfaro dev: <runner> exited with status N` and exits `N`; exit 0 is
+silent. Ctrl+C prints `pyfaro dev: stopped` and exits 130. See
+[`pyfaro dev`](../commands/dev.md).
+
 ## Cancellation: 130
 
 On `Ctrl+C`, Pyfaro stops the process tree it started, waits for it to

@@ -30,6 +30,7 @@ include = [
     "/docs/sync.md",
     "/docs/dependencies.md",
     "/docs/run.md",
+    "/docs/dev.md",
     "/docs/python.md",
     "/docs/tools.md",
     "/docs/uv-adapter.md",
