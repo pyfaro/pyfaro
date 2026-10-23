@@ -503,6 +503,11 @@ fn create_usage_errors_exit_2_and_create_nothing() {
         .code(2)
         .stderr_contains("unexpected argument '--package'");
     sandbox
+        .pyfaro(["create", "fastapi", "demo", "--command", "demo"])
+        .run()
+        .code(2)
+        .stderr_contains("unexpected argument '--command'");
+    sandbox
         .pyfaro(["create", "app", "demo"])
         .run()
         .code(2)
@@ -516,7 +521,9 @@ fn create_never_invokes_uv() {
     let sandbox = Sandbox::new();
     let empty_path = sandbox.join("empty path");
     fs::create_dir(&empty_path).unwrap();
-    for (kind, name) in [("lib", "no-uv-lib"), ("cli", "no-uv-cli")] {
+    for (kind, name) in
+        [("lib", "no-uv-lib"), ("cli", "no-uv-cli"), ("fastapi", "no-uv-api")]
+    {
         sandbox
             .pyfaro(["create", kind, name, "--path"])
             .arg(sandbox.join(name))
@@ -546,6 +553,11 @@ fn generate(sandbox: &Sandbox, args: &[&str], dir: &str) -> PathBuf {
 
 /// `pyfaro sync`, `check`, `test`, and `uv build`; returns the built files.
 fn develop(root: &Path) -> Vec<String> {
+    develop_passing(root, "1 passed")
+}
+
+/// Like [`develop`], expecting pytest to report `passed` (for example `2 passed`).
+fn develop_passing(root: &Path, passed: &str) -> Vec<String> {
     Cmd::pyfaro(root, ["sync"]).run().success();
     assert!(root.join("uv.lock").is_file());
     assert!(root.join(".venv").is_dir());
@@ -558,7 +570,7 @@ fn develop(root: &Path) -> Vec<String> {
         assert!(lock.contains(&tool), "{tool} missing from uv.lock");
     }
     Cmd::pyfaro(root, ["check"]).run().success();
-    Cmd::pyfaro(root, ["test"]).run().success().stdout_contains("1 passed");
+    Cmd::pyfaro(root, ["test"]).run().success().stdout_contains(passed);
     Cmd::uv(root, ["build"]).run().success();
     let mut built: Vec<String> = fs::read_dir(root.join("dist"))
         .unwrap()
@@ -645,6 +657,287 @@ fn created_lib_with_repeated_separators_syncs_checks_tests_and_builds() {
         develop(&root),
         ["foo_bar-0.1.0-py3-none-any.whl", "foo_bar-0.1.0.tar.gz"]
     );
+}
+
+// --------------------------------------------------------- create fastapi
+
+const FASTAPI_FILES: [&str; 6] = [
+    "README.md",
+    "pyproject.toml",
+    "src/{pkg}/__init__.py",
+    "src/{pkg}/main.py",
+    "src/{pkg}/py.typed",
+    "tests/test_main.py",
+];
+
+fn fastapi_tree(package: &str) -> Vec<String> {
+    FASTAPI_FILES.iter().map(|file| file.replace("{pkg}", package)).collect()
+}
+
+#[test]
+fn create_fastapi_defaults_to_a_directory_named_after_the_project() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let out = sandbox.pyfaro(["create", "fastapi", "demo-api"]).run();
+    out.success().stderr_empty().stdout_contains("Created FastAPI app at ");
+    assert!(out.stdout.trim_end().ends_with("demo-api"), "{}", out.stdout);
+    let root = sandbox.join("demo-api");
+    assert_eq!(tree(&root), fastapi_tree("demo_api"));
+    assert_eq!(tree(sandbox.path()).len(), 6);
+    assert!(!root.join(".venv").exists());
+    assert!(!root.join("uv.lock").exists());
+}
+
+#[test]
+fn create_fastapi_writes_the_documented_pyproject_and_sources() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    sandbox
+        .pyfaro(["create", "fastapi", "acme-api", "--python", "3.12"])
+        .run()
+        .success();
+    let root = sandbox.join("acme-api");
+    let metadata = read(root.join("pyproject.toml"));
+    assert_eq!(
+        metadata,
+        format!(
+            "[project]\nname = \"acme-api\"\nversion = \"0.1.0\"\nreadme = \"README.md\"\nrequires-python = \">=3.12\"\ndependencies = [\"fastapi>=0.161.1\", \"uvicorn[standard]>=0.54.0\"]\n\n[build-system]\nrequires = [\"uv_build>=0.9.26,<0.10.0\"]\nbuild-backend = \"uv_build\"\n\n[dependency-groups]\ndev = [\"pytest=={PYTEST}\", \"ruff=={RUFF}\", \"ty=={TY}\", \"httpx2==2.16.0; python_full_version >= '3.11'\", \"httpx==0.28.1; python_full_version < '3.11'\"]\n\n[tool.pyfaro]\nschema-version = 1\n\n[tool.ruff]\nline-length = 88\nsrc = [\"src\", \"tests\"]\n\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n"
+        )
+    );
+    assert!(!metadata.contains("[tool.pyfaro.dev]"));
+    assert!(!metadata.contains("[tool.ty]"));
+    assert!(!metadata.contains("module-name"));
+    assert!(!metadata.contains("[project.scripts]"));
+
+    assert_eq!(
+        read(root.join("src/acme_api/main.py")),
+        "\"\"\"HTTP application for acme-api.\"\"\"\n\nfrom fastapi import FastAPI\n\napp = FastAPI(title=\"acme-api\")\n\n\n@app.get(\"/\")\ndef read_root() -> dict[str, str]:\n    return {\"message\": \"Hello from acme-api!\"}\n\n\n@app.get(\"/health\")\ndef read_health() -> dict[str, str]:\n    return {\"status\": \"ok\"}\n"
+    );
+    assert_eq!(
+        read(root.join("src/acme_api/__init__.py")),
+        "\"\"\"FastAPI application.\"\"\"\n"
+    );
+    assert_eq!(read(root.join("src/acme_api/py.typed")), "");
+    let test = read(root.join("tests/test_main.py"));
+    assert!(test.contains("from fastapi.testclient import TestClient"));
+    assert!(test.contains("from acme_api.main import app"));
+    assert!(test.contains("client.get(\"/\")"));
+    assert!(test.contains("client.get(\"/health\")"));
+    let readme = read(root.join("README.md"));
+    assert!(readme.starts_with(
+        "# acme-api\n\nA FastAPI application created with Pyfaro.\n"
+    ));
+    assert!(readme.contains(
+        "```sh\npyfaro sync\npyfaro check\npyfaro test\nuv build\n```"
+    ));
+    assert!(readme.contains(
+        "`pyfaro run --locked -- uvicorn acme_api.main:app --reload`"
+    ));
+}
+
+#[test]
+fn create_fastapi_path_places_the_project_at_a_relative_or_absolute_target() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    fs::create_dir(sandbox.join("projects")).unwrap();
+    sandbox
+        .pyfaro(["create", "fastapi", "demo", "--path", "projects/renamed"])
+        .run()
+        .success();
+    assert!(sandbox.join("projects/renamed/src/demo/main.py").is_file());
+    assert!(!sandbox.join("demo").exists());
+    let absolute = sandbox.join("projects/absolute dir é");
+    sandbox
+        .pyfaro(["create", "fastapi", "demo", "--path"])
+        .arg(&absolute)
+        .run()
+        .success();
+    assert!(absolute.join("tests/test_main.py").is_file());
+    sandbox
+        .pyfaro(["create", "fastapi", "demo", "--path", "missing/child"])
+        .run()
+        .code(1)
+        .stderr_contains(
+            "error: target parent must be an existing directory: ",
+        );
+    assert!(!sandbox.join("missing").exists());
+}
+
+#[test]
+fn create_fastapi_rejects_an_existing_target_without_touching_it() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let existing = sandbox.join("existing");
+    fs::create_dir(&existing).unwrap();
+    fs::write(existing.join("keep.txt"), "keep").unwrap();
+    let before = snapshot(sandbox.path());
+    sandbox
+        .pyfaro(["create", "fastapi", "demo", "--path"])
+        .arg(&existing)
+        .run()
+        .code(1)
+        .stdout_empty();
+    assert_eq!(snapshot(sandbox.path()), before);
+}
+
+#[test]
+fn create_fastapi_python_sets_the_minimum_version() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    for version in ["3.10", "3.12", "3.13"] {
+        let target = format!("py{version}");
+        sandbox
+            .pyfaro([
+                "create", "fastapi", "demo", "--python", version, "--path",
+            ])
+            .arg(&target)
+            .run()
+            .success();
+        assert!(
+            read(sandbox.join(&target).join("pyproject.toml"))
+                .contains(&format!("requires-python = \">={version}\"\n")),
+            "{version}"
+        );
+    }
+    for version in ["3", "3.7", "3.12.1", "4.0", ""] {
+        sandbox
+            .pyfaro(["create", "fastapi", "demo", "--python", version])
+            .run()
+            .code(1)
+            .stdout_empty()
+            .stderr_contains(PYTHON_ERROR);
+        assert!(!sandbox.join("demo").exists(), "--python {version:?}");
+    }
+}
+
+#[test]
+fn create_fastapi_package_is_independent_of_the_distribution_name() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    sandbox
+        .pyfaro(["create", "fastapi", "acme-api", "--package", "backend"])
+        .run()
+        .success();
+    let root = sandbox.join("acme-api");
+    assert_eq!(tree(&root), fastapi_tree("backend"));
+    let metadata = read(root.join("pyproject.toml"));
+    assert!(metadata.contains("name = \"acme-api\""));
+    assert!(
+        metadata
+            .contains("\n[tool.uv.build-backend]\nmodule-name = \"backend\"\n")
+    );
+    assert!(
+        read(root.join("tests/test_main.py"))
+            .contains("from backend.main import app")
+    );
+    assert!(read(root.join("README.md")).contains("uvicorn backend.main:app"));
+
+    sandbox
+        .pyfaro(["create", "fastapi", "same-name", "--package", "same_name"])
+        .run()
+        .success();
+    assert!(
+        !read(sandbox.join("same-name/pyproject.toml")).contains("module-name")
+    );
+}
+
+#[test]
+fn create_fastapi_gives_numeric_and_dotted_names_importable_packages() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    sandbox.pyfaro(["create", "fastapi", "1api"]).run().success();
+    assert_eq!(tree(&sandbox.join("1api")), fastapi_tree("_1api"));
+    assert!(
+        read(sandbox.join("1api/pyproject.toml"))
+            .contains("module-name = \"_1api\"")
+    );
+    sandbox.pyfaro(["create", "fastapi", "acme.api"]).run().success();
+    assert_eq!(tree(&sandbox.join("acme.api")), fastapi_tree("acme_api"));
+}
+
+#[test]
+fn create_fastapi_rejects_invalid_names_and_creates_nothing() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    for name in ["../escape", "trailing-", "has space", "foo-stubs", "con", ""]
+    {
+        sandbox
+            .pyfaro(["create", "fastapi", name])
+            .run()
+            .code(1)
+            .stdout_empty()
+            .stderr_eq(NAME_ERROR);
+        assert_eq!(entries(sandbox.path()), 0, "{name:?}");
+    }
+    for package in
+        ["for", "unittest", "__main__", "con", "has-dash", "1abc", ""]
+    {
+        sandbox
+            .pyfaro(["create", "fastapi", "hello", "--package", package])
+            .run()
+            .code(1)
+            .stdout_empty()
+            .stderr_eq(&package_error(package));
+        assert_eq!(entries(sandbox.path()), 0, "--package {package:?}");
+    }
+    sandbox
+        .pyfaro(["create", "fastapi", "unittest"])
+        .run()
+        .code(1)
+        .stderr_eq(&package_error("unittest"));
+    assert_eq!(entries(sandbox.path()), 0);
+}
+
+#[test]
+fn created_fastapi_syncs_checks_tests_builds_and_imports_its_app() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let root =
+        generate(&sandbox, &["fastapi", "acme-api"], "fastapi project é");
+    assert_eq!(
+        develop_passing(&root, "2 passed"),
+        ["acme_api-0.1.0-py3-none-any.whl", "acme_api-0.1.0.tar.gz"]
+    );
+    let lock = read(root.join("uv.lock"));
+    for package in ["fastapi", "uvicorn", "httpx2"] {
+        assert!(
+            lock.contains(&format!("name = \"{package}\"\n")),
+            "{package} missing from uv.lock"
+        );
+    }
+    assert!(lock.contains("name = \"httpx2\"\nversion = \"2.16.0\""));
+    assert_title(&root, "acme_api", "acme-api");
+    assert_test_run_has_no_warnings(&root);
+}
+
+#[test]
+fn created_fastapi_with_a_distinct_package_builds_and_imports_its_app() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let root = generate(
+        &sandbox,
+        &["fastapi", "acme-api", "--package", "backend"],
+        "distinct",
+    );
+    assert_eq!(
+        develop_passing(&root, "2 passed"),
+        ["acme_api-0.1.0-py3-none-any.whl", "acme_api-0.1.0.tar.gz"]
+    );
+    assert_title(&root, "backend", "acme-api");
+    assert_test_run_has_no_warnings(&root);
+}
+
+#[test]
+fn created_numeric_fastapi_syncs_checks_tests_and_builds() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let root = generate(&sandbox, &["fastapi", "1api"], "numeric api");
+    assert_eq!(
+        develop_passing(&root, "2 passed"),
+        ["1api-0.1.0-py3-none-any.whl", "1api-0.1.0.tar.gz"]
+    );
+    assert_title(&root, "_1api", "1api");
+    assert_test_run_has_no_warnings(&root);
 }
 
 // ------------------------------------------------------------------ init
@@ -1260,4 +1553,25 @@ fn assert_runs(root: &Path, command: &str, greeting: &str) {
     let out = Cmd::pyfaro(root, ["run", "--locked", "--", command]).run();
     out.success().stderr_empty();
     assert_eq!(out.stdout.replace("\r\n", "\n"), format!("{greeting}\n"));
+}
+
+/// The generated app imports through `pyfaro run` and carries the project name.
+fn assert_title(root: &Path, package: &str, title: &str) {
+    let code = format!("from {package}.main import app; print(app.title)");
+    let out =
+        Cmd::pyfaro(root, ["run", "--locked", "--", "python", "-c", &code])
+            .run();
+    out.success().stderr_empty();
+    assert_eq!(out.stdout.replace("\r\n", "\n"), format!("{title}\n"));
+}
+
+/// The generated tests pass without any pytest warnings (the `httpx2` pin
+/// keeps Starlette's `TestClient` from warning about `httpx`).
+fn assert_test_run_has_no_warnings(root: &Path) {
+    let out = Cmd::pyfaro(root, ["test"]).run();
+    out.success().stdout_contains("2 passed");
+    for text in [&out.stdout, &out.stderr] {
+        assert!(!text.contains("DeprecationWarning"), "{text}");
+        assert!(!text.contains("warning"), "{text}");
+    }
 }

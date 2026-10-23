@@ -11,7 +11,7 @@ the tool and forwards its exit status.
 
 | Command | What it does |
 | --- | --- |
-| [`create`](create.md) | Generate a packaged library or command-line project. |
+| [`create`](create.md) | Generate a packaged library, command-line or FastAPI project. |
 | [`init`](init.md) | Preview or apply uv-backed initialization of an existing or bare project (apply is Linux-only). |
 | [`sync`](sync.md) | Synchronize the project environment through uv. |
 | [`add`, `remove`](add-remove.md) | Add or remove dependencies through uv, without syncing. |

@@ -10,7 +10,7 @@ Experimental Python project workflows powered by uv
 Usage: pyfaro <COMMAND>
 
 Commands:
-  create  Create a packaged Python library or command-line project
+  create  Create a packaged Python library, command-line or FastAPI project
   init    Preview or apply uv-backed project initialization
   sync    Synchronize the project environment through uv
   add     Add requirements to the project through uv
@@ -44,7 +44,7 @@ page that explains the command.
 
 ## `pyfaro create`
 
-Create a packaged Python library or command-line project. Tutorial:
+Create a packaged Python library, command-line or FastAPI project. Tutorial:
 [First steps](../getting-started/first-steps.md) · Guide: [`create`](../commands/create.md)
 
 ### `pyfaro create lib`
@@ -72,6 +72,19 @@ Usage: pyfaro create cli [OPTIONS] <NAME>
 | `--python <PYTHON>` | Minimum Python version as `MAJOR.MINOR` (default `3.10`) |
 | `--package <PACKAGE>` | Import package name (defaults to the normalized distribution name) |
 | `--command <COMMAND>` | Installed command name (defaults to the distribution name with dots replaced by hyphens) |
+
+### `pyfaro create fastapi`
+
+```text
+Usage: pyfaro create fastapi [OPTIONS] <NAME>
+```
+
+| Argument or option | Description |
+| --- | --- |
+| `<NAME>` | Distribution name (also the default target directory name) |
+| `--path <PATH>` | Target directory; its parent must already exist |
+| `--python <PYTHON>` | Minimum Python version as `MAJOR.MINOR` (default `3.10`) |
+| `--package <PACKAGE>` | Import package name (defaults to the normalized distribution name) |
 
 ## `pyfaro init`
 

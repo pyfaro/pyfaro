@@ -99,7 +99,7 @@ More detail: [Installation](https://pyfaro.dev/getting-started/installation/).
 ## Quick start
 
 ```sh
-pyfaro create lib my-lib      # or: pyfaro create cli my-app
+pyfaro create lib my-lib      # or: create cli my-app, create fastapi my-api
 cd my-lib
 pyfaro sync                   # create .venv and uv.lock
 pyfaro add "requests>=2"      # then: pyfaro sync
@@ -122,7 +122,7 @@ follow a full [workflow](https://pyfaro.dev/workflows/).
 
 | Command | What it does |
 | --- | --- |
-| [`create`](https://pyfaro.dev/commands/create/) | Scaffold a packaged library (`lib`) or command-line app (`cli`) |
+| [`create`](https://pyfaro.dev/commands/create/) | Scaffold a packaged library (`lib`), command-line app (`cli`) or FastAPI app (`fastapi`) |
 | [`init`](https://pyfaro.dev/commands/init/) | Preview or apply Pyfaro initialization of an existing project |
 | [`sync`](https://pyfaro.dev/commands/sync/) | Create or update `.venv` and `uv.lock` through uv |
 | [`add` / `remove`](https://pyfaro.dev/commands/add-remove/) | Edit dependencies and dependency groups through uv |

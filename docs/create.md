@@ -1,10 +1,12 @@
 # Create a Python project
 
-`pyfaro create` generates a small, packaged Python project. Creation writes
+`pyfaro create` generates a small, packaged Python project (a library, a
+command-line application, or a FastAPI application). Creation writes
 files locally; it does not run uv, install Python, resolve dependencies, or
 download anything. The target's parent directory must already exist, and an
 existing file, directory, or symlink is never replaced. This command is
-available in published `0.2.0-alpha.1` and later versions.
+available in published `0.2.0-alpha.1` and later versions; `create fastapi`
+is new in `0.4.0-alpha.1`.
 
 ## Library
 
@@ -68,6 +70,36 @@ can differ independently. The generated `[project.scripts]` entry points to
 the distribution's normalized name, the template sets
 `[tool.uv.build-backend] module-name` so both wheel and editable installs use
 the selected package.
+
+## FastAPI project
+
+```sh
+pyfaro create fastapi acme-api --package backend --path ./projects/acme-api \
+  --python 3.12
+```
+
+The FastAPI template takes the distribution name, `--path`, `--python`, and
+`--package`, with the same naming rules, rollback behavior, and
+"no uv, no network" guarantee as the other templates. It adds `fastapi` and
+`uvicorn[standard]` as runtime dependencies and an HTTP client to the pinned
+`dev` group, which `fastapi.testclient.TestClient` needs: `httpx2==2.16.0` on
+Python 3.11 and later, where current Starlette prefers it and warns about plain
+`httpx`, and `httpx==0.28.1` on Python 3.10:
+
+```toml
+dependencies = ["fastapi>=0.161.1", "uvicorn[standard]>=0.54.0"]
+
+[dependency-groups]
+dev = ["pytest==9.1.1", "ruff==0.16.10", "ty==0.0.85", "httpx2==2.16.0; python_full_version >= '3.11'", "httpx==0.28.1; python_full_version < '3.11'"]
+```
+
+`src/<package>/main.py` exposes `app = FastAPI(title="acme-api")` with
+`GET /` returning `{"message": "Hello from acme-api!"}` and `GET /health`
+returning `{"status": "ok"}`; `tests/test_main.py` covers both routes with
+`TestClient`. After `pyfaro sync`, `pyfaro check`, `pyfaro test`, and
+`uv build` pass. Serve the application with
+`pyfaro run --locked -- uvicorn backend.main:app --reload`, or check the import
+with `pyfaro run -- python -c "from backend.main import app; print(app.title)"`.
 
 ## Develop and build
 
