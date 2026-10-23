@@ -150,7 +150,7 @@ fn missing_target(explicit: Option<&Path>) -> Result<Error> {
         Err(error) => return Err(error),
     };
     Ok(Error::Usage(format!(
-        "a task name, or a program after --, is required\n\n\
+        "the following required arguments were not provided:\n  <TASK> or -- <PROGRAM>...\n\n\
          Usage: pyfaro run [OPTIONS] <TASK> [-- <ARGS>...]\n       \
          pyfaro run [OPTIONS] -- <PROGRAM> [ARGS]...\n{tasks}\n\
          For more information, try '--help'."

@@ -469,7 +469,7 @@ fn without_a_task_or_a_program_it_is_a_usage_error_listing_the_tasks() {
             .run()
             .code(2)
             .stdout_empty()
-            .stderr_contains("a task name, or a program after --, is required")
+            .stderr_contains("the following required arguments were not provided:\n  <TASK> or -- <PROGRAM>...")
             .stderr_contains(
                 "Usage: pyfaro run [OPTIONS] <TASK> [-- <ARGS>...]",
             )
@@ -483,10 +483,14 @@ fn without_a_task_or_a_program_it_is_a_usage_error_listing_the_tasks() {
         .pyfaro(["run"])
         .run()
         .code(2)
-        .stderr_contains("is required")
+        .stderr_contains("required arguments were not provided")
         .stderr_contains("Usage: pyfaro run");
     let elsewhere = Sandbox::new();
-    elsewhere.pyfaro(["run"]).run().code(2).stderr_contains("is required");
+    elsewhere
+        .pyfaro(["run"])
+        .run()
+        .code(2)
+        .stderr_contains("required arguments were not provided");
 }
 
 #[test]

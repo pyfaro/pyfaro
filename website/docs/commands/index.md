@@ -15,7 +15,7 @@ the tool and forwards its exit status.
 | [`init`](init.md) | Preview or apply uv-backed initialization of an existing or bare project (apply is Linux-only). |
 | [`sync`](sync.md) | Synchronize the project environment through uv. |
 | [`add`, `remove`](add-remove.md) | Add or remove dependencies through uv, without syncing. |
-| [`run`](run.md) | Run a command in the project environment. |
+| [`run`](run.md) | Run a command, or a named task, in the project environment. |
 | [`python`](python.md) | List, install or pin Python versions through uv. |
 | [`tools`](tools.md) | Show resolved paths and versions of the external tools. |
 | [`doctor`](doctor.md) | Diagnose project configuration, environment and tool availability. |

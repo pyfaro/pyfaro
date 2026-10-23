@@ -15,7 +15,7 @@ Commands:
   sync    Synchronize the project environment through uv
   add     Add requirements to the project through uv
   remove  Remove requirements from the project through uv
-  run     Run a command in the project environment through uv
+  run     Run a named task or a command in the project environment through uv
   lint    Lint project files with Ruff
   fmt     Format project files with Ruff
   type    Type-check project files with ty
@@ -160,15 +160,17 @@ Usage: pyfaro remove [OPTIONS] <PACKAGES>...
 
 ## `pyfaro run`
 
-Run a command in the project environment through uv. Guide: [`run`](../commands/run.md)
+Run a named task or a command in the project environment through uv. Guide: [`run`](../commands/run.md)
 
 ```text
-Usage: pyfaro run [OPTIONS] -- <COMMAND>...
+Usage: pyfaro run [OPTIONS] <TASK> [-- <ARGS>...]
+       pyfaro run [OPTIONS] -- <PROGRAM> [ARGS]...
 ```
 
 | Argument or option | Description |
 | --- | --- |
-| `<COMMAND>...` | Command and arguments after `--` |
+| `<TASK>` | Task defined in `[tool.pyfaro.tasks]`; omit it to run a program after `--` |
+| `<ARGS>...` | Program and arguments after `--`, or extra arguments for the task |
 | `--project <PROJECT>` | Explicit project directory (otherwise discover from the current directory) |
 | `--locked` | Refuse to update an absent or stale `uv.lock` |
 | `--frozen` | Use `uv.lock` without checking it against project metadata |
