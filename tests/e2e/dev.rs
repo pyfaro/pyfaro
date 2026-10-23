@@ -758,6 +758,9 @@ fn sandbox_processes(sandbox: &Sandbox) -> Vec<u32> {
 
 /// Stop the template's server and check the port and the process tree.
 fn stop_template(live: crate::harness::Live, port: u16, sandbox: &Sandbox) {
+    // The process scan needs `pgrep`, so it only runs on Unix.
+    #[cfg(not(unix))]
+    let _ = sandbox;
     #[cfg(unix)]
     assert!(
         !sandbox_processes(sandbox).is_empty(),
