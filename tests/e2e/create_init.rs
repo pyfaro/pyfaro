@@ -701,10 +701,9 @@ fn create_fastapi_writes_the_documented_pyproject_and_sources() {
     assert_eq!(
         metadata,
         format!(
-            "[project]\nname = \"acme-api\"\nversion = \"0.1.0\"\nreadme = \"README.md\"\nrequires-python = \">=3.12\"\ndependencies = [\"fastapi>=0.161.1\", \"uvicorn[standard]>=0.54.0\"]\n\n[build-system]\nrequires = [\"uv_build>=0.9.26,<0.10.0\"]\nbuild-backend = \"uv_build\"\n\n[dependency-groups]\ndev = [\"pytest=={PYTEST}\", \"ruff=={RUFF}\", \"ty=={TY}\", \"httpx2==2.16.0; python_full_version >= '3.11'\", \"httpx==0.28.1; python_full_version < '3.11'\"]\n\n[tool.pyfaro]\nschema-version = 1\n\n[tool.ruff]\nline-length = 88\nsrc = [\"src\", \"tests\"]\n\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n"
+            "[project]\nname = \"acme-api\"\nversion = \"0.1.0\"\nreadme = \"README.md\"\nrequires-python = \">=3.12\"\ndependencies = [\"fastapi>=0.161.1\", \"uvicorn[standard]>=0.54.0\"]\n\n[build-system]\nrequires = [\"uv_build>=0.9.26,<0.10.0\"]\nbuild-backend = \"uv_build\"\n\n[dependency-groups]\ndev = [\"pytest=={PYTEST}\", \"ruff=={RUFF}\", \"ty=={TY}\", \"httpx2==2.16.0; python_full_version >= '3.11'\", \"httpx==0.28.1; python_full_version < '3.11'\"]\n\n[tool.pyfaro]\nschema-version = 1\n\n[tool.pyfaro.dev]\npreset = \"fastapi\"\nentry-point = \"acme_api.main:app\"\n\n[tool.ruff]\nline-length = 88\nsrc = [\"src\", \"tests\"]\n\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n"
         )
     );
-    assert!(!metadata.contains("[tool.pyfaro.dev]"));
     assert!(!metadata.contains("[tool.ty]"));
     assert!(!metadata.contains("module-name"));
     assert!(!metadata.contains("[project.scripts]"));
@@ -730,9 +729,9 @@ fn create_fastapi_writes_the_documented_pyproject_and_sources() {
     assert!(readme.contains(
         "```sh\npyfaro sync\npyfaro check\npyfaro test\nuv build\n```"
     ));
-    assert!(readme.contains(
-        "`pyfaro run --locked -- uvicorn acme_api.main:app --reload`"
-    ));
+    assert!(readme.contains("`pyfaro dev`"));
+    assert!(readme.contains("`pyfaro dev -- --port 8001`"));
+    assert!(!readme.contains("uvicorn"));
 }
 
 #[test]
@@ -830,7 +829,9 @@ fn create_fastapi_package_is_independent_of_the_distribution_name() {
         read(root.join("tests/test_main.py"))
             .contains("from backend.main import app")
     );
-    assert!(read(root.join("README.md")).contains("uvicorn backend.main:app"));
+    assert!(metadata.contains(
+        "\n[tool.pyfaro.dev]\npreset = \"fastapi\"\nentry-point = \"backend.main:app\"\n"
+    ));
 
     sandbox
         .pyfaro(["create", "fastapi", "same-name", "--package", "same_name"])

@@ -174,6 +174,15 @@ dependencies = ["fastapi>=0.161.1", "uvicorn[standard]>=0.54.0"]
 dev = ["pytest==9.1.1", "ruff==0.16.10", "ty==0.0.85", "httpx2==2.16.0; python_full_version >= '3.11'", "httpx==0.28.1; python_full_version < '3.11'"]
 ```
 
+It also writes the `[tool.pyfaro.dev]` table that [`pyfaro dev`](dev.md) reads;
+the entry point follows `--package`:
+
+```toml
+[tool.pyfaro.dev]
+preset = "fastapi"
+entry-point = "acme_api.main:app"
+```
+
 Sync once, then check, test and serve the application:
 
 ```console
@@ -181,8 +190,10 @@ $ cd acme-api
 $ pyfaro sync
 $ pyfaro check
 $ pyfaro test
-$ pyfaro run --locked -- uvicorn acme_api.main:app --reload
+$ pyfaro dev
 ```
+
+Pass Uvicorn options after `--`, for example `pyfaro dev -- --port 8001`.
 
 `create fastapi` is new in `0.4.0-alpha.1`.
 

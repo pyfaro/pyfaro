@@ -477,6 +477,25 @@ impl Live {
         }
     }
 
+    /// Poll `GET path` until the body contains `needle`. Refused connections
+    /// and other statuses are retried, which a reloading server shows briefly.
+    pub fn wait_for_http(
+        &mut self,
+        port: u16,
+        path: &str,
+        needle: &str,
+        timeout: Duration,
+    ) {
+        self.wait_until(
+            timeout,
+            &format!("GET {path} to answer {needle:?}"),
+            |_| {
+                http_get(port, path)
+                    .is_ok_and(|(_, body)| body.contains(needle))
+            },
+        );
+    }
+
     /// Ctrl-C: SIGINT on Unix. Windows has no equivalent for a piped child, so
     /// the process is terminated (its Job Object takes the tree with it).
     pub fn interrupt(&mut self) {

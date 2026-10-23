@@ -28,6 +28,11 @@ Version `0.4.0-alpha.1` has not been published.
   `reload`), validated before launch. The `fastapi` preset runs Uvicorn with
   its own reloader after checking that `uvicorn` is declared and that the port
   is free; without a preset the entry point is run with `python -m`.
+- Wire `pyfaro dev` into the FastAPI template: `pyfaro create fastapi` now
+  writes `[tool.pyfaro.dev]` with `preset = "fastapi"` and the
+  `<package>.main:app` entry point (following `--package`), and the generated
+  README serves the app with `pyfaro dev` instead of a hand-written Uvicorn
+  command.
 
 ## 0.3.0-alpha.1 — 2026-10-22
 

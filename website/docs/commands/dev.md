@@ -83,6 +83,11 @@ pyfaro dev: uvicorn is not declared in the project dependencies
 pyfaro dev: add it with: pyfaro add "uvicorn[standard]"
 ```
 
+The FastAPI template writes this table for you. After `pyfaro create fastapi
+acme-api` and `pyfaro sync`, `pyfaro dev` serves it, and `pyfaro dev -- --port
+8001` picks another port. Editing `src/acme_api/main.py` reloads the server; a
+syntax error shows its `SyntaxError` traceback in the output until you fix it.
+
 ### 3. Run a module
 
 Without a preset the entry point is a module, run as `python -m` in the

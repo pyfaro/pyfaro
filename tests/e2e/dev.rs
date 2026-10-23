@@ -721,3 +721,149 @@ fn reload_false_is_honored_and_extra_arguments_win() {
     assert!(!stderr.contains("Started reloader process"), "{stderr}");
     stop_and_assert_clean(live, port, &root);
 }
+
+// ------------------------------------------------- the FastAPI template
+
+/// `pyfaro create fastapi` followed by `pyfaro sync`, in `<sandbox>/<name>`.
+fn synced_fastapi_template(
+    sandbox: &Sandbox,
+    name: &str,
+    package: Option<&str>,
+) -> PathBuf {
+    let mut create = vec!["create", "fastapi", name, "--python", "3.12"];
+    if let Some(package) = package {
+        create.extend(["--package", package]);
+    }
+    sandbox.pyfaro(create).run().success();
+    let root = sandbox.join(name);
+    Cmd::pyfaro(&root, ["sync"]).run().success();
+    root
+}
+
+/// Processes whose command line mentions the sandbox: uv, Uvicorn's
+/// reloader and its workers.
+#[cfg(unix)]
+fn sandbox_processes(sandbox: &Sandbox) -> Vec<u32> {
+    let name = sandbox.path().file_name().unwrap().to_string_lossy();
+    let unique = name.rsplit(' ').next().unwrap().to_owned();
+    let listing = std::process::Command::new("pgrep")
+        .args(["-f", &unique])
+        .output()
+        .expect("run pgrep");
+    String::from_utf8_lossy(&listing.stdout)
+        .lines()
+        .filter_map(|line| line.trim().parse().ok())
+        .collect()
+}
+
+/// Stop the template's server and check the port and the process tree.
+fn stop_template(live: crate::harness::Live, port: u16, sandbox: &Sandbox) {
+    #[cfg(unix)]
+    assert!(
+        !sandbox_processes(sandbox).is_empty(),
+        "the process scan finds nothing while the server runs"
+    );
+    let mut live = live;
+    live.interrupt();
+    let out = live.finish(SHORT);
+    if cfg!(unix) {
+        out.code(130).stderr_contains("pyfaro dev: stopped\n");
+    }
+    assert!(
+        wait_until_port_is_free(port, SHORT),
+        "port {port} is still bound after stopping"
+    );
+    #[cfg(unix)]
+    for pid in sandbox_processes(sandbox) {
+        wait_until_process_is_gone(pid, SHORT);
+    }
+}
+
+#[test]
+fn the_fastapi_template_is_served_by_pyfaro_dev() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let root = synced_fastapi_template(&sandbox, "acme-api", None);
+    let port = free_port();
+    let mut live =
+        Cmd::pyfaro(&root, ["dev", "--", "--port", &port.to_string()]).spawn();
+    live.wait_for_port(port, STARTUP);
+    live.wait_for_stderr("Application startup complete", SHORT);
+    let (status, body) = live.http_get(port, "/");
+    assert_eq!(status, 200, "{body}");
+    assert!(body.contains("Hello from acme-api!"), "{body}");
+    let (status, body) = live.http_get(port, "/health");
+    assert_eq!(status, 200, "{body}");
+    assert!(body.contains("\"status\":\"ok\""), "{body}");
+    assert!(
+        live.stderr().contains(&format!(
+            "pyfaro dev: starting acme_api.main:app with uvicorn (reload on) at http://127.0.0.1:{port} - press Ctrl-C to stop\n"
+        )),
+        "{}",
+        live.stderr()
+    );
+    stop_template(live, port, &sandbox);
+}
+
+#[test]
+fn editing_the_template_reloads_and_a_syntax_error_is_visible() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let root = synced_fastapi_template(&sandbox, "acme-api", None);
+    let port = free_port();
+    let mut live =
+        Cmd::pyfaro(&root, ["dev", "--", "--port", &port.to_string()]).spawn();
+    live.wait_for_port(port, STARTUP);
+    live.wait_for_stderr("Application startup complete", SHORT);
+    live.wait_for_http(port, "/", "Hello from acme-api!", SHORT);
+
+    // Uvicorn's own reloader picks up the edit.
+    let main = root.join("src/acme_api/main.py");
+    let original = std::fs::read_to_string(&main).unwrap();
+    std::fs::write(
+        &main,
+        original.replace("Hello from acme-api!", "Reloaded by Uvicorn."),
+    )
+    .unwrap();
+    live.wait_for_http(port, "/", "Reloaded by Uvicorn.", SHORT);
+
+    // A syntax error shows its traceback; fixing it serves again.
+    std::fs::write(&main, "def broken(:\n    pass\n").unwrap();
+    live.wait_for_stderr("SyntaxError", SHORT);
+    std::fs::write(
+        &main,
+        original.replace("Hello from acme-api!", "Fixed again."),
+    )
+    .unwrap();
+    live.wait_for_http(port, "/", "Fixed again.", SHORT);
+
+    stop_template(live, port, &sandbox);
+}
+
+#[test]
+fn a_custom_package_template_is_served_by_pyfaro_dev() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let root = synced_fastapi_template(&sandbox, "acme-api", Some("backend"));
+    let metadata =
+        std::fs::read_to_string(root.join("pyproject.toml")).unwrap();
+    assert!(
+        metadata.contains("entry-point = \"backend.main:app\"\n"),
+        "{metadata}"
+    );
+    let port = free_port();
+    let mut live =
+        Cmd::pyfaro(&root, ["dev", "--", "--port", &port.to_string()]).spawn();
+    live.wait_for_port(port, STARTUP);
+    live.wait_for_stderr("Application startup complete", SHORT);
+    let (status, body) = live.http_get(port, "/");
+    assert_eq!(status, 200, "{body}");
+    assert!(body.contains("Hello from acme-api!"), "{body}");
+    assert!(
+        live.stderr()
+            .contains("pyfaro dev: starting backend.main:app with uvicorn"),
+        "{}",
+        live.stderr()
+    );
+    stop_template(live, port, &sandbox);
+}

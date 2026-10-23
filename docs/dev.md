@@ -70,6 +70,22 @@ With the `fastapi` preset the project must declare `uvicorn`
 specifiers and markers are fine, and names are compared PEP 503 normalized).
 Otherwise `pyfaro dev` exits 1 and suggests `pyfaro add "uvicorn[standard]"`.
 
+## The FastAPI template
+
+`pyfaro create fastapi` writes this table for you, with the entry point
+following `--package`:
+
+```toml
+[tool.pyfaro.dev]
+preset = "fastapi"
+entry-point = "<package>.main:app"
+```
+
+So `pyfaro sync` followed by `pyfaro dev` serves the generated application at
+http://127.0.0.1:8000/ with Uvicorn's reloader: editing `main.py` is picked up,
+and a syntax error shows its traceback in the output until you fix it. Use
+`pyfaro dev -- --port 8001` when the default port is taken.
+
 ## Options
 
 | Option | Meaning |
