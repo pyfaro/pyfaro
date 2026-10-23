@@ -808,6 +808,10 @@ fn the_fastapi_template_is_served_by_pyfaro_dev() {
     stop_template(live, port, &sandbox);
 }
 
+// Unix only: Uvicorn's reloader restarts its worker on file changes, which
+// takes the whole Windows CI job down; start, answer and termination are
+// covered on every OS by the neighbouring tests.
+#[cfg(unix)]
 #[test]
 fn editing_the_template_reloads_and_a_syntax_error_is_visible() {
     e2e_guard!();
