@@ -810,7 +810,8 @@ pub fn snapshot(root: &Path) -> Snapshot {
                     .map(|c| c.as_os_str().to_string_lossy().into_owned())
                     .collect::<Vec<_>>()
                     .join("/");
-                files.insert(relative, format!("{digest:x}"));
+                let hex = digest.iter().map(|byte| format!("{byte:02x}"));
+                files.insert(relative, hex.collect());
             }
         }
     }
