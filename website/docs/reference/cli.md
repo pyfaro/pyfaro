@@ -1,7 +1,7 @@
 # Command line
 
 Every Pyfaro command and its flags, as printed by `pyfaro --help` for the
-development build, version `0.5.0-alpha.1`.
+development build, version `0.5.0-beta.1`.
 
 ```console
 $ pyfaro --help

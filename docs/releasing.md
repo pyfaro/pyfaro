@@ -5,7 +5,7 @@ It adds `lint`, `fmt`, `type`, `test`, and `check` to the project creation,
 dependency, Python-version, and doctor commands of `0.2.0-alpha.1`.
 `init --apply` remains Linux-only; the other commands are tested on Linux,
 macOS, and Windows. `0.4.0-alpha.1` (v0.4.0 Developer Experience work) is prepared and awaits
-publication. The repository now develops unpublished `0.5.0-alpha.1`
+publication. The repository now develops unpublished `0.5.0-beta.1`
 (v0.5.0 Public Beta work). Its version number is not a publication
 approval.
 
@@ -215,7 +215,7 @@ not be committed to this repository.
 ## Pre-publication verification for a future release
 
 First agree on the next release version and prepare it in a reviewed PR.
-Do not publish the repository's `0.5.0-alpha.1` development version merely
+Do not publish the repository's `0.5.0-beta.1` development version merely
 because it is present in `Cargo.toml`. Use a clean checkout of the merged
 preparation commit, not the PR branch, and the pinned Rust toolchain. Install
 uv 0.9.26 separately and provide Python 3.10+ (CI uses 3.12). Repeat these
