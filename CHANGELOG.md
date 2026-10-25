@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — 0.6.0-beta.1 development
+
+Version `0.6.0-beta.1` has not been published. It has no changes yet.
+
 ## 0.5.0-beta.1 — 2026-10-25
 
 Published on [crates.io](https://crates.io/crates/pyfaro/0.5.0-beta.1)

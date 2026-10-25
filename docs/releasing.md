@@ -1,10 +1,13 @@
+# Publishing Pyfaro
+
 The latest published version is [`0.5.0-beta.1`](https://crates.io/crates/pyfaro/0.5.0-beta.1),
 the first public beta. It adds `build`, shell completions, `--verbose`,
 install scripts, and the CLI and configuration reference to the commands of
 `0.4.0-alpha.1`, and is also published on
 [PyPI](https://pypi.org/project/pyfaro/0.5.0b1/) as `0.5.0b1` binary wheels.
 `init --apply` remains Linux-only; the other commands are tested on Linux,
-macOS, and Windows. The version number in `Cargo.toml` is not a publication
+macOS, and Windows. The repository now develops unpublished `0.6.0-beta.1`
+(v0.6.0 Launch Readiness work). Its version number is not a publication
 approval.
 
 Completing the `v0.1.0 — Foundation` or `v0.2.0 — Project Management` backlog
@@ -311,7 +314,7 @@ not be committed to this repository.
 ## Pre-publication verification for a future release
 
 First agree on the next release version and prepare it in a reviewed PR.
-Do not publish the repository's `0.5.0-beta.1` development version merely
+Do not publish the repository's `0.6.0-beta.1` development version merely
 because it is present in `Cargo.toml`. Use a clean checkout of the merged
 preparation commit, not the PR branch, and the pinned Rust toolchain. Install
 uv 0.9.26 separately and provide Python 3.10+ (CI uses 3.12). Repeat these

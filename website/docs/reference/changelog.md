@@ -18,7 +18,8 @@ each release on GitHub.
 | `0.1.0-alpha.2` | 2026-10-19 | `sync`, `run`, `tools`, project discovery, configuration |
 | `0.1.0-alpha.1` | 2026-10-19 | First release: `init` |
 
-Nothing is in development yet beyond `main`.
+`0.6.0-beta.1` (v0.6.0 Launch Readiness) is in development on `main` and is not
+published.
 
 !!! note
     Pyfaro is in beta. Interfaces may still change before 1.0.
