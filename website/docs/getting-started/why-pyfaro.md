@@ -1,3 +1,7 @@
+---
+description: "Why use Pyfaro instead of plain uv, a Makefile, poethepoet, Hatch or PDM scripts: side-by-side commands, and what Pyfaro does not do yet."
+---
+
 # Why Pyfaro
 
 The first question is fair: *why not just use uv?* This page answers it with
