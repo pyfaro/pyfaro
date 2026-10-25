@@ -2,7 +2,7 @@
 
 Every Pyfaro command and subcommand, with its usage line, every argument and
 flag, and its exit codes, as printed by `pyfaro --help` for version
-`0.5.0-beta.1`. A test compares this page with the program's own argument
+`0.6.0-beta.1` (in development). A test compares this page with the program's own argument
 definitions, so a command, flag or help text that changes without this page
 failing the build is not possible. The configuration file is described in the
 [configuration reference](configuration.md), the variables in
