@@ -167,11 +167,20 @@ not take a Ctrl-C for a stop request at once:
   (Uvicorn's reloader can swallow a Ctrl-C after restarting a worker that had
   crashed, leaving the reloader alone), the Ctrl-C was a stop request that was
   only partly obeyed: the rest of the tree is terminated, as above.
-- A second Ctrl-C while the first is still pending stops the tree at once, by
-  terminating the job: use it for a process that ignores Ctrl-C.
+- A second Ctrl-C while the first is still pending stops the tree, by
+  terminating the job: use it for a process that ignores Ctrl-C. It does so at
+  once when Pyfaro has watched the tree without a gap since the first Ctrl-C
+  and nothing restarted. A restart is only noticed by sampling the job, and a
+  worker is out of it for a few milliseconds, so on a busy machine a reload can
+  pass between two samples and leave its Ctrl-C pending; the Ctrl-C of the next
+  reload would then look like a second one. When Pyfaro could have missed a
+  restart like that, a second Ctrl-C waits half a second (a second at most, if
+  the machine stays busy) for the restart it may itself have caused, and only
+  then terminates the tree. A third Ctrl-C does not wait.
 
 While it supervises, `pyfaro dev` also opens the console (`CONOUT$`) every
-20 ms. A console hands out a Ctrl-C that one of its processes generated, such
+20 ms, from a thread of its own (opening the console can block for tens of
+milliseconds on a busy machine, which would blind the supervision). A console hands out a Ctrl-C that one of its processes generated, such
 as Uvicorn's, only when something next uses the console; a terminal window
 always does, but a console reached only through pipes (an IDE, a service, a
 test harness) may hold the event back indefinitely, and Uvicorn's worker would
