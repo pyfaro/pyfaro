@@ -336,7 +336,7 @@ fn sync_reports_a_missing_uv_with_the_remedy() {
         .code(1)
         .stdout_empty()
         .stderr_contains("error: could not find uv at pyfaro-e2e-no-such-uv")
-        .stderr_contains("install uv or use --uv <path>");
+        .stderr_contains("fix --uv <path> or install uv (");
     assert_eq!(project.snapshot(), before);
 }
 
@@ -353,7 +353,9 @@ fn sync_rejects_an_executable_that_is_not_a_supported_uv() {
         .code(1)
         .stdout_empty()
         .stderr_contains("error: unsupported uv version: pyfaro ")
-        .stderr_contains("use uv >=0.9.26 (tested: 0.9.26)");
+        .stderr_contains(
+            "use uv >=0.9.26 (tested: 0.9.26) by running `uv self update`",
+        );
     assert_eq!(project.snapshot(), before);
     assert!(!project.path(".venv").exists());
 }
@@ -378,7 +380,9 @@ fn sync_rejects_a_uv_that_is_too_old() {
         .code(1)
         .stdout_empty()
         .stderr_contains("error: unsupported uv version: uv 0.9.25")
-        .stderr_contains("use uv >=0.9.26 (tested: 0.9.26)");
+        .stderr_contains(
+            "use uv >=0.9.26 (tested: 0.9.26) by running `uv self update`",
+        );
     assert_eq!(project.snapshot(), before);
 }
 
@@ -1232,7 +1236,7 @@ fn run_reports_a_missing_uv() {
         .code(1)
         .stdout_empty()
         .stderr_contains("error: could not find uv at pyfaro-e2e-no-such-uv")
-        .stderr_contains("install uv or use --uv <path>");
+        .stderr_contains("fix --uv <path> or install uv (");
     assert_eq!(project.snapshot(), before);
 }
 

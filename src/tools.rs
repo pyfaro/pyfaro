@@ -85,17 +85,17 @@ pub(crate) fn inspect(
     if matches!(tool, Tool::Uv) {
         let selected =
             explicit_uv.cloned().unwrap_or_else(|| OsString::from("uv"));
-        return uv::Uv::inspect(selected.clone(), cancelled).map_err(|error| {
-            if matches!(error, Error::Cancelled) {
-                error
-            } else {
-                Error::ToolProbe {
-                    tool: "uv",
-                    path: PathBuf::from(selected),
-                    source: Box::new(error),
+        // uv's own errors already name the path and the remedy. A failing
+        // probe keeps exit code 1 here: `tools` and `doctor` report it
+        // instead of forwarding uv's status.
+        return uv::Uv::inspect(selected, cancelled).map_err(
+            |error| match error {
+                Error::UvProbe { .. } => {
+                    Error::Tool { tool: "uv", reason: error.to_string() }
                 }
-            }
-        });
+                error => error,
+            },
+        );
     }
     let tool_name = name(tool);
     let binary = resolve(tool_name, root)?;

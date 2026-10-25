@@ -45,9 +45,7 @@ pub(crate) enum Error {
         #[source]
         source: io::Error,
     },
-    #[error(
-        "could not find uv at {path}: {source}; install uv or use --uv <path>"
-    )]
+    #[error("{}", uv_lookup_message(.path, .source))]
     UvLookup {
         path: PathBuf,
         #[source]
@@ -57,9 +55,13 @@ pub(crate) enum Error {
     UvStatus { operation: &'static str, status: ExitStatus },
     #[error("{tool} failed ({status}); see {tool}'s output above")]
     ToolStatus { tool: &'static str, status: ExitStatus },
-    #[error("uv --version failed for {path} ({status}): {stderr}")]
+    #[error(
+        "uv --version failed for {path} ({status}): {stderr}; reinstall uv (https://docs.astral.sh/uv/getting-started/installation/) or select another with --uv <path>"
+    )]
     UvProbe { path: PathBuf, status: ExitStatus, stderr: String },
-    #[error("unsupported uv version: {0}; use uv >=0.9.26 (tested: 0.9.26)")]
+    #[error(
+        "unsupported uv version: {0}; use uv >=0.9.26 (tested: 0.9.26) by running `uv self update`, reinstalling uv (https://docs.astral.sh/uv/getting-started/installation/) or selecting another with --uv <path>"
+    )]
     UvVersion(String),
     #[error("{tool}: {reason}")]
     Tool { tool: &'static str, reason: String },
@@ -114,6 +116,36 @@ pub(crate) enum Error {
         #[source]
         source: Failures,
     },
+}
+
+const UV_INSTALL_DOCS: &str =
+    "https://docs.astral.sh/uv/getting-started/installation/";
+
+/// The one-line remedy for a uv that cannot be found: where to get it, and
+/// how to point Pyfaro at an existing copy.
+fn uv_lookup_message(path: &std::path::Path, source: &which::Error) -> String {
+    let install = if cfg!(windows) {
+        r#"powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex""#
+    } else {
+        "curl -LsSf https://astral.sh/uv/install.sh | sh"
+    };
+    // `which` explains only the unusual failures; "cannot find binary path"
+    // adds nothing to "could not find".
+    let detail = match source {
+        which::Error::CannotFindBinaryPath => String::new(),
+        other => format!(" ({other})"),
+    };
+    let install = format!("install uv ({UV_INSTALL_DOCS}, or `{install}`)");
+    if path == std::path::Path::new("uv") {
+        format!(
+            "could not find uv on PATH{detail}; {install} or pass --uv <path>"
+        )
+    } else {
+        format!(
+            "could not find uv at {}{detail}; fix --uv <path> or {install}",
+            path.display()
+        )
+    }
 }
 
 /// Preserve every recovery failure, including when both files cannot be restored.
