@@ -32,8 +32,7 @@ project's uv indexes, sources, and dependency settings to uv. Python-version
 commands use the same adapter and clear `UV_NO_PROJECT`, `UV_NO_CONFIG`, and
 `UV_PYTHON` so uv can honor project metadata and `.python-version`.
 
-Linux keeps the existing process-group and child-subreaper cleanup used by
-`init`. macOS uses a process group and sends SIGINT before forcing cleanup.
+Linux uses process-group and child-subreaper cleanup. macOS uses a process group and sends SIGINT before forcing cleanup.
 Windows assigns a suspended child to a kill-on-close Job Object before it
 runs while preserving the caller's console. It terminates the job after the
 leader exits and confirms the active process count reaches zero. macOS checks
@@ -42,5 +41,5 @@ process states when Darwin reports
 Windows batch wrappers are rejected because Rust would invoke a shell for
 them. Cancellation stops the owned process tree and returns `130`; an unconfirmed cleanup is
 reported as an error. The adapter is shared infrastructure for later commands.
-`init --apply` remains Linux-only because its file-restoration contract has
-only been validated there.
+`init --apply` relies on that cleanup on all three platforms: its file
+restoration is tested on each of them.

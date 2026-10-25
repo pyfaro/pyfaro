@@ -156,7 +156,7 @@ Usage: pyfaro create fastapi [OPTIONS] <NAME>
 ## `pyfaro init`
 
 Preview or apply uv-backed project initialization. Without `--apply`, nothing
-is written. `--apply` is Linux-only; see [Platform support](../concepts/platform-support.md).
+is written. `--apply` works on Linux, macOS and Windows.
 Guide: [`init`](../commands/init.md) · Workflow: [Adopt an existing project](../workflows/adopt-existing-project.md)
 
 ```text

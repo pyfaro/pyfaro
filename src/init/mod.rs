@@ -3,6 +3,8 @@ mod files;
 use std::fs;
 use std::io;
 use std::io::Write;
+use std::process::ExitStatus;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::cli::InitArgs;
 use crate::config;
@@ -57,16 +59,12 @@ pub(crate) fn run(args: InitArgs) -> Result<()> {
     if !args.apply {
         return Ok(());
     }
-    if !cfg!(target_os = "linux") {
-        return Err(Error::Project(
-            "init --apply is supported on Linux only in this alpha; preview is available on all platforms".into()
-        ));
-    }
-
     let cancelled = process::cancellation()?;
     let uv = uv::Uv::discover(args.uv, args.offline, &cancelled)?;
     metadata.verify_unchanged()?;
     lockfile.verify_unchanged()?;
+    metadata.ensure_replaceable()?;
+    lockfile.ensure_replaceable()?;
     io::stdout().flush().map_err(Error::Output)?;
     let result = (|| {
         if original.is_none() {
@@ -86,7 +84,10 @@ pub(crate) fn run(args: InitArgs) -> Result<()> {
         }
         uv.lock(&root, &cancelled)
     })();
-    if let Err(operation) = result {
+    if let Err(mut operation) = result {
+        if interrupted(&operation, &cancelled) {
+            operation = Error::Cancelled;
+        }
         if operation.cleanup_incomplete() {
             return Err(Error::RecoverySkipped(Box::new(operation)));
         }
@@ -109,6 +110,29 @@ pub(crate) fn run(args: InitArgs) -> Result<()> {
     )
     .map_err(Error::Output)?;
     Ok(())
+}
+
+/// uv ends on the same Ctrl-C that cancels Pyfaro, so its status can be seen
+/// before the cancellation flag is. That status is a cancellation, not a
+/// uv failure.
+fn interrupted(error: &Error, cancelled: &AtomicBool) -> bool {
+    let Error::UvStatus { status, .. } = error else {
+        return false;
+    };
+    cancelled.load(Ordering::SeqCst) || ended_by_interrupt(*status)
+}
+
+#[cfg(unix)]
+fn ended_by_interrupt(status: ExitStatus) -> bool {
+    use std::os::unix::process::ExitStatusExt;
+    status.signal() == Some(2)
+}
+
+#[cfg(windows)]
+fn ended_by_interrupt(status: ExitStatus) -> bool {
+    /// `STATUS_CONTROL_C_EXIT`, as a process exit code.
+    const CONTROL_C_EXIT: u32 = 0xC000_013A;
+    status.code().map(i32::cast_unsigned) == Some(CONTROL_C_EXIT)
 }
 
 fn print_plan(

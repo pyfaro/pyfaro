@@ -58,10 +58,11 @@ Initialized . with Pyfaro and uv.
 Your existing metadata, dependencies and other tools' settings are left
 alone; Pyfaro adds only `[tool.pyfaro]` and creates `uv.lock`.
 
-!!! warning "`init --apply` is Linux-only for now"
-    On macOS and Windows, `init` previews but refuses to apply. You can add
-    `[tool.pyfaro]` with `schema-version = 1` to `pyproject.toml` by hand and
-    run `pyfaro sync`; every other command works on all three platforms.
+`init --apply` works the same on Linux, macOS and Windows: if uv fails or you
+press Ctrl+C, `pyproject.toml` and `uv.lock` are restored byte for byte, and
+running it again on an initialized project changes nothing. (Releases up to
+`0.5.0-beta.1` apply it on Linux only; there you can add `[tool.pyfaro]` with
+`schema-version = 1` to `pyproject.toml` by hand and run `pyfaro sync`.)
 
 ## 2. Sync
 

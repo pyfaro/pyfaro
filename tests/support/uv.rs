@@ -138,7 +138,13 @@ fn main() {
         }
         process::exit(42);
     }
-    if args.iter().any(|arg| arg == "lock") && (mode == "wait" || mode == "exit-with-child") {
+    let waits = args.iter().any(|arg| arg == "lock")
+        && (mode == "wait" || mode == "exit-with-child")
+        || args.iter().any(|arg| arg == "init") && mode == "wait-init";
+    if waits {
+        if mode == "wait-init" {
+            fs::write("pyproject.toml", "[project]\nname = 'partial'\n").unwrap();
+        }
         let mut child = process::Command::new(env::current_exe().unwrap())
             .arg("--heartbeat").spawn().unwrap();
         if mode == "exit-with-child" {

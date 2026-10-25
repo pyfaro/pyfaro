@@ -67,6 +67,59 @@ impl Snapshot {
         Ok(())
     }
 
+    /// Fail before anything changes when the file cannot be replaced. Windows
+    /// refuses to rename over a read-only file or one that another program
+    /// holds open without sharing; Unix replaces both, keeping the mode.
+    #[cfg(windows)]
+    pub fn ensure_replaceable(&self) -> Result<()> {
+        use std::fs::OpenOptions;
+        use std::os::windows::fs::OpenOptionsExt;
+
+        const DELETE: u32 = 0x0001_0000;
+        const SHARE_ALL: u32 = 0b111;
+        if !self.exists() {
+            return Ok(());
+        }
+        if self.permissions.as_ref().is_some_and(Permissions::readonly) {
+            return Err(Error::Project(format!(
+                "{} is read-only; clear its read-only attribute and rerun init",
+                self.path.display()
+            )));
+        }
+        // Renaming over a file needs DELETE access to it.
+        OpenOptions::new()
+            .access_mode(DELETE)
+            .share_mode(SHARE_ALL)
+            .open(&self.path)
+            .map(drop)
+            .map_err(|error| self.replace_error(error))
+    }
+
+    #[cfg(not(windows))]
+    #[allow(clippy::unused_self, clippy::unnecessary_wraps)]
+    pub fn ensure_replaceable(&self) -> Result<()> {
+        Ok(())
+    }
+
+    /// Name the usual Windows causes of a refused replacement.
+    fn replace_error(&self, error: io::Error) -> Error {
+        const ACCESS_DENIED: i32 = 5;
+        const SHARING_VIOLATION: i32 = 32;
+        const LOCK_VIOLATION: i32 = 33;
+        if cfg!(windows)
+            && matches!(
+                error.raw_os_error(),
+                Some(ACCESS_DENIED | SHARING_VIOLATION | LOCK_VIOLATION)
+            )
+        {
+            return Error::Project(format!(
+                "cannot replace {}: it is read-only or another program has it open ({error}); close that program and rerun init",
+                self.path.display()
+            ));
+        }
+        Error::io("replace", &self.path, error)
+    }
+
     pub fn write(&self, contents: &[u8]) -> Result<()> {
         let parent = self.path.parent().ok_or_else(|| {
             Error::Project("missing project directory".into())
@@ -88,12 +141,16 @@ impl Snapshot {
             .sync_all()
             .map_err(|error| Error::io("sync", &self.path, error))?;
         file.persist(&self.path)
-            .map_err(|error| Error::io("replace", &self.path, error.error))?;
+            .map_err(|error| self.replace_error(error.error))?;
         Ok(())
     }
 
     pub fn restore(&self) -> Result<()> {
         if let Some(contents) = &self.contents {
+            // An untouched file needs no rewrite, which a locked file refuses.
+            if fs::read(&self.path).is_ok_and(|current| current == *contents) {
+                return Ok(());
+            }
             self.write(contents)
         } else {
             match fs::remove_file(&self.path) {

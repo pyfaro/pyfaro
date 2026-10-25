@@ -167,7 +167,7 @@ pyfaro dev                    # Uvicorn with reload on http://127.0.0.1:8000
 The [FastAPI guide](https://pyfaro.dev/workflows/fastapi/) goes from install to
 a running app and a passing CI workflow.
 
-Adopting an existing project? Preview first, then apply (Linux only for now):
+Adopting an existing project? Preview first, then apply:
 
 ```sh
 pyfaro init                   # preview, writes nothing
@@ -233,9 +233,8 @@ Pyfaro is **beta**. The latest version is
 1.0.
 
 - **Tested versions:** uv 0.9.26, Ruff 0.16.10, ty 0.0.85, pytest 9.1.1.
-- **Platforms:** Linux, macOS and Windows are built and tested in CI.
-  `init --apply` is **Linux-only** for now; on macOS and Windows `init`
-  previews but does not apply.
+- **Platforms:** Linux, macOS and Windows are built and tested in CI,
+  including `init --apply` with its rollback and cancellation guarantees.
 - **Implemented:** `create`, `init`, `sync`, `add`, `remove`, `run`, `dev`, `python`,
   `build`, `tools`, `doctor`, `lint`, `fmt`, `type`, `check`, `test`
   and `completions`.

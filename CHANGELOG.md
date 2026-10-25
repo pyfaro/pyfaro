@@ -23,6 +23,13 @@ Version `0.6.0-beta.1` has not been published.
   quarantined, and only archives downloaded in a browser need
   `xattr -d com.apple.quarantine pyfaro`. The binaries stay unsigned: signing
   and notarizing them would need a paid Apple Developer account.
+- `pyfaro init --apply` now works on macOS and Windows, not only on Linux, with
+  the same guarantees: `pyproject.toml` and `uv.lock` are restored byte for
+  byte if uv fails or you press Ctrl+C (exit `130`, the uv process tree
+  stopped), re-applying changes nothing, and files are replaced atomically.
+  A CRLF `pyproject.toml` keeps its line endings, where it was previously
+  rewritten with LF. On Windows a read-only file, or one another program holds
+  open, now stops `--apply` before any change with an explicit message.
 
 ## 0.5.0-beta.1 — 2026-10-25
 

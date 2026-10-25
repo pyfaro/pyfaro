@@ -6,10 +6,11 @@ It is experimental; the configuration and CLI are not stable contracts yet.
 
 ## Requirements
 
-- **Linux for `--apply` in this alpha series.** macOS/Windows support builds,
-  help/version, and non-writing previews, but applying returns an explicit
-  unsupported-platform error before invoking uv or modifying project files.
-  Broader platform support remains on the existing roadmap.
+- **Linux, macOS or Windows.** `--apply` has the same guarantees on all three
+  (restoration, cancellation, idempotence, below). Releases up to
+  `0.5.0-beta.1` apply on Linux only and return an explicit
+  unsupported-platform error elsewhere, before invoking uv or modifying
+  project files.
 - uv installed separately, selected through `--uv <executable>` or PATH.
 - uv 0.9.26 is the pinned, tested version. Stable versions >=0.9.26 are
   accepted, but newer versions are not claimed as tested.
@@ -91,9 +92,11 @@ they are not performed by `pyfaro init`.
   build-backend files. Project dependency/source/index settings remain uv-owned.
 - uv stdout/stderr are streamed. A numeric uv failure status is forwarded;
   Pyfaro's own configuration/filesystem errors return `1`. CLI usage errors
-   return `2`. Cancellation returns `130` after stopping the owned Linux
-   process group, reaping the leader and adopted descendants, and confirming
-   group exit.
+   return `2`. Cancellation returns `130` after stopping the owned process
+   tree and confirming its exit: on Linux the process group, the leader and
+   adopted descendants; on macOS the process group; on Windows the Job Object.
+   A uv that ends on the same Ctrl-C (a signal or `STATUS_CONTROL_C_EXIT`) is
+   a cancellation too, not a uv failure.
 
 If a file/uv operation fails or is cancelled, Pyfaro restores the previous bytes
 of `pyproject.toml` and `uv.lock`, removing incomplete new versions of those
@@ -102,10 +105,24 @@ the error identifies that recovery is incomplete; inspect both files before
 retrying. Newly created empty directories and uv's external cache may remain.
 If process cleanup cannot be confirmed within its deadline, Pyfaro reports
 that failure and skips automatic file restoration rather than racing a
-potentially live writer. Linux child-subreaper support is required; failure
-to enable it is reported before project-file mutation.
+potentially live writer. On Linux, child-subreaper support is required;
+failure to enable it is reported before project-file mutation.
 This is error recovery, not a crash-proof multi-file transaction. Do not run
 another metadata/lockfile writer concurrently with initialization.
+
+Each file is written to a temporary file in its own directory, synced and
+renamed over the original, so a reader never sees a partial file and a failed
+write leaves the original in place. A file that already holds the original
+bytes is not rewritten during restoration.
+
+A `pyproject.toml` with CRLF line endings keeps them, including in the added
+table; a file that mixes endings takes the dominant one when it has to change,
+and a project that is already configured is not rewritten at all.
+
+Windows cannot rename over a read-only file or one that another process holds
+open without sharing deletion. Before running uv, Pyfaro checks both existing
+files and fails with a message naming the file, leaving the project as it was.
+On Linux and macOS a read-only `pyproject.toml` is replaced and keeps its mode.
 
 ## Alpha limits
 
@@ -121,11 +138,13 @@ another metadata/lockfile writer concurrently with initialization.
 
 The test seams are the public CLI and resulting project files, the external
 uv process boundary, and the configuration transformation. Successful
-integration cases use real uv 0.9.26 offline, including a local dependency.
-They cover new/existing projects, preservation, idempotence, and non-ASCII
-paths with spaces. Portable Rust process fixtures cover uv failures and
-process-tree cancellation and confirm that descendant PIDs have been reaped.
-Linux additionally tests actual SIGINT delivery through the CLI. CI runs the
-full `init --apply` workflow suite on Linux and checks compilation, previews,
-and the unsupported-apply contract on macOS and Windows. Real `sync` and
-`run` smoke tests execute on all three platforms.
+integration cases use real uv 0.9.26, including a local dependency. They
+cover new/existing projects, preservation, idempotence (byte-identical
+re-apply), CRLF metadata, read-only files, and paths with spaces and
+non-ASCII characters. A uv fixture that fails or hangs on demand covers
+rollback of `pyproject.toml` and `uv.lock` and Ctrl-C during the uv step: the
+CLI exits `130`, uv and its descendant are gone, and both files are
+byte-identical to the originals with no temporary file left. Windows
+additionally tests a read-only file and a file held open by another process.
+CI runs these end-to-end tests on Linux, macOS and Windows, with a real
+`SIGINT` on Unix and a real `CTRL_C_EVENT` on a Windows console.

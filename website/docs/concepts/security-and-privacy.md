@@ -61,7 +61,7 @@ was asked for.
 | --- | --- | --- |
 | `create` | None. It never runs uv. | - |
 | `init` (preview) | None. | - |
-| `init --apply` (Linux) | Reads the index to lock dependencies (`uv lock --no-build`). | uv |
+| `init --apply` | Reads the index to lock dependencies (`uv lock --no-build`). | uv |
 | `sync` | Reads the index if the lock must change; downloads packages missing from uv's cache. | uv |
 | `add`, `remove` | Reads the index to resolve and lock. They pass `--no-sync`, so nothing is installed. | uv |
 | `run`, `dev` | uv locks and syncs the environment first: index reads and package downloads, as for `sync`. Then your program runs and can do anything. | uv, your code |
