@@ -102,6 +102,7 @@ impl Command {
             Self::Test(_) => false,
             Self::Check(args) => args.verbose.verbose,
             Self::Python(args) => args.verbose,
+            Self::Build(args) => args.verbose.verbose,
             Self::Tools(args) => args.verbose.verbose,
             Self::Doctor(args) => args.verbose.verbose,
             Self::Completions(args) => args.verbose.verbose,
@@ -124,6 +125,7 @@ impl Command {
             Self::Test(_) => "test",
             Self::Check(_) => "check",
             Self::Python(_) => "python",
+            Self::Build(_) => "build",
             Self::Tools(_) => "tools",
             Self::Doctor(_) => "doctor",
             Self::Completions(_) => "completions",
@@ -236,6 +238,8 @@ pub(crate) struct BuildArgs {
     /// Disable network access in uv
     #[arg(long)]
     pub offline: bool,
+    #[command(flatten)]
+    pub verbose: VerboseArgs,
 }
 
 #[derive(Args)]

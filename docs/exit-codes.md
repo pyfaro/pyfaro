@@ -45,7 +45,8 @@ required argument, conflicting options such as `--locked --frozen`, or no
 arguments at all (the help is printed to standard error). `Error::Usage` is the
 same class for a command line that Clap accepted but Pyfaro cannot act on:
 `pyfaro run` with neither a task nor `-- <program>`, and `pyfaro run <name>`
-outside a project, which is almost always a forgotten `--`.
+outside a project, which is almost always a forgotten `--`; and
+`pyfaro build --clear` with an output directory that is or contains the project.
 
 ## Forwarded codes
 
@@ -53,7 +54,7 @@ A command that runs **one** tool returns that tool's numeric status unchanged.
 
 | Command | Status returned |
 | --- | --- |
-| `sync`, `add`, `remove`, `python list`, `python install`, `python pin` | uv's. |
+| `sync`, `build`, `add`, `remove`, `python list`, `python install`, `python pin` | uv's. |
 | `init --apply` | uv's, from `uv init` or `uv lock`. |
 | `run` (a program or a task) | The program's, through `uv run`; uv exits `128 + signal` for a program killed by a signal. A uv failure such as a missing program is uv's own code. |
 | `dev` | The process's, through `uv run` (`pyfaro dev: <runner> exited with status N`). `0` stays silent. |

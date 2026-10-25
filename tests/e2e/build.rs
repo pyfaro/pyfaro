@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 
-use crate::harness::{Cmd, Kind, Outcome, Sandbox};
+use crate::harness::{Cmd, Kind, Outcome, Sandbox, UV};
 
 const LIB_SDIST: &str = "acme_widget-0.1.0.tar.gz";
 const LIB_WHEEL: &str = "acme_widget-0.1.0-py3-none-any.whl";
@@ -737,4 +737,53 @@ fn fails_when_uv_succeeds_without_writing_the_expected_artifacts() {
         .run()
         .success();
     assert!(project.path("dist").join(LIB_SDIST).is_file());
+}
+
+#[test]
+fn verbose_shows_the_uv_build_command_line() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let project = sandbox.project(Kind::Lib);
+    for args in [
+        ["-v", "build", "--wheel", "--clear"],
+        ["build", "--verbose", "--wheel", "--clear"],
+    ] {
+        let out = project.pyfaro(args).run();
+        out.success();
+        // The artifact lines stay on stdout, the trace goes to stderr.
+        out.stdout_eq(&built(&[shown("dist", LIB_WHEEL)]));
+        let lines: Vec<&str> = out
+            .stderr
+            .lines()
+            .filter(|line| line.starts_with("pyfaro build: "))
+            .collect();
+        let using = format!("pyfaro build: using uv {UV} ");
+        assert!(
+            lines.iter().any(|line| line.starts_with(&using)),
+            "{lines:#?}"
+        );
+        let running = lines
+            .iter()
+            .find(|line| line.contains("--no-python-downloads"))
+            .unwrap_or_else(|| panic!("no uv command line in {lines:#?}"));
+        assert!(
+            running.starts_with("pyfaro build: running ")
+                && running.contains(
+                    " --no-python-downloads --no-progress build --wheel --clear --out-dir "
+                ),
+            "{running}"
+        );
+        // The project root is passed explicitly, as the last argument.
+        let root = fs::canonicalize(&project.root).unwrap();
+        assert!(
+            running
+                .trim_end_matches('"')
+                .ends_with(&root.display().to_string()),
+            "{running}"
+        );
+    }
+    // Without the flag Pyfaro prints nothing of its own.
+    let quiet = project.pyfaro(["build", "--wheel"]).run();
+    quiet.success();
+    assert!(!quiet.stderr.contains("pyfaro build:"), "{}", quiet.stderr);
 }
