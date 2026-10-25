@@ -1,16 +1,19 @@
 name: Release build check
 
-# Builds every release binary twice and requires identical bytes whenever a
-# pull request touches the release pipeline, so changes to it are exercised
-# before a real release. Nothing is uploaded or published.
+# Builds every release binary twice and requires identical bytes, and builds
+# and smoke-tests the PyPI wheels and sdist, whenever a pull request touches
+# the release pipeline or the Python packaging, so changes to them are
+# exercised before a real release. Nothing is uploaded or published.
 on:
   pull_request:
     paths:
       - .github/workflows/build-binaries.yml
+      - .github/workflows/build-wheels.yml
       - .github/workflows/github-release.yml
       - .github/workflows/release.yml
       - .github/workflows/release-build-check.yml
       - .github/scripts/**
+      - python/**
       - Cargo.lock
       - Cargo.toml
       - rust-toolchain.toml
@@ -26,3 +29,7 @@ jobs:
   binaries:
     name: Reproducible binaries
     uses: ./.github/workflows/build-binaries.yml
+
+  wheels:
+    name: Wheels and sdist
+    uses: ./.github/workflows/build-wheels.yml

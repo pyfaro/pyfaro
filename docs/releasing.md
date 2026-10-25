@@ -33,20 +33,22 @@ The steps below assume `<version>` is the development version already in
    ```
 
    Download the `crate` artifact to review the archive and its SHA-256, and
-   the `binaries` artifact for the five release archives. The run fails if
-   any target does not build, reports the wrong version, or does not build
-   to identical bytes twice.
+   the `binaries` artifact for the five release archives, and the `wheels`
+   artifact for the PyPI wheels and sdist. The run fails if any target does
+   not build, reports the wrong version, or does not build to identical
+   bytes twice, or if a wheel cannot be installed and run on its OS.
 3. **Publish.** Start the real run from `main`:
 
    ```sh
    gh workflow run release.yml -f version=<version> -f publish=true
    ```
 
-   Preflight, CI on all three platforms, the audit, packaging, and the
-   reproducible builds of all five binaries run first. Nothing reaches
-   crates.io until all of them pass.
+   Preflight, CI on all three platforms, the audit, packaging, the
+   reproducible builds of all five binaries, and the wheel and sdist builds
+   run first. Nothing reaches crates.io until all of them pass.
 4. **Approve.** The **Publish to crates.io** job waits on the `crates-io`
-   environment. Approve it in the run page (**Review deployments**), or:
+   environment, and later the **Publish to PyPI** job waits on the `pypi`
+   environment. Approve each in the run page (**Review deployments**), or:
 
    ```sh
    run=<run id>
@@ -55,9 +57,10 @@ The steps below assume `<version>` is the development version already in
      -F "environment_ids[]=$env_id" -f state=approved -f comment="Approve <version>"
    ```
 
-   The workflow then uploads, tags `v<version>`, attests and publishes the
-   release assets as a GitHub Release, and reinstalls the version from
-   crates.io.
+   For the second approval, run the same commands again once the `pypi` job
+   is waiting. The workflow uploads to crates.io and tags `v<version>`; then
+   it attests and publishes the release assets as a GitHub Release, uploads
+   to PyPI, and reinstalls the version from crates.io and from PyPI.
 5. **Verify.** Check the crates.io page, the tag, and the release assets:
 
    ```sh
@@ -65,6 +68,7 @@ The steps below assume `<version>` is the development version already in
    sha256sum -c --ignore-missing SHA256SUMS
    gh attestation verify pyfaro-<version>-x86_64-unknown-linux-gnu.tar.gz --repo pyfaro/pyfaro
    cargo install pyfaro --version <version> --locked
+   uv tool install pyfaro==<pep440-version>   # for example 0.5.0b1
    ```
 
 6. **Record.** In a follow-up PR, add the publication paragraph to the
@@ -393,7 +397,8 @@ first sets the version and dates its `## <version>` changelog section.
 
 1. **Preflight** rejects a non-`main` ref, a version that differs from
    `Cargo.toml`, a missing `## <version>` changelog heading, an existing
-   `v<version>` tag, and a version already known to crates.io.
+   `v<version>` tag, a version already known to crates.io, and (with `pypi`
+   checked) a PEP 440 version already known to PyPI.
 2. **Checks** and **Audit** reuse the CI and Security workflows on all three
    platforms.
 3. **Package** builds the archive, checks that it is `pyfaro <version>`
@@ -404,16 +409,26 @@ first sets the version and dates its `## <version>` changelog section.
    twice and requires identical bytes, as described in
    [Reproducible builds](#reproducible-builds). It keeps the verified
    archives as the `binaries` artifact.
-5. **Publish** runs only with `publish` checked and only after 2, 3, and 4
-   passed, so a broken target blocks the upload. It waits for approval on the
+5. **Wheels** (in parallel with 2 to 4) builds the PyPI distributions, as
+   described in [PyPI wheels](#pypi-wheels), installs each native wheel
+   in a fresh virtual environment on its own OS, and keeps the checked set as
+   the `wheels` artifact.
+6. **Publish** runs only with `publish` checked and only after 2 to 5
+   passed, so a broken target or wheel blocks the upload. It waits for approval on the
    `crates-io` environment, obtains a short-lived token through crates.io
    trusted publishing, uploads, and fails if the registry checksum differs
    from the reviewed archive. It then creates the annotated `v<version>` tag
    on the exact workflow commit.
-6. **GitHub Release** runs unless `github-release` is unchecked. It calls
-   `.github/workflows/github-release.yml` with the `binaries` artifact from
-   step 4, described below.
-7. **Install from crates.io** installs the published version with `--locked`
+7. **GitHub Release** runs unless `github-release` is unchecked. It calls
+   `.github/workflows/github-release.yml` with the `binaries` and `wheels`
+   artifacts from steps 4 and 5, described below.
+8. **Publish to PyPI** runs unless `pypi` is unchecked, in parallel with
+   steps 7 and 9, once `Publish` has uploaded and tagged. It waits for
+   approval on the `pypi` environment, uploads the `wheels` artifact with
+   PyPI trusted publishing, and then fails unless PyPI lists exactly the
+   reviewed files with the reviewed SHA-256 digests. **Install from PyPI**
+   then installs `pyfaro==<pep440-version>` and checks `--version`.
+9. **Install from crates.io** installs the published version with `--locked`
    and checks its `--version` output.
 
 Run it once with `publish` unchecked to obtain the archive and checksum for
@@ -432,7 +447,11 @@ The versions have to agree before anything ships. The workflow input must
 equal the `Cargo.toml` version, the packaged `.crate` must be `pyfaro
 <version>` cut from the released commit, the tag is `v<version>`, every
 binary that can run on its builder must print `pyfaro <version>`, and the
-changelog needs a `## <version>` section for the release notes.
+changelog needs a `## <version>` section for the release notes. The wheel
+and sdist versions are the PEP 440 form of the Cargo version (`0.5.0-beta.1`
+is `0.5.0b1`, `-alpha.N` is `aN`, `-rc.N` is `rcN`), `check-wheels` requires
+every file name and `METADATA` to agree, and each native wheel's executable
+must print `pyfaro <cargo version>`.
 
 One-time setup is described in [Ownership and credentials](#ownership-and-credentials).
 
@@ -440,6 +459,17 @@ If the upload succeeds but tagging fails, do not rerun the workflow:
 preflight rejects the published version. Create the missing tag on the
 workflow's commit, following the approval steps above, then run the GitHub
 Release workflow for it.
+
+PyPI never accepts a file name twice, even after deletion, so a failed
+PyPI upload is recovered by re-running the failed **Publish to PyPI** job
+from the run page, not by starting a new Release run (preflight would reject
+the published crate version). The wheels it uploads are the `wheels`
+artifact of that run, kept for 90 days. The upload step skips files a failed
+attempt already uploaded, and the comparison step then proves that PyPI
+holds exactly the reviewed bytes. If the first approval of the `pypi`
+environment was refused or the trusted publisher was not registered yet, fix
+that and re-run the job. A version uploaded to PyPI with a defect cannot be
+replaced: yank it on PyPI and release a new version.
 
 ### GitHub Release workflow
 
@@ -457,13 +487,15 @@ gh workflow run github-release.yml -f tag=v0.2.0-alpha.1
 It checks that the tag exists and the version is on crates.io, then the
 `assemble` job:
 
-1. requires exactly one archive for each target below;
+1. requires exactly one archive for each target below, and (for tags that
+   have a `python/` directory) the sdist and one wheel per target;
 2. downloads the `.crate` from crates.io, checks it against the registry
    checksum, and checks that it is `pyfaro <version>` packaged from the
    tag's commit;
-3. creates a signed build provenance attestation for every archive and the
-   `.crate`, then verifies each one with `gh attestation verify`;
-4. writes a `SHA256SUMS` file for every asset.
+3. creates a signed build provenance attestation for every archive, wheel,
+   sdist, and the `.crate`, then verifies each one with
+   `gh attestation verify`;
+4. writes a `SHA256SUMS` file for every asset, wheels and sdist included.
 
 A separate job with `contents: write` creates the release from the attested
 assets, so the job that can sign has no repository write access.
@@ -488,6 +520,86 @@ same way, including a regenerated pull request list, and its assets are
 re-uploaded. Releases cut before this pipeline landed have no attestations;
 backfilling one attaches freshly built, attested archives that differ from
 the originals.
+
+## PyPI wheels
+
+Python users can install the same executable without a Rust toolchain:
+`uv tool install pyfaro`, `pipx install pyfaro`, or `pip install pyfaro`.
+`.github/workflows/build-wheels.yml` builds the distributions with
+[maturin](https://www.maturin.rs/) (`bindings = "bin"`, the approach uv and
+Ruff use) from the packaging metadata in [`python/pyproject.toml`](https://github.com/pyfaro/pyfaro/blob/main/python/pyproject.toml):
+
+- one platform wheel per release target, each holding only the `pyfaro`
+  executable (plus license and SBOM metadata): Linux x86_64 and aarch64,
+  macOS x86_64 and Arm, and Windows x86_64;
+- an sdist, which `pip` compiles with the Rust toolchain.
+
+The packaging metadata lives in `python/`, not at the repository root,
+on purpose: Pyfaro treats the nearest `pyproject.toml` as the project, so a
+root file would make this repository a Python project for every `pyfaro`
+command run inside it. The build workflow fails if a root `pyproject.toml`
+appears. Run `maturin` from `python/`, which points at `../Cargo.toml`:
+
+```sh
+cd python
+uvx maturin sdist --out ../target/pypi
+uvx maturin build --release --locked --out ../target/pypi
+```
+
+Choices:
+
+- **Version.** The version is read from Cargo and written in PEP 440 form
+  (`0.5.0-beta.1` becomes `0.5.0b1`). The tag, crate, wheels, and sdist all
+  come from the same commit. A pre-release version is hidden from the
+  default resolution of `pip` and `uv`, which is why the install docs
+  show `--pre`, `--prerelease allow`, or an exact version while only
+  pre-releases exist.
+- **No `requires-python`.** The wheels are tagged `py3-none-<platform>` and
+  contain no Python code, only an executable, so no interpreter version
+  constrains them. A bound would only make installers refuse to install a
+  working tool.
+- **Linux policy: `manylinux_2_17`** (manylinux2014) for both x86_64 and
+  aarch64, built inside the manylinux container by `PyO3/maturin-action`.
+  It is the oldest policy Rust 1.90 supports (the `*-linux-gnu` targets need
+  glibc 2.17), so the wheel runs on any glibc 2.17 or newer distribution.
+  The standalone Linux archives are built on Ubuntu 22.04 and need a glibc as
+  new as that release's (2.35).
+- **Not reproduced.** Unlike the standalone archives, the wheel binaries are
+  built once, inside the container, and are not compared against a second
+  build. They are checksummed and attested like the archives.
+- **Smoke tests.** Each native wheel is installed into a fresh virtual
+  environment on its own OS and `pyfaro --version` must print the Cargo
+  version. The Intel macOS wheel cannot be installed by the Arm runner's
+  `pip`, so its executable is unpacked and run under Rosetta 2 (skipped with
+  a notice if the runner lacks it). The sdist is installed with `pip`, which
+  compiles it.
+- **Attestations and checksums.** The assemble job of GitHub Release attests
+  the wheels and sdist exactly like the archives and lists them in
+  `SHA256SUMS`, and the upload to PyPI publishes PEP 740 attestations as
+  well. [Verify](#verifying-a-download) wheels with `gh attestation verify`.
+- **No credentials.** The upload uses PyPI trusted publishing from the `pypi`
+  environment; no PyPI token exists.
+
+### One-time PyPI setup
+
+Before the first release with `pypi` checked, the maintainer registers a
+[pending trusted publisher](https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/)
+(PyPI account → *Publishing* → *Add a new pending publisher*; the project
+`pyfaro` does not exist yet, and the first upload creates it) with exactly:
+
+| Field | Value |
+| --- | --- |
+| PyPI project name | `pyfaro` |
+| Owner | `pyfaro` |
+| Repository name | `pyfaro` |
+| Workflow name | `release.yml` |
+| Environment name | `pypi` |
+
+Then create the `pypi` environment in GitHub (**Settings → Environments**),
+with the maintainer as a required reviewer and deployment restricted to
+protected branches, like `crates-io`. Until both exist the **Publish to
+PyPI** job fails after the crates.io upload; fix the setup and re-run the
+job as described above.
 
 ## Reproducible builds
 
@@ -548,15 +660,21 @@ compress the same files to different bytes. The workflow logs print
 
 ## Verifying a download
 
-Every archive and the `.crate` of a release made after this pipeline landed
-has a [GitHub artifact attestation](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds):
+Every archive, wheel, sdist, and the `.crate` of a release made after this
+pipeline landed has a [GitHub artifact attestation](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds):
 a Sigstore-signed SLSA build provenance statement that names the repository,
 workflow, and commit that produced the file. Check a download with the
 GitHub CLI:
 
 ```sh
 gh attestation verify pyfaro-<version>-<target>.tar.gz --repo pyfaro/pyfaro
+gh attestation verify pyfaro-<pep440-version>-py3-none-<platform>.whl --repo pyfaro/pyfaro
 ```
+
+To verify a wheel downloaded from PyPI, download it without installing
+(`pip download pyfaro==<pep440-version> --no-deps --only-binary :all:`) and
+run the second command; the files are the same bytes as the GitHub Release
+assets.
 
 Success means the file's digest matches an attestation created by a
 workflow in `pyfaro/pyfaro`. The attestation is signed with a short-lived
@@ -576,6 +694,8 @@ The release process has one human gate and no stored secrets.
 | Approve the `crates-io` environment | Required reviewer: `mhbxyz` (the only one). Self-review is allowed, so the maintainer can approve their own dispatch. |
 | Branches that can deploy to `crates-io` | Protected branches only (`main`) |
 | crates.io owners of `pyfaro` | `mhbxyz` (user owner; no team owners) |
+| Approve the `pypi` environment | The maintainer, as required reviewer (see [One-time PyPI setup](#one-time-pypi-setup)) |
+| PyPI owners of `pyfaro` | The account that registers the pending publisher becomes the first owner |
 | Repository secrets, environment secrets, variables | None |
 | Default `GITHUB_TOKEN` permissions | Read-only; Actions cannot approve pull requests |
 
@@ -589,15 +709,23 @@ Only the `publish` job requests `id-token`
 for crates.io; renaming `release.yml` or the environment breaks publishing
 until the trusted publisher is updated to match.
 
+**PyPI trusted publishing.** The PyPI project accepts uploads only from
+GitHub repository `pyfaro/pyfaro`, workflow file `release.yml`, environment
+`pypi`. `pypa/gh-action-pypi-publish` exchanges the run's OIDC token for a
+short-lived PyPI token. Only the `Publish to PyPI` job requests `id-token`,
+and it has no other permission. Renaming `release.yml` or the environment
+breaks the upload until the publisher is updated.
+
 **Workflow permissions.** Every workflow starts with `contents: read`; jobs
 get more only where noted, and the `GITHUB_TOKEN` is the only token used:
 
 | Job | Extra permissions | Why |
 | --- | --- | --- |
 | Release / Publish to crates.io | `contents: write`, `id-token: write` | Create the tag; trusted publishing |
-| Release / Install from crates.io | none (`permissions: {}`) | It only runs `cargo install` |
+| Release / Publish to PyPI | `id-token: write` only | Trusted publishing; the job reads the run's artifact |
+| Release / Install from crates.io, Install from PyPI | none (`permissions: {}`) | They only install and run the published version |
 | Release / GitHub Release (caller) | `contents: write`, `id-token: write`, `attestations: write` | Ceiling for the called jobs below |
-| GitHub Release / Assemble and attest | `id-token: write`, `attestations: write` | Sigstore signing; no write access to contents |
+| GitHub Release / Assemble and attest | `contents: read`, `id-token: write`, `attestations: write` | Sigstore signing; no write access to contents |
 | GitHub Release / Create the release | `contents: write` | Create the release and upload assets |
 | Docs / Deploy | `pages: write`, `id-token: write` | GitHub Pages deployment |
 
@@ -613,7 +741,8 @@ once a second maintainer exists, so a lost account cannot lock the crate.
 **If something leaks or an account is compromised:**
 
 1. Disable publishing: remove the trusted publisher in the crate's
-   crates.io settings, and remove or restrict the `crates-io` environment.
+   crates.io settings and the PyPI project's publishing settings, and remove
+   or restrict the `crates-io` and `pypi` environments.
 2. Revoke every crates.io API token of the affected accounts
    (<https://crates.io/settings/tokens>). Manual publishes used personal
    tokens kept outside the repository; none are needed now.
@@ -621,8 +750,9 @@ once a second maintainer exists, so a lost account cannot lock the crate.
    crates.io passwords, two-factor methods, passkeys, and GitHub personal
    access tokens or SSH keys), and review recent workflow runs and the
    audit log for unexpected dispatches or approvals.
-4. If a published version is affected, yank it (`cargo yank --version <v>`),
-   delete its GitHub Release assets, and publish a corrected version.
+4. If a published version is affected, yank it (`cargo yank --version <v>`
+   and the PyPI project's release page), delete its GitHub Release assets,
+   and publish a corrected version.
    Published versions can never be replaced.
 5. There is no long-lived signing key to rotate: attestations come from
    short-lived Sigstore certificates. After a compromise, treat attestations
@@ -633,9 +763,9 @@ once a second maintainer exists, so a lost account cannot lock the crate.
 ## Distribution scope
 
 The pipeline above covers reproducible standalone archives for five
-targets, checksums, signed provenance, a protected approval, generated
-release notes, and documented ownership. Installers and install-script
-verification are separate work.
+targets, PyPI wheels and an sdist, checksums, signed provenance, protected
+approvals, generated release notes, and documented ownership. Installers and
+install-script verification are separate work.
 
 References: [Cargo publishing](https://doc.rust-lang.org/cargo/reference/publishing.html),
 [manifest packaging/publication controls](https://doc.rust-lang.org/cargo/reference/manifest.html).

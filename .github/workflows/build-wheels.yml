@@ -1,0 +1,214 @@
+name: Build wheels
+
+# Reusable. Builds the PyPI distributions of Pyfaro with maturin: one
+# platform wheel per release target (each holds only the `pyfaro`
+# executable) and an sdist, then installs every native wheel into a fresh
+# virtual environment on its own OS and runs `pyfaro --version`, and builds
+# the sdist with pip. The Release workflow runs it before the crates.io
+# upload, GitHub Release runs it when backfilling a tag, and Release build
+# check runs it on pull requests. See docs/releasing.md.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit or tag to build (defaults to the calling workflow's ref)
+        type: string
+        default: ''
+      version:
+        description: Version Cargo.toml must have at that ref (defaults to any)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+env:
+  # Pinned so every release is built by the same maturin.
+  MATURIN_VERSION: v1.15.0
+
+jobs:
+  wheel:
+    name: Wheel ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # manylinux 2.17 (manylinux2014) is the oldest policy Rust 1.90
+          # supports on both architectures; it also covers every newer glibc.
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+            manylinux: '2_17'
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-22.04-arm
+            manylinux: '2_17'
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            manylinux: 'off'
+          # Built on the Arm runner and run under Rosetta 2 when it exists.
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            manylinux: 'off'
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            manylinux: 'off'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      # The scripts come from the calling ref, so an older tag can be built.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: release-tools
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        if: runner.os != 'Linux'
+        uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
+        with:
+          toolchain: '1.90.0'
+          targets: ${{ matrix.target }}
+      - name: Install the script's Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Check the packaging layout and version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          # A pyproject.toml at the root would make this repository a Python
+          # project for every pyfaro command run inside it.
+          if [ -e pyproject.toml ]; then
+            echo "::error::Python packaging metadata belongs in python/, not the repository root"
+            exit 1
+          fi
+          cmp LICENSE python/LICENSE-APACHE
+          actual=$(python release-tools/.github/scripts/release_artifacts.py cargo-version --source .)
+          if [ -n "$VERSION" ] && [ "$VERSION" != "$actual" ]; then
+            echo "::error::Cargo.toml has version $actual, not $VERSION"
+            exit 1
+          fi
+          echo "CARGO_VERSION=$actual" >> "$GITHUB_ENV"
+      - name: Build the wheel
+        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1.51.0
+        with:
+          maturin-version: ${{ env.MATURIN_VERSION }}
+          command: build
+          args: --release --locked --out dist
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux }}
+          rust-toolchain: '1.90.0'
+          working-directory: python
+      - name: Install the wheel in a fresh venv and run it
+        run: |
+          set -euo pipefail
+          ls -l python/dist
+          python release-tools/.github/scripts/release_artifacts.py smoke-wheel python/dist \
+            --target "${{ matrix.target }}" --version "$CARGO_VERSION" \
+            --scratch "$RUNNER_TEMP/wheel-venv"
+      - name: Keep the wheel
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wheel-${{ matrix.target }}
+          path: python/dist/*.whl
+          retention-days: 7
+          if-no-files-found: error
+
+  sdist:
+    name: Source distribution
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.layout.outputs.version }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: release-tools
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
+        with:
+          toolchain: '1.90.0'
+      - name: Install the script's Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Check the packaging layout and version
+        id: layout
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -e pyproject.toml ]; then
+            echo "::error::Python packaging metadata belongs in python/, not the repository root"
+            exit 1
+          fi
+          cmp LICENSE python/LICENSE-APACHE
+          actual=$(python release-tools/.github/scripts/release_artifacts.py cargo-version --source .)
+          if [ -n "$VERSION" ] && [ "$VERSION" != "$actual" ]; then
+            echo "::error::Cargo.toml has version $actual, not $VERSION"
+            exit 1
+          fi
+          echo "version=$actual" >> "$GITHUB_OUTPUT"
+      - name: Build the sdist
+        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1.51.0
+        with:
+          maturin-version: ${{ env.MATURIN_VERSION }}
+          command: sdist
+          args: --out dist
+          working-directory: python
+      - name: Install the sdist with pip, which compiles it
+        run: |
+          set -euo pipefail
+          ls -l python/dist
+          python -m venv "$RUNNER_TEMP/sdist-venv"
+          "$RUNNER_TEMP/sdist-venv/bin/python" -m pip install --disable-pip-version-check python/dist/*.tar.gz
+          test "$("$RUNNER_TEMP/sdist-venv/bin/pyfaro" --version)" = "pyfaro ${{ steps.layout.outputs.version }}"
+      - name: Keep the sdist
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wheel-sdist
+          path: python/dist/*.tar.gz
+          retention-days: 7
+          if-no-files-found: error
+
+  collect:
+    name: Collect the distributions
+    needs: [wheel, sdist]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Download the distributions
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: wheel-*
+          path: wheels
+          merge-multiple: true
+      - name: Require the sdist and one wheel per target
+        env:
+          VERSION: ${{ needs.sdist.outputs.version }}
+        run: python3 .github/scripts/release_artifacts.py check-wheels wheels --version "$VERSION"
+      - name: Keep the verified distributions
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: wheels
+          path: wheels/*
+          if-no-files-found: error
