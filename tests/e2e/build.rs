@@ -102,14 +102,14 @@ impl Reader {
     fn list(&self, archive: &Path) -> String {
         let out = self.run(archive, &["list"]);
         out.success();
-        out.stdout.replace("\r\n", "\n")
+        out.stdout.replace('\r', "")
     }
 
     /// Text of the first member whose name ends with `suffix`.
     fn read(&self, archive: &Path, suffix: &str) -> String {
         let out = self.run(archive, &["read", suffix]);
         out.success();
-        out.stdout.replace("\r\n", "\n")
+        out.stdout.replace('\r', "")
     }
 }
 
@@ -597,9 +597,9 @@ fn a_broken_build_forwards_uvs_exit_status_and_error() {
     out.code(code)
         .stdout_empty()
         .stderr_contains("Expected a Python module at")
-        .stderr_contains(&format!(
-            "error: uv build failed (exit status: {code}); see uv's output above"
-        ));
+        .stderr_contains("error: uv build failed (exit ")
+        // "exit status: N" on Unix, "exit code: N" on Windows.
+        .stderr_contains(&format!(": {code}); see uv's output above"));
     assert!(!project.path("dist").join(LIB_WHEEL).exists());
 }
 
