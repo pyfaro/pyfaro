@@ -4,7 +4,7 @@ Pyfaro wraps uv, Ruff, ty and pytest behind one command. Every command is a
 thin, predictable layer: Pyfaro picks the project, builds the arguments, runs
 the tool and forwards its exit status.
 
-<span class="pf-badge">alpha</span> The commands below are implemented.
+<span class="pf-badge">beta</span> The commands below are implemented.
 Workspaces are planned and not available.
 
 ## All commands

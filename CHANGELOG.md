@@ -2,6 +2,25 @@
 
 ## 0.5.0-beta.1 — 2026-10-25
 
+Published on [crates.io](https://crates.io/crates/pyfaro/0.5.0-beta.1)
+through crates.io trusted publishing by the manual Release workflow
+([run 40190001937](https://github.com/pyfaro/pyfaro/actions/runs/40190001937)),
+at `2026-10-25T11:50:32.023324Z` from commit `f1315b79fcba5c9100654adae09f3e6c9b54b653`.
+The crate SHA-256 is
+`62a84ddd8b308592e6e6e7008f8aa8f8c0c76b690821776cc58d5d3184d257b2`.
+The same run uploaded [`0.5.0b1` to PyPI](https://pypi.org/project/pyfaro/0.5.0b1/)
+through PyPI trusted publishing with publish attestations: five wheels (Linux
+x86_64 and aarch64, macOS Intel and Apple silicon, Windows x86_64) and the
+source distribution, whose digests equal the reviewed files. The workflow
+created the annotated [`v0.5.0-beta.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.5.0-beta.1).
+Its final PyPI check and the GitHub Release step did not run because of two
+workflow bugs, so the
+[GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.5.0-beta.1)
+was created by hand on `2026-10-25T11:55:21Z` from the run's verified
+`release-assets` with Linux, macOS, and Windows archives, the five wheels,
+the sdist, the `.crate`, and `SHA256SUMS`; every asset carries a build
+provenance attestation. [PR #145](https://github.com/pyfaro/pyfaro/pull/145) fixes both bugs.
+
 The first public beta. It adds these build, distribution and diagnostics
 capabilities to `0.4.0-alpha.1`:
 

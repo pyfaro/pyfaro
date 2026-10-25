@@ -64,11 +64,11 @@ pytest, from creating a project to running its quality checks and tests.
     Requires Rust 1.90 or newer.
 
     ```sh
-    cargo install pyfaro --version 0.4.0-alpha.1 --locked
+    cargo install pyfaro --version 0.5.0-beta.1 --locked
     pyfaro --version
     ```
 
-    The explicit version is needed while every release is an alpha.
+    The explicit version is needed while every release is a pre-release.
 
 === "Prebuilt binaries"
 
@@ -170,12 +170,10 @@ Read more in [How it works](concepts/how-it-works.md).
 
 ## Status
 
-!!! warning "Alpha software"
-    <span class="pf-badge">alpha</span> The latest published version is
-    `0.4.0-alpha.1`. Interfaces may change between alpha versions. `dev`, the
-    FastAPI preset and named tasks are published in it; `build`, shell
-    completions and `--verbose` are on `main` for `0.5.0-beta.1`.
-    Commands that are planned but not implemented yet, such as workspaces,
+!!! warning "Beta software"
+    <span class="pf-badge">beta</span> The latest published version is
+    `0.5.0-beta.1`, the first public beta. Interfaces may still change before
+    1.0. Commands that are planned but not implemented yet, such as workspaces,
     are not documented as available.
 
 Where to go next:

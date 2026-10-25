@@ -16,7 +16,7 @@ the release.
 
 !!! warning "Linux only for now"
     `pyfaro init` without flags prints a plan on every platform. Applying it
-    with `--apply` works on **Linux only** in this alpha series: `init` rewrites
+    with `--apply` works on **Linux only** for now: `init` rewrites
     `pyproject.toml` and `uv.lock`, and restores them if uv fails or you cancel.
     That restoration guarantee has only been validated on Linux.
 

@@ -1,11 +1,11 @@
-# Publishing Pyfaro
-
-The latest published version is [`0.4.0-alpha.1`](https://crates.io/crates/pyfaro/0.4.0-alpha.1).
-It adds `dev`, named tasks, and the `create fastapi` preset to the commands of
-`0.3.0-alpha.1`. `init --apply` remains Linux-only; the other commands are
-tested on Linux, macOS, and Windows. The repository now develops unpublished
-`0.5.0-beta.1` (v0.5.0 Public Beta work). Its version number is not a
-publication approval.
+The latest published version is [`0.5.0-beta.1`](https://crates.io/crates/pyfaro/0.5.0-beta.1),
+the first public beta. It adds `build`, shell completions, `--verbose`,
+install scripts, and the CLI and configuration reference to the commands of
+`0.4.0-alpha.1`, and is also published on
+[PyPI](https://pypi.org/project/pyfaro/0.5.0b1/) as `0.5.0b1` binary wheels.
+`init --apply` remains Linux-only; the other commands are tested on Linux,
+macOS, and Windows. The version number in `Cargo.toml` is not a publication
+approval.
 
 Completing the `v0.1.0 — Foundation` or `v0.2.0 — Project Management` backlog
 milestones means their source-work criteria are met, not that a stable crate
@@ -81,6 +81,62 @@ missing changelog heading, existing tag, or a version crates.io already
 knows) and start again. If a failure happens after the upload, see the
 recovery notes in the workflow sections below. Published versions can never
 be replaced; a defective one is yanked and superseded by a new version.
+
+## Published release: 0.5.0-beta.1
+
+- Version: [`pyfaro 0.5.0-beta.1`](https://crates.io/crates/pyfaro/0.5.0-beta.1)
+  and [`pyfaro 0.5.0b1` on PyPI](https://pypi.org/project/pyfaro/0.5.0b1/).
+- Source: merged [PR #144](https://github.com/pyfaro/pyfaro/pull/144), commit
+  [`f1315b79fcba5c9100654adae09f3e6c9b54b653`](https://github.com/pyfaro/pyfaro/commit/f1315b79fcba5c9100654adae09f3e6c9b54b653).
+- Registry timestamp: `2026-10-25T11:50:32.023324Z`.
+- Published archive SHA-256:
+  `62a84ddd8b308592e6e6e7008f8aa8f8c0c76b690821776cc58d5d3184d257b2`.
+  It is identical to the reviewed `crate` artifact of the run.
+- Release workflow
+  [run 40190001937](https://github.com/pyfaro/pyfaro/actions/runs/40190001937),
+  dispatched from `main` with `publish` checked. The maintainer approved the
+  `crates-io` and `pypi` environment deployments. It was published through
+  crates.io and PyPI trusted publishing, with no long-lived token.
+- PyPI holds five wheels (`manylinux_2_17` x86_64 and aarch64, macOS 10.12
+  x86_64, macOS 11.0 arm64, and `win_amd64`) and the sdist, uploaded with PyPI
+  publish attestations. All six SHA-256 digests equal the reviewed files.
+- Passed: preflight, CI on Linux, macOS, and Windows (including the
+  end-to-end tests and the install scripts), the RustSec audit, the two
+  reproducible builds of all five binaries (identical), the wheel builds
+  with an install on each OS, package, publish to crates.io, install from
+  crates.io, and the assembly with build provenance attestations for all 12
+  assets.
+- The workflow created the annotated [`v0.5.0-beta.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.5.0-beta.1)
+  on the source commit above.
+
+### Incident and manual recovery
+
+Two workflow bugs showed up after the uploads, both fixed by
+[PR #145](https://github.com/pyfaro/pyfaro/pull/145). Nothing was wrong with
+the published files.
+
+- The comparison step of **Publish to PyPI** failed after the upload because
+  it counted the `*.publish.attestation` files the publish action leaves
+  next to the wheels as unexpected files. PyPI already held exactly the
+  reviewed files, but **Install from PyPI** was skipped.
+- **Create the GitHub Release** was skipped: a skipped job in the prebuilt
+  path propagated through `needs` to the release job.
+
+The maintainer finished the release by hand from the run's `release-assets`
+artifact. The `SHA256SUMS` check and `gh attestation verify` passed for all 12
+assets, the six PyPI digests and the crate checksum matched, and the GitHub
+[prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.5.0-beta.1) was
+created at `2026-10-25T11:55:21Z` with the notes the job writes (the
+changelog section and the install text). It attaches five archives (x86_64 and
+aarch64 Linux, aarch64 and x86_64 macOS, x86_64 Windows), five wheels, the
+sdist, the `.crate`, and `SHA256SUMS`.
+
+- After release, the downloaded Linux x86_64 archive reported
+  `pyfaro 0.5.0-beta.1`. `uv tool install pyfaro` and `pip install pyfaro`,
+  without a version, both installed `0.5.0-beta.1`, and
+  `https://pyfaro.dev/install.sh` installed the newest release.
+
+This version exists on crates.io and PyPI and must not be published again.
 
 ## Published release: 0.4.0-alpha.1
 
@@ -459,6 +515,24 @@ If the upload succeeds but tagging fails, do not rerun the workflow:
 preflight rejects the published version. Create the missing tag on the
 workflow's commit, following the approval steps above, then run the GitHub
 Release workflow for it.
+
+If the upload succeeds but **Create the GitHub Release** does not run or
+fails, finish the release by hand rather than rerunning anything. Download
+the `release-assets` artifact of the run (kept for 90 days), check it against
+`SHA256SUMS`, and run `gh attestation verify` for every file. Then create the
+prerelease for the tag with the same files, the title the job uses, and the
+notes it writes (the changelog section, then the install text, saved as
+`notes.md`), for example:
+
+```sh
+gh run download <run id> --repo pyfaro/pyfaro -n release-assets -D release-assets
+(cd release-assets && sha256sum -c SHA256SUMS)
+gh release create v<version> --repo pyfaro/pyfaro --prerelease \
+  --verify-tag --title "Pyfaro <version>" --notes-file notes.md --generate-notes \
+  release-assets/*
+```
+
+Run the GitHub Release workflow (below) only to backfill an older tag.
 
 PyPI never accepts a file name twice, even after deletion, so a failed
 PyPI upload is recovered by re-running the failed **Publish to PyPI** job

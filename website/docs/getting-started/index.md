@@ -6,9 +6,9 @@ Pyfaro is a single command-line tool that puts one workflow on top of
 It creates projects, manages dependencies and environments, and runs the
 quality gate, without resolving packages or linting code itself.
 
-!!! warning "Experimental alpha"
-    The latest published version is `0.4.0-alpha.1`. Interfaces may change
-    between alpha versions. Only the commands listed under
+!!! warning "Beta"
+    The latest published version is `0.5.0-beta.1`, the first public beta.
+    Interfaces may still change before 1.0. Only the commands listed under
     [Features](features.md) exist today.
 
 <div class="grid cards" markdown>
