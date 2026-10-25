@@ -1,8 +1,9 @@
 # Changelog
 
-## Unreleased — 0.5.0-beta.1 development
+## 0.5.0-beta.1 — 2026-10-25
 
-Version `0.5.0-beta.1` has not been published.
+The first public beta. It adds these build, distribution and diagnostics
+capabilities to `0.4.0-alpha.1`:
 
 - Publish the CLI and configuration reference. The command-line reference now
   documents every command and subcommand with its usage line, every argument

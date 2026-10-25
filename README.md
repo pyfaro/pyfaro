@@ -19,8 +19,8 @@ not replace the tools you already trust: it orchestrates
 one consistent, scriptable interface, so a new contributor, a CI job and a
 git hook all run exactly the same commands.
 
-> **Alpha software.** Pyfaro is under active development and interfaces may
-> change between alpha versions. See [Project status](#project-status).
+> **Beta software.** Pyfaro is under active development and interfaces may
+> still change before 1.0. See [Project status](#project-status).
 
 ## Why Pyfaro
 
@@ -113,17 +113,19 @@ stable version exists, add `--prerelease allow` (uv) or `--pre` (pip, and
 **From crates.io** (Rust 1.90 or newer):
 
 ```sh
-cargo install pyfaro --version 0.4.0-alpha.1 --locked
+cargo install pyfaro --version 0.5.0-beta.1 --locked
 ```
 
-While every published version is an alpha, Cargo needs the explicit
+While every published version is a pre-release, Cargo needs the explicit
 `--version`; a bare `cargo install pyfaro` finds no stable release.
 
 **Prebuilt binaries** for Linux (x86_64, aarch64), macOS (arm64, x86_64) and
 Windows (x86_64) are attached to each
 [GitHub Release](https://github.com/pyfaro/pyfaro/releases), together with a
-`SHA256SUMS` file. The archives are unsigned: verify them against
-`SHA256SUMS`, extract, and put `pyfaro` on your `PATH`.
+`SHA256SUMS` file and a build provenance attestation for each asset. The
+archives are not code-signed: verify them against `SHA256SUMS` (and, with the
+GitHub CLI, `gh attestation verify <file> --repo pyfaro/pyfaro`), extract,
+and put `pyfaro` on your `PATH`.
 
 Check the installation, and the toolchain around it:
 
@@ -218,16 +220,17 @@ through. Read more in
 
 ## Project status
 
-Pyfaro is **alpha**. The latest published version is
-[`0.4.0-alpha.1`](https://crates.io/crates/pyfaro/0.4.0-alpha.1); the `main`
-branch develops `0.5.0-beta.1`. Interfaces may change between alpha versions.
+Pyfaro is **beta**. The latest version is
+[`0.5.0-beta.1`](https://crates.io/crates/pyfaro/0.5.0-beta.1) (`0.5.0b1` on
+[PyPI](https://pypi.org/project/pyfaro/)). Interfaces may still change before
+1.0.
 
 - **Tested versions:** uv 0.9.26, Ruff 0.16.10, ty 0.0.85, pytest 9.1.1.
 - **Platforms:** Linux, macOS and Windows are built and tested in CI.
   `init --apply` is **Linux-only** for now; on macOS and Windows `init`
   previews but does not apply.
 - **Implemented:** `create`, `init`, `sync`, `add`, `remove`, `run`, `dev`, `python`,
-  `build` (on `main`), `tools`, `doctor`, `lint`, `fmt`, `type`, `check`, `test`
+  `build`, `tools`, `doctor`, `lint`, `fmt`, `type`, `check`, `test`
   and `completions`.
 
 See the [changelog](CHANGELOG.md) for what each release contains.
