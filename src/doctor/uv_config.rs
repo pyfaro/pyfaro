@@ -9,7 +9,7 @@ use toml_edit::{DocumentMut, Item, Table};
 use crate::error::{Error, Result};
 use crate::process;
 
-use super::{Report, Severity, uv_env_enabled};
+use super::{Report, Severity};
 
 pub(super) struct UvConfiguration {
     pub(super) document: DocumentMut,
@@ -516,4 +516,13 @@ pub(super) fn validate_project_metadata(
     }
     report.line(Severity::Error, format!("configuration: uv rejected project metadata in {}: {diagnostic}; correct pyproject.toml", root.display()))?;
     Ok(false)
+}
+
+pub(super) fn uv_env_enabled(name: &str) -> bool {
+    env::var(name).is_ok_and(|value| {
+        matches!(
+            value.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "t" | "yes" | "y" | "on"
+        )
+    })
 }
