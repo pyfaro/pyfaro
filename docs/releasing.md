@@ -514,8 +514,8 @@ runner image. If only the archive hash differs, extract the `pyfaro`
 executable from your archive and from the published one and compare them
 with `sha256sum`: the binary is the stricter test, and a different zlib can
 compress the same files to different bytes. The workflow logs print
-`rustc -vV` for each build. Releases before `0.5.0-alpha.1` were not built
-reproducibly and have no script.
+`rustc -vV` for each build. Releases cut before this pipeline landed (see its
+`CHANGELOG.md` entry) were not built reproducibly and have no script.
 
 ## Verifying a download
 
