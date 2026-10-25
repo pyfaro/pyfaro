@@ -14,3 +14,5 @@ __pycache__/
 # Documentation site build output
 /website/site/
 .venv/
+/dist/
+/release-report/
