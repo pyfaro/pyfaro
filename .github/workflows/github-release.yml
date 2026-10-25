@@ -1,8 +1,10 @@
 name: GitHub Release
 
-# Build standalone binaries for an already published and tagged version and
-# create (or refresh the assets of) its GitHub Release. The Release workflow
-# calls this after publishing; run it by hand to backfill an older tag.
+# Create (or refresh the assets of) the GitHub Release for an already
+# published and tagged version. The Release workflow calls this after
+# publishing, with the reproducible binaries it already built before the
+# upload; run it by hand to backfill an older tag, which builds them here.
+# Every archive and the crate get a signed build provenance attestation.
 on:
   workflow_dispatch:
     inputs:
@@ -15,6 +17,10 @@ on:
       tag:
         required: true
         type: string
+      prebuilt:
+        description: Use the `binaries` artifact the calling run already built and compared
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -31,6 +37,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
+      commit: ${{ steps.version.outputs.commit }}
     steps:
       - name: Check the tag and crates.io version
         id: version
@@ -43,10 +50,15 @@ jobs:
             v*) version="${TAG#v}" ;;
             *) echo "::error::Tag $TAG does not start with v"; exit 1 ;;
           esac
-          if ! git ls-remote --exit-code --tags "https://github.com/$REPOSITORY.git" "refs/tags/$TAG" >/dev/null; then
+          refs=$(git ls-remote "https://github.com/$REPOSITORY.git" \
+            "refs/tags/$TAG" "refs/tags/$TAG^{}")
+          if [ -z "$refs" ]; then
             echo "::error::Tag $TAG does not exist"
             exit 1
           fi
+          # An annotated tag also lists its commit on a peeled `^{}` line,
+          # which sorts last.
+          commit=$(printf '%s\n' "$refs" | awk '{ sha = $1 } END { print sha }')
           status=$(curl -sS -o /dev/null -w '%{http_code}' \
             -A 'pyfaro-release (https://github.com/pyfaro/pyfaro)' \
             "https://crates.io/api/v1/crates/pyfaro/$version")
@@ -55,79 +67,103 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
           case "$version" in
             *-*) echo prerelease=true >> "$GITHUB_OUTPUT" ;;
             *) echo prerelease=false >> "$GITHUB_OUTPUT" ;;
           esac
 
-  binaries:
-    name: Build (${{ matrix.target }})
+  build:
+    name: Binaries
     needs: resolve
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - target: x86_64-unknown-linux-gnu
-            os: ubuntu-22.04
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-22.04-arm
-          - target: aarch64-apple-darwin
-            os: macos-latest
-          - target: x86_64-apple-darwin
-            os: macos-latest
-            cross: true
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    defaults:
-      run:
-        shell: bash
+    if: ${{ !inputs.prebuilt }}
+    uses: ./.github/workflows/build-binaries.yml
+    with:
+      ref: ${{ inputs.tag }}
+      version: ${{ needs.resolve.outputs.version }}
+
+  # Collects and attests the assets. It is the only job with an OIDC token
+  # and attestation rights, and it cannot write repository contents.
+  assemble:
+    name: Assemble and attest the assets
+    needs: [resolve, build]
+    if: ${{ !failure() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     env:
-      TARGET: ${{ matrix.target }}
+      TAG: ${{ inputs.tag }}
       VERSION: ${{ needs.resolve.outputs.version }}
+      COMMIT: ${{ needs.resolve.outputs.commit }}
+      GH_TOKEN: ${{ github.token }}
+      REPOSITORY: ${{ github.repository }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag }}
+          sparse-checkout: .github/scripts
           persist-credentials: false
-      - name: Install pinned Rust toolchain
-        uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
+      - name: Download the verified binaries
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          toolchain: '1.90.0'
-          targets: ${{ matrix.target }}
-      - name: Build the release binary
-        run: cargo build --locked --release --target "$TARGET"
-      - name: Check the binary version
-        if: ${{ !matrix.cross }}
+          name: binaries
+          path: dist
+      - name: Check the archives
+        run: python3 .github/scripts/release_artifacts.py check-assets dist --version "$VERSION"
+      - name: Download and verify the published crate
         run: |
           set -euo pipefail
-          test "$("target/$TARGET/release/pyfaro" --version)" = "pyfaro $VERSION"
-      - name: Archive the binary
-        run: |
-          set -euo pipefail
-          name="pyfaro-$VERSION-$TARGET"
-          mkdir -p "dist/$name"
-          cp README.md LICENSE CHANGELOG.md "dist/$name/"
-          if [ "$RUNNER_OS" = Windows ]; then
-            cp "target/$TARGET/release/pyfaro.exe" "dist/$name/"
-            (cd dist && 7z a -tzip "$name.zip" "$name" >/dev/null)
-          else
-            cp "target/$TARGET/release/pyfaro" "dist/$name/"
-            tar -C dist -czf "dist/$name.tar.gz" "$name"
+          agent='pyfaro-release (https://github.com/pyfaro/pyfaro)'
+          crate="dist/pyfaro-$VERSION.crate"
+          curl -sS --fail -L -A "$agent" -o "$crate" \
+            "https://static.crates.io/crates/pyfaro/pyfaro-$VERSION.crate"
+          registry=$(curl -sS --fail -A "$agent" \
+            "https://crates.io/api/v1/crates/pyfaro/$VERSION" \
+            | python3 -c 'import json, sys; print(json.load(sys.stdin)["version"]["checksum"])')
+          downloaded=$(sha256sum "$crate" | cut -d' ' -f1)
+          if [ "$registry" != "$downloaded" ]; then
+            echo "::error::Downloaded crate does not match the registry checksum"
+            exit 1
           fi
-          rm -r "dist/$name"
-          ls -l dist
-      - name: Keep the archive
+          python3 .github/scripts/release_artifacts.py check-crate "$crate" \
+            --version "$VERSION" --commit "$COMMIT"
+      - name: Attest the build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.crate
+      - name: Verify the attestations
+        run: |
+          set -euo pipefail
+          for asset in dist/*; do
+            for _ in 1 2 3; do
+              if gh attestation verify "$asset" --repo "$REPOSITORY"; then
+                continue 2
+              fi
+              sleep 10
+            done
+            echo "::error::No valid attestation for $asset"
+            exit 1
+          done
+      - name: Write the checksums
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum -- * > SHA256SUMS)
+          cat dist/SHA256SUMS
+      - name: Keep the release assets
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: binary-${{ matrix.target }}
+          name: release-assets
           path: dist/*
           if-no-files-found: error
 
   release:
     name: Create the GitHub Release
-    needs: [resolve, binaries]
+    needs: [resolve, assemble]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -144,29 +180,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Download the binaries
+      - name: Download the attested assets
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          pattern: binary-*
+          name: release-assets
           path: dist
-          merge-multiple: true
-      - name: Download and verify the published crate
-        run: |
-          set -euo pipefail
-          agent='pyfaro-release (https://github.com/pyfaro/pyfaro)'
-          crate="dist/pyfaro-$VERSION.crate"
-          curl -sS --fail -L -A "$agent" -o "$crate" \
-            "https://static.crates.io/crates/pyfaro/pyfaro-$VERSION.crate"
-          registry=$(curl -sS --fail -A "$agent" \
-            "https://crates.io/api/v1/crates/pyfaro/$VERSION" \
-            | python3 -c 'import json, sys; print(json.load(sys.stdin)["version"]["checksum"])')
-          downloaded=$(sha256sum "$crate" | cut -d' ' -f1)
-          if [ "$registry" != "$downloaded" ]; then
-            echo "::error::Downloaded crate does not match the registry checksum"
-            exit 1
-          fi
-          (cd dist && sha256sum -- * > SHA256SUMS)
-          cat dist/SHA256SUMS
       - name: Write the release notes
         run: |
           set -euo pipefail
@@ -186,8 +204,9 @@ jobs:
           From crates.io: \`cargo install pyfaro --version $VERSION --locked\`.
           Or download the archive for your platform below, extract it, and put
           \`pyfaro\` on your \`PATH\`. uv 0.9.26 or newer is required at runtime.
-          Verify downloads against \`SHA256SUMS\`. The \`.crate\` file is the
-          exact archive published on crates.io.
+          Verify downloads against \`SHA256SUMS\`, and check where they were
+          built with \`gh attestation verify <file> --repo $REPOSITORY\`. The
+          \`.crate\` file is the exact archive published on crates.io.
           EOF
       - name: Create or update the release
         run: |

@@ -24,6 +24,18 @@ Version `0.5.0-beta.1` has not been published.
   (`docs/exit-codes.md` and the site's exit-codes page): `0`, `1`
   (Pyfaro failures, a failing `check`, `doctor` errors, a tool that ends
   without a numeric status), `2` (usage), forwarded tool codes and `130`.
+- Make the release pipeline build and attest its artifacts. The Release
+  workflow now builds the five standalone archives (Linux x86_64 and
+  aarch64, macOS x86_64 and aarch64, Windows x86_64) before the crates.io
+  upload, so a broken target blocks it, and builds each twice on separate
+  runners, failing unless the binaries and archives are byte-for-byte
+  identical (`--remap-path-prefix`, commit-time timestamps, sorted archives
+  with fixed owners and modes). It checks that the crate, tag, and every
+  runnable binary's `--version` agree. Every archive and the `.crate` get a
+  GitHub artifact attestation (SLSA build provenance, verify with
+  `gh attestation verify <file> --repo pyfaro/pyfaro`), and
+  `docs/releasing.md` documents how to reproduce an archive, verify a
+  download, and who owns the release credentials.
 
 ## 0.4.0-alpha.1 — 2026-10-23
 

@@ -26,22 +26,27 @@ The steps below assume `<version>` is the development version already in
    `CHANGELOG.md` to `## <version> — YYYY-MM-DD` and replace "This version
    has not been published" with a one-line introduction. That section becomes
    the GitHub Release notes. Merge the PR once CI passes.
-2. **Dry run (optional).** Package and test without uploading:
+2. **Dry run (optional).** Check, package, and build everything without
+   uploading:
 
    ```sh
    gh workflow run release.yml -f version=<version>
    gh run watch "$(gh run list --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId')"
    ```
 
-   Download the `crate` artifact from the run to review the archive and its
-   SHA-256.
+   Download the `crate` artifact to review the archive and its SHA-256, and
+   the `binaries` artifact for the five release archives. The run fails if
+   any target does not build, reports the wrong version, or does not build
+   to identical bytes twice.
 3. **Publish.** Start the real run from `main`:
 
    ```sh
    gh workflow run release.yml -f version=<version> -f publish=true
    ```
 
-   Preflight, CI on all three platforms, the audit, and packaging run first.
+   Preflight, CI on all three platforms, the audit, packaging, and the
+   reproducible builds of all five binaries run first. Nothing reaches
+   crates.io until all of them pass.
 4. **Approve.** The **Publish to crates.io** job waits on the `crates-io`
    environment. Approve it in the run page (**Review deployments**), or:
 
@@ -52,13 +57,15 @@ The steps below assume `<version>` is the development version already in
      -F "environment_ids[]=$env_id" -f state=approved -f comment="Approve <version>"
    ```
 
-   The workflow then uploads, tags `v<version>`, builds the release archives,
-   creates the GitHub Release, and reinstalls the version from crates.io.
+   The workflow then uploads, tags `v<version>`, attests and publishes the
+   release assets as a GitHub Release, and reinstalls the version from
+   crates.io.
 5. **Verify.** Check the crates.io page, the tag, and the release assets:
 
    ```sh
    gh release download v<version> -p 'SHA256SUMS' -p '*x86_64-unknown-linux-gnu.tar.gz'
    sha256sum -c --ignore-missing SHA256SUMS
+   gh attestation verify pyfaro-<version>-x86_64-unknown-linux-gnu.tar.gz --repo pyfaro/pyfaro
    cargo install pyfaro --version <version> --locked
    ```
 
@@ -360,17 +367,24 @@ first sets the version and dates its `## <version>` changelog section.
    `v<version>` tag, and a version already known to crates.io.
 2. **Checks** and **Audit** reuse the CI and Security workflows on all three
    platforms.
-3. **Package** builds the archive, runs all-target tests from the unpacked
-   package, runs `cargo publish --dry-run`, and keeps the `.crate` and its
-   SHA-256 as the `crate` workflow artifact for review.
-4. **Publish** runs only with `publish` checked. It waits for approval on the
+3. **Package** builds the archive, checks that it is `pyfaro <version>`
+   packaged from the workflow's clean commit, runs all-target tests from the
+   unpacked package, runs `cargo publish --dry-run`, and keeps the `.crate`
+   and its SHA-256 as the `crate` workflow artifact for review.
+4. **Binaries** (in parallel with 2 and 3) builds the five release archives
+   twice and requires identical bytes, as described in
+   [Reproducible builds](#reproducible-builds). It keeps the verified
+   archives as the `binaries` artifact.
+5. **Publish** runs only with `publish` checked and only after 2, 3, and 4
+   passed, so a broken target blocks the upload. It waits for approval on the
    `crates-io` environment, obtains a short-lived token through crates.io
    trusted publishing, uploads, and fails if the registry checksum differs
    from the reviewed archive. It then creates the annotated `v<version>` tag
    on the exact workflow commit.
-5. **GitHub Release** runs unless `github-release` is unchecked. It calls
-   `.github/workflows/github-release.yml`, described below.
-6. **Install from crates.io** installs the published version with `--locked`
+6. **GitHub Release** runs unless `github-release` is unchecked. It calls
+   `.github/workflows/github-release.yml` with the `binaries` artifact from
+   step 4, described below.
+7. **Install from crates.io** installs the published version with `--locked`
    and checks its `--version` output.
 
 Run it once with `publish` unchecked to obtain the archive and checksum for
@@ -378,13 +392,20 @@ review, then run it again with `publish` checked after approval. Afterward,
 record the release in a follow-up PR as for earlier versions and move the
 development version forward.
 
-One-time setup, done by a crates.io owner and a repository admin:
+Releases are dispatched, not started by pushing a tag, and that is
+deliberate: the workflow creates the tag only after the crates.io upload is
+verified, so a `v<version>` tag always means a published version. This
+dispatch-then-tag pipeline is how the "tag-to-release" requirement is met:
+creating the tag leads straight to its GitHub Release, whose assets were
+built and compared before the upload and are attested.
 
-- On crates.io, add a trusted publisher for `pyfaro`: repository
-  `pyfaro/pyfaro`, workflow `release.yml`, environment `crates-io`.
-  No long-lived registry token is stored in GitHub.
-- In GitHub, keep the `crates-io` environment restricted to `main` with the
-  maintainer as a required reviewer.
+The versions have to agree before anything ships. The workflow input must
+equal the `Cargo.toml` version, the packaged `.crate` must be `pyfaro
+<version>` cut from the released commit, the tag is `v<version>`, every
+binary that can run on its builder must print `pyfaro <version>`, and the
+changelog needs a `## <version>` section for the release notes.
+
+One-time setup is described in [Ownership and credentials](#ownership-and-credentials).
 
 If the upload succeeds but tagging fails, do not rerun the workflow:
 preflight rejects the published version. Create the missing tag on the
@@ -393,17 +414,30 @@ Release workflow for it.
 
 ### GitHub Release workflow
 
-`.github/workflows/github-release.yml` builds the downloadable assets for a
+`.github/workflows/github-release.yml` attests the release assets of a
 version that is already on crates.io and tagged, and creates its GitHub
-Release. The Release workflow calls it after publishing. Run it by hand to
-backfill an older tag or refresh its assets:
+Release. The Release workflow calls it after publishing, handing over the
+archives it already built and compared. Run it by hand to backfill an older
+tag or refresh its assets; it then builds the tagged source itself with the
+same reusable [build workflow](#reproducible-builds):
 
 ```sh
 gh workflow run github-release.yml -f tag=v0.2.0-alpha.1
 ```
 
-It checks that the tag exists and the version is on crates.io, then builds
-the tagged source with the pinned toolchain for:
+It checks that the tag exists and the version is on crates.io, then the
+`assemble` job:
+
+1. requires exactly one archive for each target below;
+2. downloads the `.crate` from crates.io, checks it against the registry
+   checksum, and checks that it is `pyfaro <version>` packaged from the
+   tag's commit;
+3. creates a signed build provenance attestation for every archive and the
+   `.crate`, then verifies each one with `gh attestation verify`;
+4. writes a `SHA256SUMS` file for every asset.
+
+A separate job with `contents: write` creates the release from the attested
+assets, so the job that can sign has no repository write access.
 
 | Target | Runner | Archive |
 | --- | --- | --- |
@@ -414,10 +448,7 @@ the tagged source with the pinned toolchain for:
 | `x86_64-pc-windows-msvc` | Windows | `.zip` |
 
 Each archive holds the `pyfaro` executable, `README.md`, `LICENSE`, and
-`CHANGELOG.md`. Native builds must report the exact version; the
-cross-compiled macOS build is not executed. The release also attaches the
-`.crate` downloaded from crates.io, after checking it against the registry
-checksum, and a `SHA256SUMS` file for every asset.
+`CHANGELOG.md`.
 
 The notes are the `## <version>` section of `CHANGELOG.md` from the
 triggering ref (the released commit, or `main` for a backfill), followed by
@@ -425,16 +456,157 @@ install instructions and GitHub's generated list of merged pull requests
 since the previous release. Versions with a pre-release suffix become
 prereleases. When the release already exists, its notes are rebuilt the
 same way, including a regenerated pull request list, and its assets are
-re-uploaded. The binaries are unsigned and have no
-provenance attestation yet.
+re-uploaded. Releases cut before this pipeline landed have no attestations;
+backfilling one attaches freshly built, attested archives that differ from
+the originals.
 
-## Public beta distribution remains B02/B06
+## Reproducible builds
 
-The alpha workflows above already provide trusted publishing, a protected
-release approval, checksums, generated release notes, and standalone
-archives. The beta work retains responsibility for the supported-platform
-policy, signed binaries and artifact provenance, installers, and documented
-credential rotation.
+`.github/workflows/build-binaries.yml` is the one place the release binaries
+are built. The Release workflow runs it before the crates.io upload, GitHub
+Release runs it when backfilling a tag, and the **Release build check**
+workflow runs it on every pull request that touches the release pipeline, so
+changes to the pipeline are exercised before a release depends on them.
+
+For each target it builds **twice**, in two jobs on separate fresh runners
+with the checkout in different directories, and a final job requires the
+SHA-256 of every binary and archive to match, failing otherwise. The step
+summary lists both hashes for each target. The build itself is
+`.github/scripts/release_artifacts.py`:
+
+- `cargo build --locked --release` with the pinned Rust 1.90.0 toolchain,
+  `CARGO_INCREMENTAL=0`, and `--remap-path-prefix` for the checkout, Cargo
+  home, and rustup home, so no runner path ends up in the binary. Windows
+  also links with `/Brepro`, which removes the linker's build timestamp.
+- `SOURCE_DATE_EPOCH` is the commit time of the built commit.
+- The archive is written by the script, not by `tar` or `7z`: entries are
+  sorted, owners are `0`/empty, modes are `0644` (and `0755` for the
+  executable), every timestamp is the commit time, and the gzip header has
+  no name or time.
+- Each archive's `--version` is checked against `pyfaro <version>` where the
+  binary can run. The Intel macOS binary is cross-compiled on an Arm runner
+  and checked under Rosetta 2 (`arch -x86_64`). If a runner ever lacks
+  Rosetta, the check is skipped with a workflow notice that says why rather
+  than failing the release.
+
+### Reproduce an archive
+
+To check that a published archive is what the tagged source builds, on a
+machine like the release runner (Ubuntu 22.04 for the Linux archives):
+
+```sh
+git clone --branch v<version> https://github.com/pyfaro/pyfaro.git
+cd pyfaro
+rustup toolchain install 1.90.0 --target <target>
+python3 .github/scripts/release_artifacts.py build --target <target>
+gh release download v<version> --repo pyfaro/pyfaro -p SHA256SUMS
+(cd dist && sha256sum -c --ignore-missing ../SHA256SUMS)
+```
+
+Run it from a clean checkout; it refuses to build with modified tracked
+files. It needs Python 3.11 or newer. It prints the SHA-256 of the binary
+and of the archive and writes the archive to `dist/`; `sha256sum -c` then
+compares it with the matching line of `SHA256SUMS`.
+
+Bit-identical output also needs an equivalent toolchain and system: the
+same Rust version and the same linker, C library, and (on macOS) SDK as the
+runner image. If only the archive hash differs, extract the `pyfaro`
+executable from your archive and from the published one and compare them
+with `sha256sum`: the binary is the stricter test, and a different zlib can
+compress the same files to different bytes. The workflow logs print
+`rustc -vV` for each build. Releases cut before this pipeline landed (see its
+`CHANGELOG.md` entry) were not built reproducibly and have no script.
+
+## Verifying a download
+
+Every archive and the `.crate` of a release made after this pipeline landed
+has a [GitHub artifact attestation](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds):
+a Sigstore-signed SLSA build provenance statement that names the repository,
+workflow, and commit that produced the file. Check a download with the
+GitHub CLI:
+
+```sh
+gh attestation verify pyfaro-<version>-<target>.tar.gz --repo pyfaro/pyfaro
+```
+
+Success means the file's digest matches an attestation created by a
+workflow in `pyfaro/pyfaro`. The attestation is signed with a short-lived
+certificate tied to that workflow run, so there is no signing key to protect
+or rotate. `SHA256SUMS` additionally guards against corrupted downloads:
+
+```sh
+sha256sum -c --ignore-missing SHA256SUMS
+```
+
+## Ownership and credentials
+
+The release process has one human gate and no stored secrets.
+
+| What | Who or what |
+| --- | --- |
+| Approve the `crates-io` environment | Required reviewer: `mhbxyz` (the only one). Self-review is allowed, so the maintainer can approve their own dispatch. |
+| Branches that can deploy to `crates-io` | Protected branches only (`main`) |
+| crates.io owners of `pyfaro` | `mhbxyz` (user owner; no team owners) |
+| Repository secrets, environment secrets, variables | None |
+| Default `GITHUB_TOKEN` permissions | Read-only; Actions cannot approve pull requests |
+
+**Trusted publishing.** crates.io is configured (crate settings, *Trusted
+Publishing*) to accept uploads from GitHub repository `pyfaro/pyfaro`,
+workflow file `release.yml`, environment `crates-io`. In the publish job,
+`rust-lang/crates-io-auth-action` exchanges the run's OIDC token for a
+crates.io token that is valid only for that run's upload. No registry token,
+signing key, or other credential is stored in GitHub or in this repository.
+Only the `publish` job requests `id-token`
+for crates.io; renaming `release.yml` or the environment breaks publishing
+until the trusted publisher is updated to match.
+
+**Workflow permissions.** Every workflow starts with `contents: read`; jobs
+get more only where noted, and the `GITHUB_TOKEN` is the only token used:
+
+| Job | Extra permissions | Why |
+| --- | --- | --- |
+| Release / Publish to crates.io | `contents: write`, `id-token: write` | Create the tag; trusted publishing |
+| Release / Install from crates.io | none (`permissions: {}`) | It only runs `cargo install` |
+| Release / GitHub Release (caller) | `contents: write`, `id-token: write`, `attestations: write` | Ceiling for the called jobs below |
+| GitHub Release / Assemble and attest | `id-token: write`, `attestations: write` | Sigstore signing; no write access to contents |
+| GitHub Release / Create the release | `contents: write` | Create the release and upload assets |
+| Docs / Deploy | `pages: write`, `id-token: write` | GitHub Pages deployment |
+
+Builds, checks, and the audit have read-only access. Third-party actions are
+pinned to full commit SHAs of release tags; Dependabot proposes updates.
+
+**Changing owners.** To add or remove a maintainer, a current crates.io
+owner runs `cargo owner --add <user>` or `cargo owner --remove <user>`, and a
+repository admin edits the reviewers of the `crates-io` environment
+(**Settings → Environments → crates-io**). Keep at least two crates.io owners
+once a second maintainer exists, so a lost account cannot lock the crate.
+
+**If something leaks or an account is compromised:**
+
+1. Disable publishing: remove the trusted publisher in the crate's
+   crates.io settings, and remove or restrict the `crates-io` environment.
+2. Revoke every crates.io API token of the affected accounts
+   (<https://crates.io/settings/tokens>). Manual publishes used personal
+   tokens kept outside the repository; none are needed now.
+3. Rotate the account credentials of the affected maintainer (GitHub and
+   crates.io passwords, two-factor methods, passkeys, and GitHub personal
+   access tokens or SSH keys), and review recent workflow runs and the
+   audit log for unexpected dispatches or approvals.
+4. If a published version is affected, yank it (`cargo yank --version <v>`),
+   delete its GitHub Release assets, and publish a corrected version.
+   Published versions can never be replaced.
+5. There is no long-lived signing key to rotate: attestations come from
+   short-lived Sigstore certificates. After a compromise, treat attestations
+   created during the exposure window as untrustworthy and re-verify
+   archives against a trusted rebuild with [Reproduce an archive](#reproduce-an-archive).
+6. Re-register the trusted publisher only after the cause is fixed.
+
+## Distribution scope
+
+The pipeline above covers reproducible standalone archives for five
+targets, checksums, signed provenance, a protected approval, generated
+release notes, and documented ownership. Installers and install-script
+verification are separate work.
 
 References: [Cargo publishing](https://doc.rust-lang.org/cargo/reference/publishing.html),
 [manifest packaging/publication controls](https://doc.rust-lang.org/cargo/reference/manifest.html).

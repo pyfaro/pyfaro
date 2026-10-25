@@ -1,8 +1,12 @@
 name: Release
 
 # Manual, gated publication of the version recorded in Cargo.toml. Leaving
-# `publish` unchecked runs every check and packaging step without uploading,
-# tagging, or creating a GitHub Release. See docs/releasing.md.
+# `publish` unchecked runs every check, packaging step, and binary build
+# without uploading, tagging, or creating a GitHub Release. Nothing is
+# uploaded until the crate archive and all five reproducible binary archives
+# have been built and checked, and the tag is created only after a verified
+# upload, so a v<version> tag always means a published version. See
+# docs/releasing.md.
 on:
   workflow_dispatch:
     inputs:
@@ -105,6 +109,14 @@ jobs:
         run: cargo test --locked --all-targets
       - name: Verify publication without uploading
         run: cargo publish --dry-run --locked
+      - name: Check the archive version and commit
+        env:
+          VERSION: ${{ inputs.version }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          python3 .github/scripts/release_artifacts.py check-crate \
+            "target/package/pyfaro-$VERSION.crate" \
+            --version "$VERSION" --commit "$COMMIT"
       - name: Record the archive checksum
         working-directory: target/package
         env:
@@ -120,9 +132,16 @@ jobs:
             target/package/pyfaro-${{ inputs.version }}.crate.sha256
           if-no-files-found: error
 
+  binaries:
+    name: Binaries
+    needs: preflight
+    uses: ./.github/workflows/build-binaries.yml
+    with:
+      version: ${{ inputs.version }}
+
   publish:
     name: Publish to crates.io
-    needs: package
+    needs: [package, binaries]
     if: inputs.publish
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -188,17 +207,23 @@ jobs:
     name: GitHub Release
     needs: publish
     if: inputs.github-release
+    # The called workflow splits these across two jobs: attestations get
+    # `id-token` and `attestations`, the release itself gets `contents`.
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     uses: ./.github/workflows/github-release.yml
     with:
       tag: v${{ inputs.version }}
+      prebuilt: true
 
   verify-install:
     name: Install from crates.io
     needs: publish
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions: {}
     steps:
       - name: Install pinned Rust toolchain
         uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
