@@ -7,7 +7,7 @@ It creates projects, manages dependencies and environments, and runs the
 quality gate, without resolving packages or linting code itself.
 
 !!! warning "Experimental alpha"
-    The latest published version is `0.3.0-alpha.1`. Interfaces may change
+    The latest published version is `0.4.0-alpha.1`. Interfaces may change
     between alpha versions. Only the commands listed under
     [Features](features.md) exist today.
 
@@ -15,7 +15,8 @@ quality gate, without resolving packages or linting code itself.
 
 -   :material-download: **[Installation](installation.md)**
 
-    Install Pyfaro with Cargo or a prebuilt archive, and install uv.
+    Install Pyfaro with the install script, Cargo or a prebuilt archive, and
+    install uv.
 
 -   :material-timer-outline: **[First steps](first-steps.md)**
 

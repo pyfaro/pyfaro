@@ -95,6 +95,16 @@ with its e2e test in the same PR. The `E2E (ubuntu-latest)`, `E2E (macos-latest)
 and `E2E (windows-latest)` jobs are required checks; nothing merges until they
 pass.
 
+The install scripts (`website/docs/install.sh`, `install.ps1`) have their own
+tests in `tools/install-tests/`. The `Install scripts (<os>)` CI jobs run them
+against the published releases and a local mirror with a corrupted archive. Run
+the POSIX one locally with the GitHub CLI installed:
+
+```sh
+sh tools/install-tests/test-install-sh.sh sh
+shellcheck --shell=sh website/docs/install.sh
+```
+
 ## Branches and pull requests
 
 Start from current `main`; use a focused branch such as `feat/config-loader`,

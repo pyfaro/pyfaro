@@ -1436,13 +1436,16 @@ mod linux_uv {
             .code(1)
             .stderr_contains("error: could not find uv at ")
             .stderr_contains("missing-uv")
-            .stderr_contains("; install uv or use --uv <path>\n");
+            .stderr_contains("; fix --uv <path> or install uv (")
+            .stderr_contains(
+                "https://docs.astral.sh/uv/getting-started/installation/",
+            );
         sandbox
             .pyfaro(["init", "fresh", "--apply", "--uv", "no-such-uv"])
             .run()
             .code(1)
             .stderr_contains("error: could not find uv at no-such-uv")
-            .stderr_contains("install uv or use --uv <path>");
+            .stderr_contains("fix --uv <path> or install uv (");
         assert_eq!(snapshot(sandbox.path()), before);
         assert!(!sandbox.join("fresh").exists());
     }
@@ -1463,7 +1466,7 @@ mod linux_uv {
                 .stdout_contains("Initialization plan for project:")
                 .stderr_eq(
                     &format!(
-                        "error: unsupported uv version: {version}; use uv >=0.9.26 (tested: 0.9.26)\n"
+                        "error: unsupported uv version: {version}; use uv >=0.9.26 (tested: 0.9.26) by running `uv self update`, reinstalling uv (https://docs.astral.sh/uv/getting-started/installation/) or selecting another with --uv <path>\n"
                     ));
             let before = {
                 let mut copy = before.clone();
@@ -1511,7 +1514,7 @@ mod linux_uv {
             .run()
             .code(7)
             .stderr_contains("error: uv --version failed for ")
-            .stderr_contains("interpreter is broken");
+            .stderr_contains("interpreter is broken; reinstall uv (");
         assert!(!sandbox.join("project/uv.lock").exists());
     }
 

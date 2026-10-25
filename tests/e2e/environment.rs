@@ -457,7 +457,7 @@ fn python_uv_selects_the_executable() {
             .args(["--uv", "missing-uv-binary"])
             .run_plain()
             .code(1)
-            .stderr_contains("could not find uv at missing-uv-binary")
+            .stderr_contains("error: could not find uv at missing-uv-binary; fix --uv <path> or install uv (")
             .stdout_empty();
     }
 
@@ -775,7 +775,7 @@ fn tools_uv_selects_the_uv_executable() {
         .pyfaro(["tools", "uv", "--uv", "missing-uv-binary"])
         .run_plain()
         .code(1)
-        .stderr_contains("could not inspect uv at missing-uv-binary")
+        .stderr_contains("error: could not find uv at missing-uv-binary; fix --uv <path> or install uv (")
         .stdout_empty();
 
     // In the listing a bad uv is reported, not fatal.
@@ -784,7 +784,7 @@ fn tools_uv_selects_the_uv_executable() {
     listing.success();
     assert!(
         listing.stdout.starts_with(
-            "uv: unavailable (could not inspect uv at missing-uv-binary"
+            "uv: unavailable (could not find uv at missing-uv-binary; fix --uv <path>"
         ),
         "{}",
         listing.stdout
@@ -800,13 +800,13 @@ fn tools_output_stays_on_one_line_per_tool() {
     let strict = sandbox.pyfaro(["tools", "uv", "--uv", hostile]).run_plain();
     strict.code(1).stdout_empty();
     assert_eq!(strict.stderr.lines().count(), 1, "{}", strict.stderr);
-    strict.stderr_contains("could not inspect uv at bad\\nuv\\tpath");
+    strict.stderr_contains("could not find uv at bad\\nuv\\tpath");
 
     let listing = sandbox.pyfaro(["tools", "--uv", hostile]).run_plain();
     listing.success();
     assert_eq!(listing.stdout.lines().count(), 4, "{}", listing.stdout);
     listing.stdout_contains(
-        "uv: unavailable (could not inspect uv at bad\\nuv\\tpath",
+        "uv: unavailable (could not find uv at bad\\nuv\\tpath",
     );
 }
 
@@ -1239,7 +1239,7 @@ fn doctor_uv_selects_the_uv_executable() {
         project.pyfaro(["doctor", "--uv", "missing-uv-binary"]).run_plain();
     assert_blocking(
         &out,
-        "ERROR: uv: could not inspect uv at missing-uv-binary: could not find uv at missing-uv-binary",
+        "ERROR: uv: could not find uv at missing-uv-binary; fix --uv <path> or install uv (",
         1,
     );
     assert_eq!(project.snapshot(), before);
@@ -1282,4 +1282,149 @@ fn doctor_honors_uv_project_environment() {
         "{}",
         out.stdout
     );
+}
+
+// ------------------------------------------- missing, old and broken uv
+
+/// The install advice every "could not find uv" message ends with.
+fn uv_install_advice() -> String {
+    let command = if cfg!(windows) {
+        r#"powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex""#
+    } else {
+        "curl -LsSf https://astral.sh/uv/install.sh | sh"
+    };
+    format!(
+        "install uv (https://docs.astral.sh/uv/getting-started/installation/, or `{command}`)"
+    )
+}
+
+/// The `PATH` value for "uv is not installed": an empty directory.
+fn empty_path(sandbox: &Sandbox) -> OsString {
+    let directory = sandbox.join("empty-path");
+    fs::create_dir_all(&directory).unwrap();
+    directory.into_os_string()
+}
+
+#[test]
+fn doctor_explains_a_uv_missing_from_path_in_one_line() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let project = sandbox.synced_project(Kind::Lib);
+    let before = project.snapshot();
+    let out = project
+        .pyfaro(["doctor"])
+        .env("PATH", empty_path(&sandbox))
+        .run_plain();
+    assert_blocking(&out, "ERROR: uv: could not find uv on PATH", 1);
+    let expected = format!(
+        "ERROR: uv: could not find uv on PATH; {} or pass --uv <path>",
+        uv_install_advice()
+    );
+    assert_eq!(
+        out.stdout
+            .lines()
+            .filter(|line| line.contains("uv:"))
+            .collect::<Vec<_>>(),
+        [expected.as_str()],
+        "{}",
+        out.stdout
+    );
+    assert_eq!(project.snapshot(), before);
+}
+
+#[test]
+fn an_ordinary_command_explains_a_uv_missing_from_path() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let project = sandbox.project(Kind::Lib);
+    let before = project.snapshot();
+    project
+        .pyfaro(["sync"])
+        .env("PATH", empty_path(&sandbox))
+        .run()
+        .code(1)
+        .stdout_empty()
+        .stderr_eq(&format!(
+            "error: could not find uv on PATH; {} or pass --uv <path>\n",
+            uv_install_advice()
+        ));
+    assert_eq!(project.snapshot(), before);
+}
+
+#[test]
+fn a_missing_uv_path_is_explained_by_doctor_and_ordinary_commands() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let project = sandbox.synced_project(Kind::Lib);
+    let missing = sandbox.join(executable("no-such-uv"));
+    let message = format!(
+        "could not find uv at {}; fix --uv <path> or {}",
+        missing.display(),
+        uv_install_advice()
+    );
+
+    let out = project.pyfaro(["doctor", "--uv"]).arg(&missing).run_plain();
+    assert_blocking(&out, &format!("ERROR: uv: {message}\n"), 1);
+
+    project
+        .pyfaro(["sync", "--uv"])
+        .arg(&missing)
+        .run()
+        .code(1)
+        .stdout_empty()
+        .stderr_eq(&format!("error: {message}\n"));
+}
+
+#[cfg(unix)]
+#[test]
+fn doctor_and_commands_explain_a_uv_that_is_too_old() {
+    use std::os::unix::fs::PermissionsExt;
+
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let project = sandbox.synced_project(Kind::Lib);
+    let old = sandbox
+        .write("old-uv", "#!/bin/sh\necho 'uv 0.9.25 (0000000 2025-01-01)'\n");
+    fs::set_permissions(&old, fs::Permissions::from_mode(0o755)).unwrap();
+    let message = "unsupported uv version: uv 0.9.25 (0000000 2025-01-01); use uv >=0.9.26 (tested: 0.9.26) by running `uv self update`, reinstalling uv (https://docs.astral.sh/uv/getting-started/installation/) or selecting another with --uv <path>";
+
+    let out = project.pyfaro(["doctor", "--uv"]).arg(&old).run_plain();
+    assert_blocking(&out, &format!("ERROR: uv: {message}\n"), 1);
+
+    project
+        .pyfaro(["sync", "--uv"])
+        .arg(&old)
+        .run()
+        .code(1)
+        .stdout_empty()
+        .stderr_eq(&format!("error: {message}\n"));
+}
+
+#[cfg(unix)]
+#[test]
+fn doctor_and_tools_explain_a_broken_uv_without_forwarding_its_status() {
+    use std::os::unix::fs::PermissionsExt;
+
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let project = sandbox.synced_project(Kind::Lib);
+    let broken = sandbox
+        .write("broken-uv", "#!/bin/sh\necho 'it is broken' >&2\nexit 7\n");
+    fs::set_permissions(&broken, fs::Permissions::from_mode(0o755)).unwrap();
+    let canonical = fs::canonicalize(&broken).unwrap();
+    let message = format!(
+        "uv --version failed for {} (exit status: 7): it is broken; reinstall uv (https://docs.astral.sh/uv/getting-started/installation/) or select another with --uv <path>",
+        canonical.display()
+    );
+
+    let out = project.pyfaro(["doctor", "--uv"]).arg(&broken).run_plain();
+    assert_blocking(&out, &format!("ERROR: uv: {message}\n"), 1);
+
+    project
+        .pyfaro(["tools", "uv", "--uv"])
+        .arg(&broken)
+        .run()
+        .code(1)
+        .stdout_empty()
+        .stderr_eq(&format!("error: uv: {message}\n"));
 }

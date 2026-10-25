@@ -79,16 +79,22 @@ what was found and where.
 
 ```console
 $ pyfaro sync --uv /nonexistent/uv
-error: could not find uv at /nonexistent/uv: cannot find binary path; install uv or use --uv <path>
+error: could not find uv at /nonexistent/uv; fix --uv <path> or install uv (https://docs.astral.sh/uv/getting-started/installation/, or `curl -LsSf https://astral.sh/uv/install.sh | sh`)
+```
+
+```console
+$ pyfaro sync
+error: could not find uv on PATH; install uv (https://docs.astral.sh/uv/getting-started/installation/, or `curl -LsSf https://astral.sh/uv/install.sh | sh`) or pass --uv <path>
 ```
 
 ```console
 $ pyfaro sync --uv ./old-uv
-error: unsupported uv version: uv 0.8.0; use uv >=0.9.26 (tested: 0.9.26)
+error: unsupported uv version: uv 0.8.0; use uv >=0.9.26 (tested: 0.9.26) by running `uv self update`, reinstalling uv (https://docs.astral.sh/uv/getting-started/installation/) or selecting another with --uv <path>
 ```
 
 Install or upgrade uv (0.9.26 or newer) and make sure it is on `PATH`, or pass
-`--uv <path>` to any command that talks to uv.
+`--uv <path>` to any command that talks to uv. `pyfaro doctor` reports the same
+line as `ERROR: uv: …`. Pyfaro never installs uv for you.
 
 ## Stale lock file
 

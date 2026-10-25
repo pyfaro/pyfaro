@@ -31,7 +31,13 @@ On Unix, an environment with `bin/python3` but no `bin/python` is valid; doctor
 uses that interpreter for layout and dependency checks.
 
 uv follows the normal Pyfaro executable selection and requires stable uv
-0.9.26 or newer. Ruff, ty, and pytest use the same discovery and version rules
+0.9.26 or newer. A uv that is missing, too old, or whose `--version` fails is
+one `ERROR: uv: ...` line that names the next step: the install link and
+command (or `--uv <path>`) when it cannot be found, `uv self update`, a
+reinstall or `--uv <path>` when it is too old, a reinstall or `--uv <path>`
+when it is broken. Other commands print the same text after `error: ` and keep
+their exit code (a failing version probe forwards uv's status outside `tools`
+and `doctor`). Pyfaro never installs uv. Ruff, ty, and pytest use the same discovery and version rules
 as `pyfaro tools`; missing or broken optional tools are warnings. To fix a
 missing executable, install it in the intended environment or put it on
 `PATH`, then run doctor again.

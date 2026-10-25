@@ -88,14 +88,18 @@ nearest `pyproject.toml`.
 ### Choose uv: `--uv`
 
 `--uv <PATH>` selects the uv executable. If it cannot be used, that is an
-error:
+error, explained in one line with the next step:
 
 ```console
 $ pyfaro doctor --project . --uv /nonexistent/uv
 …
-ERROR: uv: could not inspect uv at /nonexistent/uv: could not find uv at /nonexistent/uv: cannot find binary path; install uv or use --uv <path>; repair or replace the selected installation
+ERROR: uv: could not find uv at /nonexistent/uv; fix --uv <path> or install uv (https://docs.astral.sh/uv/getting-started/installation/, or `curl -LsSf https://astral.sh/uv/install.sh | sh`)
 …
 ```
+
+Without `--uv`, a uv that is not on `PATH` reads `could not find uv on PATH;
+install uv (…) or pass --uv <path>`. On Windows the advice carries the
+PowerShell installer command instead. Pyfaro never installs uv itself.
 
 ## Every kind of finding
 
@@ -133,7 +137,13 @@ See [`pyfaro python`](python.md) to install and pin interpreters.
 ### uv
 
 Same selection as every Pyfaro command; uv must be a stable `0.9.26` or newer.
-A missing or too old uv is an error.
+A missing, too old or broken uv is an error, and each says what to do:
+
+| Finding | Next step it names |
+| --- | --- |
+| `could not find uv on PATH` / `could not find uv at <path>` | Install uv, or fix `--uv <path>`. |
+| `unsupported uv version: uv 0.9.25 …` | Run `uv self update`, reinstall uv, or select another with `--uv <path>`. |
+| `uv --version failed for <path> (exit status: N): …` | Reinstall uv or select another with `--uv <path>`. |
 
 ### Project and Pyfaro configuration
 

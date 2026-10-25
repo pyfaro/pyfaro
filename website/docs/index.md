@@ -27,12 +27,31 @@ pytest, from creating a project to running its quality checks and tests.
 
 ## Install
 
+=== "Linux / macOS"
+
+    ```sh
+    curl --proto '=https' --tlsv1.2 -LsSf https://pyfaro.dev/install.sh | sh
+    ```
+
+    The script verifies the download against `SHA256SUMS`, installs to
+    `~/.local/bin` and changes nothing else. Prefer to read it first?
+    [Download, inspect, then run it](getting-started/installation.md#download-inspect-then-run).
+
+=== "Windows"
+
+    ```powershell
+    powershell -ExecutionPolicy ByPass -c "irm https://pyfaro.dev/install.ps1 | iex"
+    ```
+
+    The script verifies the download against `SHA256SUMS` and installs to
+    `%USERPROFILE%\.local\bin`.
+
 === "Cargo"
 
     Requires Rust 1.90 or newer.
 
     ```sh
-    cargo install pyfaro --version 0.3.0-alpha.1 --locked
+    cargo install pyfaro --version 0.4.0-alpha.1 --locked
     pyfaro --version
     ```
 
@@ -45,8 +64,9 @@ pytest, from creating a project to running its quality checks and tests.
     (Linux x86_64 and aarch64, macOS arm64 and x86_64, Windows x86_64),
     check it against `SHA256SUMS`, and put `pyfaro` on your `PATH`.
 
-Pyfaro needs [uv](https://docs.astral.sh/uv/) 0.9.26 or newer at runtime.
-See [Installation](getting-started/installation.md) for details.
+Pyfaro needs [uv](https://docs.astral.sh/uv/) 0.9.26 or newer at runtime and
+never installs it for you. See [Installation](getting-started/installation.md)
+for details, upgrading and uninstalling.
 
 ## What you can do
 
