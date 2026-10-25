@@ -10,31 +10,44 @@ Experimental Python project workflows powered by uv
 Usage: pyfaro [OPTIONS] <COMMAND>
 
 Commands:
-  create  Create a packaged Python library, command-line or FastAPI project
-  init    Preview or apply uv-backed project initialization
-  sync    Synchronize the project environment through uv
-  add     Add requirements to the project through uv
-  remove  Remove requirements from the project through uv
-  run     Run a named task or a command in the project environment through uv
-  dev     Run the project's development server or process with supervision
-  lint    Lint project files with Ruff
-  fmt     Format project files with Ruff
-  type    Type-check project files with ty
-  test    Run pytest in the project environment
-  check   Run format check, lint, and type check; optionally apply safe fixes first
-  python  List, install, or pin Python versions through uv
-  tools   Show resolved paths and versions of external tools
-  doctor  Diagnose project configuration, environment, and tool availability
-  help    Print this message or the help of the given subcommand(s)
+  create       Create a packaged Python library, command-line or FastAPI project
+  init         Preview or apply uv-backed project initialization
+  sync         Synchronize the project environment through uv
+  add          Add requirements to the project through uv
+  remove       Remove requirements from the project through uv
+  run          Run a named task or a command in the project environment through uv
+  dev          Run the project's development server or process with supervision
+  lint         Lint project files with Ruff
+  fmt          Format project files with Ruff
+  type         Type-check project files with ty
+  test         Run pytest in the project environment
+  check        Run format check, lint, and type check; optionally apply safe fixes first
+  python       List, install, or pin Python versions through uv
+  tools        Show resolved paths and versions of external tools
+  doctor       Diagnose project configuration, environment, and tool availability
+  completions  Print the shell completion script for bash, zsh, fish or PowerShell
+  help         Print this message or the help of the given subcommand(s)
 
 Options:
   -v, --verbose  Print tool versions and every command line before it runs
   -h, --help     Print help
   -V, --version  Print version
+
+Workflow:
+  pyfaro create fastapi acme-api   # then: cd acme-api
+  pyfaro sync                      # build the environment
+  pyfaro run -- python --version   # run a command in the environment
+  pyfaro check --fix               # format, lint and type-check
+  pyfaro test                      # run pytest
+  pyfaro dev                       # serve the app with auto-reload
+
+Shell completion: pyfaro completions --help
+Documentation: https://pyfaro.dev/
 ```
 
 Each section below lists the usage, arguments and options, and links to the
-page that explains the command.
+page that explains the command. The help of `create`, `sync`, `add`, `run`,
+`dev`, `test`, `check`, `python` and `completions` also ends with examples.
 
 !!! info "Common options"
     - `--project <PROJECT>`: the project directory. See [Projects](../concepts/projects.md).
@@ -108,7 +121,7 @@ Usage: pyfaro init [OPTIONS] [PATH]
 | --- | --- |
 | `[PATH]` | Project directory (defaults to the current directory) |
 | `--apply` | Apply the displayed plan; without this flag no files are written |
-| `--uv <UV>` | uv executable (default `uv`) |
+| `--uv <UV>` | uv executable (a path or a name found on `PATH`) |
 | `--offline` | Disable network access in uv |
 | `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
@@ -124,10 +137,10 @@ Usage: pyfaro sync [OPTIONS] [PATH]
 | Argument or option | Description |
 | --- | --- |
 | `[PATH]` | Directory to start project discovery from (defaults to the current directory) |
-| `--project <PROJECT>` | Explicit project directory; overrides discovery |
+| `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
 | `--locked` | Refuse to update an absent or stale `uv.lock` |
 | `--frozen` | Use `uv.lock` without checking it against project metadata |
-| `--uv <UV>` | uv executable (default `uv`) |
+| `--uv <UV>` | uv executable (a path or a name found on `PATH`) |
 | `--offline` | Disable network access in uv |
 | `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
@@ -147,8 +160,8 @@ Usage: pyfaro add [OPTIONS] <PACKAGES>...
 | `<PACKAGES>...` | Requirement specifiers |
 | `--dev` | Use the development dependency group |
 | `--group <GROUP>` | Use a named dependency group |
-| `--project <PROJECT>` | Explicit project directory (otherwise discover from the current directory) |
-| `--uv <UV>` | uv executable (default `uv`) |
+| `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
+| `--uv <UV>` | uv executable (a path or a name found on `PATH`) |
 | `--offline` | Disable network access in uv |
 | `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
@@ -165,8 +178,8 @@ Usage: pyfaro remove [OPTIONS] <PACKAGES>...
 | `<PACKAGES>...` | Dependency names |
 | `--dev` | Use the development dependency group |
 | `--group <GROUP>` | Use a named dependency group |
-| `--project <PROJECT>` | Explicit project directory (otherwise discover from the current directory) |
-| `--uv <UV>` | uv executable (default `uv`) |
+| `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
+| `--uv <UV>` | uv executable (a path or a name found on `PATH`) |
 | `--offline` | Disable network access in uv |
 | `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
@@ -185,10 +198,10 @@ Either name a task (`pyfaro run <task> [-- <extra>...]`) or give a program after
 | --- | --- |
 | `[TASK]` | Task defined in `[tool.pyfaro.tasks]`; omit it to run a program after `--` |
 | `[ARGS]...` | Program and arguments after `--`, or extra arguments for the task |
-| `--project <PROJECT>` | Explicit project directory (otherwise discover from the current directory) |
+| `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
 | `--locked` | Refuse to update an absent or stale `uv.lock` |
 | `--frozen` | Use `uv.lock` without checking it against project metadata |
-| `--uv <UV>` | uv executable (default `uv`) |
+| `--uv <UV>` | uv executable (a path or a name found on `PATH`) |
 | `--offline` | Disable network access in uv |
 | `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
@@ -204,10 +217,10 @@ Usage: pyfaro dev [OPTIONS] [-- [EXTRA]...]
 | Argument or option | Description |
 | --- | --- |
 | `[EXTRA]...` | Extra arguments after `--`, appended after the configured arguments |
-| `--project <PROJECT>` | Explicit project directory (otherwise discover from the current directory) |
+| `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
 | `--locked` | Refuse to update an absent or stale `uv.lock` |
 | `--frozen` | Use `uv.lock` without checking it against project metadata |
-| `--uv <UV>` | uv executable (default `uv`) |
+| `--uv <UV>` | uv executable (a path or a name found on `PATH`) |
 | `--offline` | Disable network access in uv |
 | `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
@@ -224,8 +237,8 @@ The options below are accepted before the subcommand and also by each one.
 
 | Option | Description |
 | --- | --- |
-| `--project <PROJECT>` | Exact project directory; otherwise use the current directory |
-| `--uv <UV>` | uv executable (default `uv`) |
+| `--project <PROJECT>` | Exact project directory without discovery; otherwise uv discovers from the current directory |
+| `--uv <UV>` | uv executable (a path or a name found on `PATH`) |
 | `--offline` | Disable network access in uv |
 | `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
@@ -237,7 +250,7 @@ Usage: pyfaro python list [OPTIONS] [REQUEST]
 
 | Argument or option | Description |
 | --- | --- |
-| `[REQUEST]` | Python request to filter by |
+| `[REQUEST]` | Python version request to filter by |
 | `--only-installed` | Show installed versions only |
 | `--all-versions` | Include old patch versions |
 
@@ -307,7 +320,7 @@ Usage: pyfaro lint [OPTIONS] [PATHS]...
 
 | Argument or option | Description |
 | --- | --- |
-| `[PATHS]...` | Files or directories relative to the current directory (default: the project) |
+| `[PATHS]...` | Files or directories relative to the current directory (defaults to the project) |
 | `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
 | `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
@@ -321,7 +334,7 @@ Usage: pyfaro fmt [OPTIONS] [PATHS]...
 
 | Argument or option | Description |
 | --- | --- |
-| `[PATHS]...` | Files or directories relative to the current directory (default: the project) |
+| `[PATHS]...` | Files or directories relative to the current directory (defaults to the project) |
 | `--check` | Report files that would change without modifying them |
 | `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
 | `-v`, `--verbose` | Print tool versions and every command line before it runs |
@@ -336,7 +349,7 @@ Usage: pyfaro type [OPTIONS] [PATHS]...
 
 | Argument or option | Description |
 | --- | --- |
-| `[PATHS]...` | Files or directories relative to the current directory (default: the project) |
+| `[PATHS]...` | Files or directories relative to the current directory (defaults to the project) |
 | `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
 | `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
@@ -352,7 +365,7 @@ Usage: pyfaro check [OPTIONS] [PATHS]...
 
 | Argument or option | Description |
 | --- | --- |
-| `[PATHS]...` | Files or directories relative to the current directory (default: the project) |
+| `[PATHS]...` | Files or directories relative to the current directory (defaults to the project) |
 | `--fix` | Apply safe Ruff fixes and formatting first, then verify without writing |
 | `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
 | `-v`, `--verbose` | Print tool versions and every command line before it runs |
@@ -375,6 +388,20 @@ Usage: pyfaro test [OPTIONS] [PYTEST_ARGS]...
     `pyfaro test` forwards everything after `test` other than `--project` to
     pytest, so `pyfaro test -v` and `pyfaro test --verbose` are pytest's
     options. Use `pyfaro -v test` for Pyfaro's trace.
+
+## `pyfaro completions`
+
+Print the shell completion script for bash, zsh, fish or PowerShell. Guide:
+[`completions`](../commands/completions.md)
+
+```text
+Usage: pyfaro completions <SHELL>
+```
+
+| Argument | Description |
+| --- | --- |
+| `<SHELL>` | Shell to generate the completion script for: `bash`, `zsh`, `fish` or `powershell` |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## Exit codes
 

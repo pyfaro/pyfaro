@@ -1,7 +1,7 @@
 use std::process::Command;
 
 #[test]
-fn help_describes_the_current_development_status() {
+fn help_lists_commands_and_the_workflow() {
     let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
         .arg("--help")
         .output()
@@ -11,7 +11,8 @@ fn help_describes_the_current_development_status() {
     let stdout =
         String::from_utf8(output.stdout).expect("help should be UTF-8");
     assert!(stdout.contains("Usage: pyfaro"));
-    assert!(stdout.contains("Experimental alpha"));
+    assert!(stdout.contains("Workflow:"));
+    assert!(stdout.contains("https://pyfaro.dev/"));
     assert!(stdout.contains("init"));
     assert!(stdout.contains("create"));
     assert!(stdout.contains("sync"));

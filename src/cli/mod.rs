@@ -3,13 +3,13 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand};
 
+mod help;
+
 /// The unified Python development toolchain.
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 #[command(arg_required_else_help = true)]
-#[command(
-    after_help = "Experimental alpha: create, init, sync, run, dev, add, remove, python, tools, doctor, lint, fmt, type, test, and check are implemented; other workflow commands are not implemented yet."
-)]
+#[command(after_help = help::WORKFLOW)]
 pub(crate) struct Cli {
     /// Print tool versions and every command line before it runs
     #[arg(short, long)]
@@ -22,18 +22,23 @@ pub(crate) struct Cli {
 #[derive(Subcommand)]
 pub(crate) enum Command {
     /// Create a packaged Python library, command-line or FastAPI project
+    #[command(after_help = help::CREATE)]
     Create(CreateArgs),
     /// Preview or apply uv-backed project initialization
     Init(InitArgs),
     /// Synchronize the project environment through uv
+    #[command(after_help = help::SYNC)]
     Sync(SyncArgs),
     /// Add requirements to the project through uv
+    #[command(after_help = help::ADD)]
     Add(DependencyArgs),
     /// Remove requirements from the project through uv
     Remove(DependencyArgs),
     /// Run a named task or a command in the project environment through uv
+    #[command(after_help = help::RUN)]
     Run(RunArgs),
     /// Run the project's development server or process with supervision
+    #[command(after_help = help::DEV)]
     Dev(DevArgs),
     /// Lint project files with Ruff
     Lint(LintArgs),
@@ -42,15 +47,39 @@ pub(crate) enum Command {
     /// Type-check project files with ty
     Type(TypeArgs),
     /// Run pytest in the project environment
+    #[command(after_help = help::TEST)]
     Test(TestArgs),
     /// Run format check, lint, and type check; optionally apply safe fixes first
+    #[command(after_help = help::CHECK)]
     Check(CheckArgs),
     /// List, install, or pin Python versions through uv
+    #[command(after_help = help::PYTHON)]
     Python(PythonArgs),
     /// Show resolved paths and versions of external tools
     Tools(ToolsArgs),
     /// Diagnose project configuration, environment, and tool availability
     Doctor(DoctorArgs),
+    /// Print the shell completion script for bash, zsh, fish or PowerShell
+    #[command(after_help = help::COMPLETIONS)]
+    Completions(CompletionsArgs),
+}
+
+#[derive(Args)]
+pub(crate) struct CompletionsArgs {
+    /// Shell to generate the completion script for
+    #[arg(value_enum)]
+    pub shell: CompletionShell,
+    #[command(flatten)]
+    pub verbose: VerboseArgs,
+}
+
+#[derive(Clone, Copy, clap::ValueEnum)]
+#[value(rename_all = "lower")]
+pub(crate) enum CompletionShell {
+    Bash,
+    Zsh,
+    Fish,
+    Powershell,
 }
 
 impl Command {
@@ -72,6 +101,7 @@ impl Command {
             Self::Python(args) => args.verbose,
             Self::Tools(args) => args.verbose.verbose,
             Self::Doctor(args) => args.verbose.verbose,
+            Self::Completions(args) => args.verbose.verbose,
         }
     }
 
@@ -93,6 +123,7 @@ impl Command {
             Self::Python(_) => "python",
             Self::Tools(_) => "tools",
             Self::Doctor(_) => "doctor",
+            Self::Completions(_) => "completions",
         }
     }
 }
@@ -108,7 +139,7 @@ pub(crate) struct VerboseArgs {
 
 #[derive(Args)]
 pub(crate) struct LintArgs {
-    /// Files or directories relative to the current directory (default: the project)
+    /// Files or directories relative to the current directory (defaults to the project)
     pub paths: Vec<PathBuf>,
 
     /// Explicit project directory; otherwise discover the nearest project
@@ -120,7 +151,7 @@ pub(crate) struct LintArgs {
 
 #[derive(Args)]
 pub(crate) struct TypeArgs {
-    /// Files or directories relative to the current directory (default: the project)
+    /// Files or directories relative to the current directory (defaults to the project)
     pub paths: Vec<PathBuf>,
 
     /// Explicit project directory; otherwise discover the nearest project
@@ -132,7 +163,7 @@ pub(crate) struct TypeArgs {
 
 #[derive(Args)]
 pub(crate) struct CheckArgs {
-    /// Files or directories relative to the current directory (default: the project)
+    /// Files or directories relative to the current directory (defaults to the project)
     pub paths: Vec<PathBuf>,
 
     /// Apply safe Ruff fixes and formatting first, then verify without writing
@@ -148,7 +179,7 @@ pub(crate) struct CheckArgs {
 
 #[derive(Args)]
 pub(crate) struct FmtArgs {
-    /// Files or directories relative to the current directory (default: the project)
+    /// Files or directories relative to the current directory (defaults to the project)
     pub paths: Vec<PathBuf>,
 
     /// Report files that would change without modifying them
@@ -200,7 +231,7 @@ pub(crate) struct DependencyArgs {
     #[arg(long)]
     pub group: Option<String>,
 
-    /// Explicit project directory (otherwise discover from the current directory)
+    /// Explicit project directory; otherwise discover the nearest project
     #[arg(long)]
     pub project: Option<PathBuf>,
 
@@ -277,7 +308,7 @@ pub(crate) struct PythonArgs {
     #[command(subcommand)]
     pub command: PythonCommand,
 
-    /// Exact project directory; otherwise use the current directory
+    /// Exact project directory without discovery; otherwise uv discovers from the current directory
     #[arg(long, global = true)]
     pub project: Option<PathBuf>,
 
@@ -297,7 +328,7 @@ pub(crate) struct PythonArgs {
 pub(crate) enum PythonCommand {
     /// List installed and available Python versions
     List {
-        /// Python request to filter by
+        /// Python version request to filter by
         request: Option<OsString>,
         /// Show installed versions only
         #[arg(long)]
@@ -374,7 +405,7 @@ pub(crate) struct SyncArgs {
     #[arg(conflicts_with = "project")]
     pub path: Option<PathBuf>,
 
-    /// Explicit project directory; overrides discovery
+    /// Explicit project directory; otherwise discover the nearest project
     #[arg(long)]
     pub project: Option<PathBuf>,
 
@@ -399,7 +430,7 @@ pub(crate) struct SyncArgs {
 
 #[derive(Args)]
 pub(crate) struct RunArgs {
-    /// Explicit project directory (otherwise discover from the current directory)
+    /// Explicit project directory; otherwise discover the nearest project
     #[arg(long)]
     pub project: Option<PathBuf>,
 
@@ -431,7 +462,7 @@ pub(crate) struct RunArgs {
 
 #[derive(Args)]
 pub(crate) struct DevArgs {
-    /// Explicit project directory (otherwise discover from the current directory)
+    /// Explicit project directory; otherwise discover the nearest project
     #[arg(long)]
     pub project: Option<PathBuf>,
 

@@ -173,6 +173,7 @@ follow a full [workflow](https://pyfaro.dev/workflows/).
 | [`type`](https://pyfaro.dev/commands/type/) | Type-check with ty |
 | [`check`](https://pyfaro.dev/commands/check/) | Format check, lint and type check in one run; `--fix` applies safe fixes |
 | [`test`](https://pyfaro.dev/commands/test/) | Run pytest in the project environment |
+| [`completions`](https://pyfaro.dev/commands/completions/) | Print the tab-completion script for Bash, Zsh, Fish or PowerShell |
 
 Recipes live in the [workflows](https://pyfaro.dev/workflows/)
 section: a [new library](https://pyfaro.dev/workflows/new-library/),
@@ -212,7 +213,7 @@ branch develops `0.5.0-beta.1`. Interfaces may change between alpha versions.
   `init --apply` is **Linux-only** for now; on macOS and Windows `init`
   previews but does not apply.
 - **Implemented:** `create`, `init`, `sync`, `add`, `remove`, `run`, `dev`, `python`,
-  `tools`, `doctor`, `lint`, `fmt`, `type`, `check` and `test`.
+  `tools`, `doctor`, `lint`, `fmt`, `type`, `check`, `test` and `completions`.
 
 See the [changelog](CHANGELOG.md) for what each release contains.
 

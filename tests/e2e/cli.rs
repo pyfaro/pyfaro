@@ -3,9 +3,23 @@
 use crate::harness::Sandbox;
 
 /// Every implemented subcommand, as listed by `pyfaro --help`.
-const COMMANDS: [&str; 15] = [
-    "create", "init", "sync", "add", "remove", "run", "dev", "lint", "fmt",
-    "type", "test", "check", "python", "tools", "doctor",
+const COMMANDS: [&str; 16] = [
+    "create",
+    "init",
+    "sync",
+    "add",
+    "remove",
+    "run",
+    "dev",
+    "lint",
+    "fmt",
+    "type",
+    "test",
+    "check",
+    "python",
+    "tools",
+    "doctor",
+    "completions",
 ];
 
 #[test]
@@ -79,5 +93,47 @@ fn help_subcommand_and_help_flag_work_for_every_command() {
         ));
         let via_flag = sandbox.pyfaro([command, "--help"]).run();
         via_flag.success().stdout_eq(&via_help.stdout);
+    }
+}
+
+#[test]
+fn top_level_help_shows_the_workflow_and_the_website() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let out = sandbox.pyfaro(["--help"]).run();
+    out.success()
+        .stdout_contains("\nWorkflow:\n")
+        .stdout_contains("  pyfaro create fastapi acme-api")
+        .stdout_contains("  pyfaro sync ")
+        .stdout_contains("  pyfaro run -- python --version")
+        .stdout_contains("  pyfaro check --fix")
+        .stdout_contains("  pyfaro test ")
+        .stdout_contains("  pyfaro dev ")
+        .stdout_contains("https://pyfaro.dev/")
+        .stderr_empty();
+    assert!(!out.stdout.contains("not implemented yet"));
+}
+
+#[test]
+fn subcommand_help_shows_examples() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    for (args, example) in [
+        (["create", "--help"], "pyfaro create lib acme-widget"),
+        (["sync", "--help"], "pyfaro sync --locked"),
+        (["add", "--help"], "pyfaro add --dev pytest-cov"),
+        (["run", "--help"], "pyfaro run -- python -m pytest"),
+        (["dev", "--help"], "pyfaro dev -- --port 9000"),
+        (["test", "--help"], "pyfaro test -k parser -x"),
+        (["check", "--help"], "pyfaro check --fix"),
+        (["python", "--help"], "pyfaro python install 3.12"),
+        (["completions", "--help"], "pyfaro completions zsh"),
+    ] {
+        sandbox
+            .pyfaro(args)
+            .run()
+            .success()
+            .stdout_contains("\nExamples:\n")
+            .stdout_contains(&format!("  {example}"));
     }
 }

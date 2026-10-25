@@ -20,6 +20,7 @@ the tool and forwards its exit status.
 | [`python`](python.md) | List, install or pin Python versions through uv. |
 | [`tools`](tools.md) | Show resolved paths and versions of the external tools. |
 | [`doctor`](doctor.md) | Diagnose project configuration, environment and tool availability. |
+| [`completions`](completions.md) | Print the tab-completion script for Bash, Zsh, Fish or PowerShell. |
 | [`lint`](lint.md) | Lint project files with Ruff. |
 | [`fmt`](fmt.md) | Format project files with Ruff. |
 | [`type`](type.md) | Type-check project files with ty. |

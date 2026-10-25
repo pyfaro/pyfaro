@@ -10,6 +10,7 @@
 mod harness;
 
 mod cli;
+mod completions;
 mod create_init;
 mod dev;
 mod diagnostics;
