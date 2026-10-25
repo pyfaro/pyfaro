@@ -44,6 +44,18 @@ Version `0.6.0-beta.1` has not been published.
   dependency) that runs the real published binary; the README links it by an
   absolute URL so that PyPI and crates.io show it. The publishing guide explains
   how to regenerate it for each release.
+- Fix: `pyfaro dev` no longer stops with `pyfaro dev: stopped` (exit 130)
+  while Uvicorn reloads after a file edit on Windows
+  ([#147](https://github.com/pyfaro/pyfaro/issues/147)). Pyfaro found a reload
+  by sampling the process count of its job, and the sampling loop stalled for
+  tens of milliseconds whenever it opened the console, so a worker restart
+  could pass unseen and the Ctrl-C of the next reload counted as a second,
+  forcing, Ctrl-C. The console is now touched from its own thread, and a second
+  Ctrl-C that Pyfaro cannot vouch for waits up to half a second (a second at
+  most) for the reload it may have started before terminating the tree. A
+  command that ends because of a Ctrl-C a moment before Pyfaro has recorded it
+  on a busy machine is now reported as stopped (exit 130) instead of as an
+  exit.
 
 ## 0.5.0-beta.1 — 2026-10-25
 

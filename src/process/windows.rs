@@ -3,6 +3,7 @@ use std::io;
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -13,6 +14,10 @@ use super::console_stop::{ConsoleStop, Step};
 use crate::error::{Error, Failures, Result};
 
 const POLL: Duration = Duration::from_millis(20);
+
+/// How long a command that ended gets for a Ctrl-C that caused it to be
+/// recorded, see [`late_ctrl_c`].
+const LATE_CTRL_C: Duration = Duration::from_millis(150);
 
 /// How a process reaches the console it shares with its children.
 const CONSOLE_OUTPUT: &str = "CONOUT$";
@@ -95,12 +100,8 @@ fn wait_for_stop(
     mut console: ConsoleStop,
     program: &Path,
 ) -> Result<ExitStatus> {
-    let mut nudged = Instant::now();
+    let _nudger = Nudger::start();
     loop {
-        if nudged.elapsed() >= POLL {
-            nudge_console();
-            nudged = Instant::now();
-        }
         let interrupted = cancelled.swap(false, Ordering::SeqCst);
         let status = contained.child.try_wait().map_err(|source| {
             Error::io("observe delegated process", program, source)
@@ -121,9 +122,58 @@ fn wait_for_stop(
             Step::Wait if console.is_pending() => thread::yield_now(),
             Step::Wait => thread::sleep(POLL),
             Step::Exited => {
+                if late_ctrl_c(cancelled) {
+                    return Err(Error::Cancelled);
+                }
                 return Ok(status.expect("the command has exited"));
             }
             Step::Stopped | Step::Force => return Err(Error::Cancelled),
+        }
+    }
+}
+
+/// A command that ends because of a Ctrl-C can end before this process's
+/// handler has recorded it, when the machine is busy: wait a moment for the
+/// flag before calling the end a plain exit.
+fn late_ctrl_c(cancelled: &AtomicBool) -> bool {
+    let deadline = Instant::now() + LATE_CTRL_C;
+    while Instant::now() < deadline {
+        if cancelled.load(Ordering::SeqCst) {
+            return true;
+        }
+        thread::sleep(Duration::from_millis(1));
+    }
+    cancelled.load(Ordering::SeqCst)
+}
+
+/// Keeps the console touched, see [`nudge_console`], from a thread of its own
+/// while supervision lasts: opening the console can block for tens of
+/// milliseconds on a busy machine, and a supervising loop stalled that long
+/// misses the few milliseconds in which a restarting worker is out of the job.
+struct Nudger {
+    stop: Arc<AtomicBool>,
+    thread: Option<thread::JoinHandle<()>>,
+}
+
+impl Nudger {
+    fn start() -> Self {
+        let stop = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&stop);
+        let thread = thread::spawn(move || {
+            while !flag.load(Ordering::SeqCst) {
+                nudge_console();
+                thread::sleep(POLL);
+            }
+        });
+        Self { stop, thread: Some(thread) }
+    }
+}
+
+impl Drop for Nudger {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::SeqCst);
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
         }
     }
 }
