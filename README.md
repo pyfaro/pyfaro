@@ -186,7 +186,7 @@ through. Read more in
 
 Pyfaro is **alpha**. The latest published version is
 [`0.3.0-alpha.1`](https://crates.io/crates/pyfaro/0.3.0-alpha.1); the `main`
-branch develops `0.4.0-alpha.1`. Interfaces may change between alpha versions.
+branch develops `0.5.0-alpha.1`. Interfaces may change between alpha versions.
 
 - **Tested versions:** uv 0.9.26, Ruff 0.16.10, ty 0.0.85, pytest 9.1.1.
 - **Platforms:** Linux, macOS and Windows are built and tested in CI.

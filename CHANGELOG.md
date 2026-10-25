@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — 0.5.0-alpha.1 development
+
+Version `0.5.0-alpha.1` has not been published. It has no changes yet.
+
 ## 0.4.0-alpha.1 — 2026-10-23
 
 This experimental release adds these developer-experience capabilities to
