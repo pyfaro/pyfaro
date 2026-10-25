@@ -1,4 +1,5 @@
 mod cli;
+mod completions;
 mod config;
 mod create;
 mod deps;
@@ -63,6 +64,7 @@ fn main() {
         cli::Command::Python(args) => python::run(args),
         cli::Command::Tools(args) => tools::run(args),
         cli::Command::Doctor(args) => doctor::run(args),
+        cli::Command::Completions(args) => completions::run(args),
     };
     if let Err(error) = result {
         if matches!(
