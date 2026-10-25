@@ -11,13 +11,13 @@ each release on GitHub.
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| `0.4.0-alpha.1` | 2026-10-23 | `dev`, named tasks in `[tool.pyfaro.tasks]`, `create fastapi` |
 | `0.3.0-alpha.1` | 2026-10-22 | `lint`, `fmt`, `type`, `test` and `check`; prebuilt archives with `SHA256SUMS` |
 | `0.2.0-alpha.1` | 2026-10-22 | `add`, `remove`, `create lib`, `create cli`, `python`, `doctor` |
 | `0.1.0-alpha.2` | 2026-10-19 | `sync`, `run`, `tools`, project discovery, configuration |
 | `0.1.0-alpha.1` | 2026-10-19 | First release: `init` |
 
-`0.4.0-alpha.1` is prepared and awaits publication. `0.5.0-beta.1` is in
-development on `main` and is not published.
+`0.5.0-beta.1` is in development on `main` and is not published.
 
 !!! note
     Each version is an experimental alpha. Interfaces may change between

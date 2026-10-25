@@ -132,8 +132,8 @@ pyfaro check                  # format check, lint, type check
 pyfaro test                   # run pytest
 ```
 
-Building an API? A FastAPI project is ready to serve right after `sync` (on `main`;
-it ships in `0.4.0-alpha.1`):
+Building an API? A FastAPI project is ready to serve right after `sync`
+(published in `0.4.0-alpha.1`):
 
 ```sh
 pyfaro create fastapi my-api
@@ -206,7 +206,7 @@ through. Read more in
 ## Project status
 
 Pyfaro is **alpha**. The latest published version is
-[`0.3.0-alpha.1`](https://crates.io/crates/pyfaro/0.3.0-alpha.1); the `main`
+[`0.4.0-alpha.1`](https://crates.io/crates/pyfaro/0.4.0-alpha.1); the `main`
 branch develops `0.5.0-beta.1`. Interfaces may change between alpha versions.
 
 - **Tested versions:** uv 0.9.26, Ruff 0.16.10, ty 0.0.85, pytest 9.1.1.

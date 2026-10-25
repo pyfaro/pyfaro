@@ -146,8 +146,8 @@ archives. Future versions use the same workflow, which now builds the
 standalone archives reproducibly before the upload and attaches signed build
 provenance attestations to them. Pull requests that touch the release
 pipeline run the Release build check workflow. The
-`v0.1.0-alpha.2`, `v0.2.0-alpha.1`, and `v0.3.0-alpha.1` tags point to their
-published source commits and all have GitHub prereleases. To cut a release, follow [How to release](docs/releasing.md#how-to-release).
+`v0.1.0-alpha.2`, `v0.2.0-alpha.1`, `v0.3.0-alpha.1`, and `v0.4.0-alpha.1`
+tags point to their published source commits and all have GitHub prereleases. To cut a release, follow [How to release](docs/releasing.md#how-to-release).
 See [the publishing guide](docs/releasing.md) for verified release records and
 explicit approval gates for future uploads, tags, and releases, and for
 ownership and credentials. No registry

@@ -74,6 +74,17 @@ Version `0.5.0-beta.1` has not been published.
 
 ## 0.4.0-alpha.1 — 2026-10-23
 
+Published on [crates.io](https://crates.io/crates/pyfaro/0.4.0-alpha.1)
+through crates.io trusted publishing by the manual Release workflow
+([run 39950335350](https://github.com/pyfaro/pyfaro/actions/runs/39950335350)),
+at `2026-10-25T10:10:09.854629Z` from commit `107704e8e4e4f7c728f905e77e7e5ce5531c8880`.
+The workflow created the annotated [`v0.4.0-alpha.1` tag](https://github.com/pyfaro/pyfaro/tree/v0.4.0-alpha.1).
+The [GitHub prerelease](https://github.com/pyfaro/pyfaro/releases/tag/v0.4.0-alpha.1)
+followed on `2026-10-25T10:11:48Z` with Linux, macOS, and Windows archives,
+the `.crate`, and `SHA256SUMS`. The archive SHA-256 is
+`3280c65c0bb99d1af90e79bb7c7e325958400cd5e227f3bd41cbdf40484ba74d`.
+Smoke checks with the downloaded Linux binary and uv 0.9.26 covered
+`create fastapi`, `sync`, `check`, and `test`.
 This experimental release adds these developer-experience capabilities to
 `0.3.0-alpha.1`:
 

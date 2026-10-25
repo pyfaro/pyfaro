@@ -195,7 +195,7 @@ $ pyfaro dev
 
 Pass Uvicorn options after `--`, for example `pyfaro dev -- --port 8001`.
 
-`create fastapi` is new in `0.4.0-alpha.1`.
+`create fastapi` is available in published `0.4.0-alpha.1` and later versions.
 
 ## Naming rules
 
