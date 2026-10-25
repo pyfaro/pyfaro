@@ -3,6 +3,11 @@
 Pyfaro reads `pyproject.toml` from the selected [project](projects.md) root.
 There is no separate Pyfaro file.
 
+!!! tip "Looking for the exact rules?"
+    This page explains the ideas. The [configuration reference](../reference/configuration.md)
+    lists every key with its type, default, validation rule and error message,
+    with copyable examples that the test suite checks.
+
 ## `[tool.pyfaro]`
 
 The table is optional. Without it, Pyfaro behaves as if it contained the
@@ -103,6 +108,7 @@ adds its table, it preserves comments and unrelated formatting.
 
 ## Next steps
 
+- [Configuration reference](../reference/configuration.md): every key, default and error.
 - [`pyfaro init`](../commands/init.md) to adopt an existing project.
 - [Adopt an existing project](../workflows/adopt-existing-project.md).
 - [Projects](projects.md).

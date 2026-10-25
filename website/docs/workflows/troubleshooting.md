@@ -157,6 +157,48 @@ These are problems in your code, not in Pyfaro. Fix them, or let
 `pyfaro check --fix` repair what is safe to repair; see
 [The quality gate](quality-gate.md).
 
+## `pyfaro build` fails
+
+`pyfaro build` runs `uv build`, so the explanation of a failed build is in uv's
+output above the last line, and the exit status is uv's:
+
+```console
+$ pyfaro build
+Building source distribution (uv build backend)...
+  × Failed to build
+  │ `~/projects/acme-widget`
+  ╰─▶ Expected a Python module at: src/acme_widget/__init__.py
+error: uv build failed (exit status: 2); see uv's output above
+$ echo $?
+2
+```
+
+The `2` is uv's, not a Pyfaro usage error. Read the lines above `error:` first.
+The usual causes:
+
+| Symptom | Cause and fix |
+| --- | --- |
+| `Expected a Python module at: src/<package>/__init__.py` | The `uv_build` backend wants the package named after the project in `src/`. Rename the directory, or set `[tool.uv.build-backend] module-name`. |
+| A backend such as `hatchling` or `setuptools` cannot be downloaded, or the network was disabled | Backends other than `uv_build` are fetched into a build environment. Run without `--offline`, or warm uv's cache first. |
+| `uv build succeeded but wrote no wheel (.whl) for …` | The backend wrote a file under another name. Check `[build-system]` and the project name. |
+| `--clear would delete the project` (exit `2`) | `--out-dir` is the project or one of its parents. Choose a directory below or beside it. |
+| No compatible Python | `build` passes `--no-python-downloads`. Install one with `pyfaro python install`. |
+
+Rerun with [`-v`](#verbose-output) to see the exact `uv build` command line,
+including the `--out-dir` it resolved, and copy it to reproduce the failure
+without Pyfaro. See the [`build` guide](../commands/build.md).
+
+## Tab completion does not work
+
+`pyfaro completions <SHELL>` only prints a script; the shell must load it. Check
+that the file is where your shell looks (the [`completions` guide](../commands/completions.md)
+lists the places), that you opened a new shell afterwards, and that you
+regenerate the script after upgrading Pyfaro, since an old script does not know
+newer commands. In Zsh, the directory must be on `fpath` *before* `compinit`
+runs, and a stale `~/.zcompdump*` cache can hide a new script; delete it and
+restart the shell. Completion is static: it offers commands and flags, not the
+names of your tasks.
+
 ## Verbose output
 
 When a failure is not obvious, rerun the command with `-v` (or `--verbose`).
@@ -206,7 +248,7 @@ for the exact rules.
 ## Still stuck?
 
 - Run `pyfaro doctor` and `pyfaro tools` and read every line, then rerun the
-  failing command with [`-v`](#verbose-output).
+  failing command with [`-v`](#verbose-output) (`pyfaro -v <command>`).
 - Check [Platform support](../concepts/platform-support.md): `init --apply` is
   Linux-only for now.
 - Open an issue at <https://github.com/pyfaro/pyfaro/issues> with the output

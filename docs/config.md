@@ -14,6 +14,12 @@ version `1` without writing to the file. `init` explicitly adds this table:
 schema-version = 1
 ```
 
+For every key with its type, default and error message see the
+[configuration reference](https://pyfaro.dev/reference/configuration/). Every
+TOML example in this guide and on that page is validated by a unit test
+(`src/docs_check.rs`) with Pyfaro's own configuration loader; an example that
+is meant to be rejected starts with `# invalid: <part of the error>`.
+
 The supported settings are `schema-version`, which must be the integer `1`,
 and the optional `[tool.pyfaro.tasks]` and `[tool.pyfaro.dev]` tables. Unknown Pyfaro keys, other
 schema versions, malformed TOML, and non-table `[project]`, `[tool]`, or
@@ -26,6 +32,23 @@ The metadata path is resolved from the selected project root, not from the
 location where a delegated command happens to run. Pyfaro adds no path-valued
 settings in schema version `1`; uv and the individual tools retain ownership
 of their own path semantics.
+
+## Keys at a glance
+
+| Key | Type | Default |
+| --- | --- | --- |
+| `[tool.pyfaro]` | table | absent: behaves as `schema-version = 1` |
+| `schema-version` | integer | `1` (the only valid value) |
+| `[tool.pyfaro.dev]` | table | absent: only `pyfaro dev` needs it |
+| `dev.preset` | string | none; `"fastapi"` is the only preset |
+| `dev.entry-point` | string | none; required in the table |
+| `dev.args` | array of strings | `[]` |
+| `dev.reload` | boolean | `true` with the `fastapi` preset; invalid without a preset |
+| `[tool.pyfaro.tasks]` | table | absent: no tasks |
+| `tasks.<name>.command` / `shell` | array of strings / string | none; exactly one of them |
+| `tasks.<name>.cwd` | string | the project root |
+| `tasks.<name>.env` | table of strings | `{}` |
+| `tasks.<name>.description` | string | the command line |
 
 ## Tasks
 
