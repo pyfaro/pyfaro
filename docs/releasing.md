@@ -78,12 +78,61 @@ The steps below assume `<version>` is the development version already in
    changelog section and a "Published release" record below, point the README
    install command at `<version>`, move `Cargo.toml` to the next development
    version, and add a new `## Unreleased — <next> development` section.
+   [Regenerate the terminal demo](#regenerating-the-terminal-demo) in the
+   same PR.
 
 If preflight fails, fix the reported input (wrong ref, version mismatch,
 missing changelog heading, existing tag, or a version crates.io already
 knows) and start again. If a failure happens after the upload, see the
 recovery notes in the workflow sections below. Published versions can never
 be replaced; a defective one is yanked and superseded by a new version.
+
+## Regenerating the terminal demo
+
+The animated demo in the README and on the site's home page
+(`website/docs/assets/demo.svg`) is recorded by a script, against the real
+published binary, so it stays true to the release. Regenerate it for each
+release, once the version is on PyPI. `demo/record.py` is a development tool
+that uses only the Python standard library. It is not packaged and Pyfaro
+gains no dependency from it.
+
+It drives a real bash in a pseudo-terminal, types `pyfaro create fastapi
+acme-api`, `cd`, `sync`, `check`, `test` and `dev`, waits for the real output
+of each command, makes one edit to `src/acme_api/main.py` while `dev` runs so
+the server reloads, and sends Ctrl-C. Typing is simulated and pauses longer
+than two seconds are shortened; the output is the tools' own. It writes an
+[asciicast](https://docs.asciinema.org/manual/asciicast/v2/) and renders it
+to an animated SVG with `termtosvg` (pinned in the script, run through
+`uv tool run`).
+
+The demo needs network access and port 8000 free, because `pyfaro dev` stops
+when its port is taken. A container gives both, a clean `$HOME` and the tested
+uv version. `<pep440-version>` is the published version in Python's format,
+for example `0.5.0b1`:
+
+```sh
+mkdir -p /tmp/pyfaro-demo
+docker run --rm -v "$PWD/demo:/demo:ro" -v /tmp/pyfaro-demo:/out python:3.13-slim \
+  bash -c 'pip install -q uv==0.9.26 && python -I /demo/record.py \
+    --release <pep440-version> --workdir /home/dev/demo \
+    --out /out/demo.cast --svg /out/demo.svg'
+cp /tmp/pyfaro-demo/demo.svg website/docs/assets/demo.svg
+```
+
+Without Docker, run `python3 demo/record.py --release <pep440-version>
+--workdir <new directory> --out demo.cast --svg website/docs/assets/demo.svg`
+on Linux with bash, uv and Python 3.10 or newer. The directory shows up in the
+recording, so pick one that does not name you. `--pyfaro <path>` records a
+local binary instead of a release.
+
+Then check the result:
+
+- Play it in a browser (the SVG animates by itself) and confirm that every
+  step succeeds, `dev` reloads and Ctrl-C ends with `pyfaro dev: stopped`.
+- Keep the file small: it is about 130 KB today; stay under 2 MB.
+- Update the version in the "Recorded on Linux with" sentence in the README
+  and in `website/docs/index.md`, and change the recorded commands there if
+  the demo script changed.
 
 ## Published release: 0.5.0-beta.1
 
