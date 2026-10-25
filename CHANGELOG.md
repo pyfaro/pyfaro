@@ -30,6 +30,13 @@ Version `0.6.0-beta.1` has not been published.
   A CRLF `pyproject.toml` keeps its line endings, where it was previously
   rewritten with LF. On Windows a read-only file, or one another program holds
   open, now stops `--apply` before any change with an explicit message.
+- Add a "Why Pyfaro" page to the documentation. It answers "why not just uv?"
+  with side-by-side snippets for creating and adopting a project, the quality
+  gate, tests, a development server, named tasks, build and CI, compared with
+  plain uv, uv with a Makefile or `just`, poethepoet, Hatch and PDM scripts. It
+  also lists what Pyfaro does not do yet: task graph, parallelism and cache,
+  workspaces, and JSON output. The README's "Why Pyfaro" section is shortened
+  and links to it.
 
 ## 0.5.0-beta.1 — 2026-10-25
 

@@ -26,22 +26,21 @@ git hook all run exactly the same commands.
 
 - **One entry point.** `create`, `sync`, `add`, `check`, `test` and more,
   instead of remembering four tools and their flags.
-- **`pyfaro check` is your quality gate.** Format check, lint and type check
-  in one run, with a clear summary and an honest exit code. It writes files
-  only when you pass `--fix`.
+- **A quality gate with no setup.** `pyfaro check` runs the format check, lint
+  and type check, always runs all three and reports them in one summary. It
+  writes files only with `--fix`.
 - **From scaffold to running server.** `pyfaro create fastapi` generates a
-  typed FastAPI app, and `pyfaro dev` runs it with Uvicorn and auto-reload,
-  supervised: Ctrl-C stops the whole process tree and nothing is left behind.
-- **Tasks without a second tool.** Name the commands you run often in
-  `[tool.pyfaro.tasks]` and run them with `pyfaro run <task>`, with no
-  implicit shell and the same behavior on Linux, macOS and Windows.
-- **No second ecosystem.** Standard `pyproject.toml` and uv's `uv.lock`.
-  Pyfaro adds a tiny `[tool.pyfaro]` table and leaves everything else alone.
-- **Adopt it in place.** `pyfaro init` previews what it would change before
-  touching your existing project.
-- **Predictable by design.** Nothing syncs, installs or downloads behind your
-  back. `doctor` explains what is wrong and how to fix it.
-- **A single native binary** written in Rust.
+  typed app and `pyfaro dev` runs it with reload; Ctrl-C stops the whole
+  process tree.
+- **No second ecosystem.** Standard `pyproject.toml` and uv's `uv.lock`, plus
+  a tiny `[tool.pyfaro]` table. Named tasks, `init` for existing projects and
+  a `doctor` command are included.
+- **Predictable.** Nothing syncs, installs or downloads behind your back. A
+  single native binary written in Rust.
+
+Wondering how it compares with plain uv, a Makefile or `just`, poethepoet,
+Hatch or PDM, and what it does not do yet? Read
+[Why Pyfaro](https://pyfaro.dev/getting-started/why-pyfaro/).
 
 ## Demo
 
