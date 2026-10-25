@@ -105,6 +105,8 @@ try {
     Assert-Refused 'http' 'http://127.0.0.1:9'
 
     Write-Host "OK ($($PSVersionTable.PSVersion))"
+    # The last child process failed on purpose; the runner would exit with its code.
+    $global:LASTEXITCODE = 0
 } finally {
     Remove-Item -Recurse -Force $Work -ErrorAction SilentlyContinue
 }
