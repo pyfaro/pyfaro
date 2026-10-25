@@ -11,6 +11,15 @@ Version `0.5.0-beta.1` has not been published.
   first (refused when it would delete the project), and uv's exit status is
   forwarded. Pyfaro lists the artifacts each run created or rewrote as
   `built <path>` lines and fails when an expected kind is missing.
+- Document the privacy and trust model: a new "Security and privacy" page
+  (site and `docs/security-and-privacy.md`) states that Pyfaro itself makes no
+  network connections and sends no telemetry, lists per command which uv
+  operations can reach the network and how `--offline`, `UV_OFFLINE` and
+  `UV_PYTHON_DOWNLOADS` affect them, names the third-party programs Pyfaro
+  runs and where they come from, and describes updates and release trust.
+  `SECURITY.md` links it and now supports the latest published version only,
+  with fixes on `main`. A new test (`tests/privacy.rs`) fails when an HTTP
+  or TLS client, telemetry or self-update crate enters `Cargo.lock`.
 - Add a global `-v`/`--verbose` flag, accepted before the subcommand for every
   command and after it for every command except `test` (whose arguments after
   `test`, `-v` and `--verbose` included, still go to pytest verbatim; use

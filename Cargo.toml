@@ -37,6 +37,7 @@ include = [
     "/docs/uv-adapter.md",
     "/docs/doctor.md",
     "/docs/exit-codes.md",
+    "/docs/security-and-privacy.md",
     "/docs/diagnostics.md",
     "/docs/completions.md",
     "/docs/quality.md",

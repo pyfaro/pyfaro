@@ -24,6 +24,11 @@ The ideas behind Pyfaro, in the order you are likely to need them.
 
     What 0, 1, 2, 130 and forwarded codes mean.
 
+-   **[Security and privacy](security-and-privacy.md)**
+
+    No telemetry, which tools touch the network, what Pyfaro runs and what
+    you trust when you install it.
+
 -   **[Platform support](platform-support.md)**
 
     What works on Linux, macOS and Windows.

@@ -53,7 +53,9 @@ A few guarantees follow from this design:
   started and exits with 130.
 - **No surprises.** Pyfaro never installs uv or downloads Python on its own.
   Only `pyfaro python install` allows an interpreter download, and
-  `--offline` forbids network access entirely.
+  `--offline` forbids network access entirely. Pyfaro itself makes no network
+  connections and sends no telemetry; see
+  [Security and privacy](security-and-privacy.md).
 
 ## Tool versions
 

@@ -125,6 +125,7 @@ nav:
       - Environments and tools: concepts/environments-and-tools.md
       - Configuration: concepts/configuration.md
       - Exit codes: concepts/exit-codes.md
+      - Security and privacy: concepts/security-and-privacy.md
       - Platform support: concepts/platform-support.md
   - Reference:
       - reference/index.md
