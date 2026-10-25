@@ -36,6 +36,26 @@ Version `0.5.0-beta.1` has not been published.
   `gh attestation verify <file> --repo pyfaro/pyfaro`), and
   `docs/releasing.md` documents how to reproduce an archive, verify a
   download, and who owns the release credentials.
+- Add install scripts, served by the documentation site: `install.sh` for
+  Linux and macOS (`curl --proto '=https' --tlsv1.2 -LsSf
+  https://pyfaro.dev/install.sh | sh`) and `install.ps1` for Windows
+  PowerShell 5.1 and 7. They detect the platform, find the newest release
+  (prereleases included) or `PYFARO_VERSION`, download the archive and
+  `SHA256SUMS` over HTTPS only, verify the SHA-256 and stop without installing
+  anything if the checksum is missing, wrong or cannot be computed, then
+  install to `PYFARO_INSTALL_DIR` or `~/.local/bin`. They never use `sudo`,
+  never edit shell profiles or `PATH`, and never install uv; running them
+  again upgrades in place. `PYFARO_DOWNLOAD_BASE` (`https://` or a local
+  `file://` mirror) exists for testing. CI installs the published releases on
+  Linux, macOS and Windows and checks that a corrupted download is refused.
+- Rework the installation guide: the script (with a "download, inspect, then
+  run" variant), Cargo and archives, with upgrade and uninstall for each
+  method on every supported platform.
+- `pyfaro doctor` and every command that needs uv now explain a missing, too
+  old or broken uv in one line with the next step: the install link and
+  command, `uv self update` or a reinstall, or `--uv <path>`. This replaces
+  the chained `could not inspect uv at uv: could not find uv at uv: cannot
+  find binary path; ...` message. Exit codes are unchanged.
 
 ## 0.4.0-alpha.1 — 2026-10-23
 

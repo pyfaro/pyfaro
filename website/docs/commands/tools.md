@@ -96,7 +96,7 @@ that cannot be inspected is `unavailable` in the listing:
 
 ```console
 $ pyfaro tools --uv /nonexistent/uv
-uv: unavailable (could not inspect uv at /nonexistent/uv: could not find uv at /nonexistent/uv: cannot find binary path; install uv or use --uv <path>; repair or replace the selected installation)
+uv: unavailable (could not find uv at /nonexistent/uv; fix --uv <path> or install uv (https://docs.astral.sh/uv/getting-started/installation/, or `curl -LsSf https://astral.sh/uv/install.sh | sh`))
 ruff: ~/demo/.venv/bin/ruff (ruff 0.16.10)
 ty: ~/demo/.venv/bin/ty (ty 0.0.85)
 pytest: ~/demo/.venv/bin/pytest (pytest 9.1.1)

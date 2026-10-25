@@ -79,10 +79,28 @@ tests/test_library.py .                                                  [100%]
 Pyfaro needs [uv](https://docs.astral.sh/uv/getting-started/installation/)
 **0.9.26 or newer** at runtime. Pyfaro never installs uv or Python for you.
 
+**Install script** for Linux and macOS. It downloads the newest release for
+your machine over HTTPS, verifies it against `SHA256SUMS` and installs it to
+`~/.local/bin`, without `sudo` and without touching your shell profile:
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://pyfaro.dev/install.sh | sh
+```
+
+On Windows, in PowerShell:
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://pyfaro.dev/install.ps1 | iex"
+```
+
+Prefer to read a script before running it? Download it first with `curl ... -o
+install.sh` (or `irm ... -OutFile install.ps1`), inspect it, then run the file.
+Run the script again to upgrade; set `PYFARO_VERSION` to pin a version.
+
 **From crates.io** (Rust 1.90 or newer):
 
 ```sh
-cargo install pyfaro --version 0.3.0-alpha.1 --locked
+cargo install pyfaro --version 0.4.0-alpha.1 --locked
 ```
 
 While every published version is an alpha, Cargo needs the explicit
@@ -94,10 +112,11 @@ Windows (x86_64) are attached to each
 `SHA256SUMS` file. The archives are unsigned: verify them against
 `SHA256SUMS`, extract, and put `pyfaro` on your `PATH`.
 
-Check the installation:
+Check the installation, and the toolchain around it:
 
 ```sh
 pyfaro --version
+pyfaro doctor      # explains a missing or outdated uv and how to fix it
 ```
 
 More detail: [Installation](https://pyfaro.dev/getting-started/installation/).

@@ -1,50 +1,174 @@
 # Installation
 
-Pyfaro ships as one native executable. Install it with Cargo or from a
-prebuilt archive, then make sure [uv](#install-uv) is available.
+Pyfaro ships as one native executable. Install it with the install script,
+Cargo or a prebuilt archive, then make sure [uv](#install-uv) is available.
+Pyfaro never installs uv for you.
 
 !!! note "Alpha release"
-    The latest published version is `0.3.0-alpha.1`. Releases are unsigned.
+    The latest published version is `0.4.0-alpha.1`. Releases are unsigned.
+    Every release is a prerelease, which is why the install script looks up
+    the newest release itself and Cargo needs an explicit `--version`.
 
-## Install Pyfaro
+## Supported platforms
 
-=== "Cargo"
+| Platform | Install script | Prebuilt archive |
+| --- | --- | --- |
+| Linux x86_64 (glibc) | `install.sh` | `x86_64-unknown-linux-gnu.tar.gz` |
+| Linux aarch64 (glibc) | `install.sh` | `aarch64-unknown-linux-gnu.tar.gz` |
+| macOS Apple silicon | `install.sh` | `aarch64-apple-darwin.tar.gz` |
+| macOS Intel | `install.sh` | `x86_64-apple-darwin.tar.gz` |
+| Windows x86_64 | `install.ps1` | `x86_64-pc-windows-msvc.zip` |
 
-    With Rust 1.90 or newer:
+Other platforms, such as musl-based Linux (Alpine) or Windows on ARM, can
+install with [Cargo](#install-with-cargo). See also
+[platform support](../concepts/platform-support.md).
+
+## Install with the script
+
+The scripts are served by this site and do the same thing on every platform:
+find the newest release, download the archive for your machine, verify it
+and install the binary.
+
+=== "Linux / macOS"
 
     ```console
-    $ cargo install pyfaro --version 0.3.0-alpha.1 --locked
+    $ curl --proto '=https' --tlsv1.2 -LsSf https://pyfaro.dev/install.sh | sh
     ```
 
-    Cargo puts the binary in `~/.cargo/bin`, which `rustup` normally adds to
-    your `PATH`.
+=== "Windows (PowerShell)"
 
-    !!! note "The version is required for now"
-        Cargo only selects pre-release versions when you name one. While every
-        published Pyfaro version is an alpha, a bare `cargo install pyfaro
-        --locked` fails with `could not find pyfaro in registry crates-io with
-        version *`.
+    ```powershell
+    powershell -ExecutionPolicy ByPass -c "irm https://pyfaro.dev/install.ps1 | iex"
+    ```
 
-=== "Linux / macOS archive"
+    Works in Windows PowerShell 5.1 and PowerShell 7.
 
-    Download the archive for your platform from
-    [GitHub Releases](https://github.com/pyfaro/pyfaro/releases), together
-    with `SHA256SUMS`:
+### Download, inspect, then run
 
-    | Platform | Archive |
-    | --- | --- |
-    | Linux x86_64 | `pyfaro-<version>-x86_64-unknown-linux-gnu.tar.gz` |
-    | Linux aarch64 | `pyfaro-<version>-aarch64-unknown-linux-gnu.tar.gz` |
-    | macOS Apple silicon | `pyfaro-<version>-aarch64-apple-darwin.tar.gz` |
-    | macOS Intel | `pyfaro-<version>-x86_64-apple-darwin.tar.gz` |
+Piping a script into a shell runs code you have not read. If you would rather
+read it first, download it, look at it, and run the file you read:
 
-    Verify the checksum, then extract and install:
+=== "Linux / macOS"
 
     ```console
-    $ VERSION=0.3.0-alpha.1
+    $ curl --proto '=https' --tlsv1.2 -LsSf https://pyfaro.dev/install.sh -o install.sh
+    $ less install.sh
+    $ sh install.sh
+    ```
+
+=== "Windows (PowerShell)"
+
+    ```powershell
+    irm https://pyfaro.dev/install.ps1 -OutFile install.ps1
+    notepad install.ps1
+    powershell -ExecutionPolicy ByPass -File .\install.ps1
+    ```
+
+The scripts are short and commented. Both are also in the
+[repository](https://github.com/pyfaro/pyfaro/tree/main/website/docs).
+
+### What the script does
+
+1. Detects your operating system and CPU and picks the matching release
+   archive, or stops with a clear message if there is none.
+2. Looks up the newest GitHub release, prereleases included, or uses
+   `PYFARO_VERSION`.
+3. Downloads the archive and `SHA256SUMS` over HTTPS only (TLS 1.2 or newer).
+4. Verifies the archive's SHA-256 against `SHA256SUMS`. If the checksum is
+   missing, does not match, or the machine has no tool to compute it
+   (`sha256sum`, `shasum` or `openssl`; `Get-FileHash` on Windows), it stops
+   and installs nothing.
+5. Extracts to a temporary directory and installs the binary to
+   `~/.local/bin` (Windows: `%USERPROFILE%\.local\bin`) or the directory you
+   name, replacing any previous copy.
+6. Prints the version, target and destination, runs `pyfaro --version`, and
+   tells you if uv is missing.
+
+What it does **not** do: it never uses `sudo`, never edits your shell profile,
+the registry or `PATH`, and never installs uv. When the install directory is
+not on your `PATH`, it prints the exact line to add. The whole script is
+wrapped in a function that runs on the last line, so a download that is cut
+short cannot run half an installer.
+
+!!! info "What the checksum proves"
+    `SHA256SUMS` is downloaded from the same release as the archive. The check
+    catches a corrupt or altered download, or a bad mirror. It cannot tell you
+    who published the release; the archives are unsigned.
+
+### Options
+
+Set these as environment variables before running the script.
+
+| Variable | Meaning |
+| --- | --- |
+| `PYFARO_VERSION` | Install this version, for example `0.3.0-alpha.1`, instead of the newest. Also how you pin or downgrade. |
+| `PYFARO_INSTALL_DIR` | Directory for the binary. Default: `~/.local/bin` (Windows: `%USERPROFILE%\.local\bin`). |
+| `GITHUB_TOKEN` | Optional. Sent only to `api.github.com` when looking up the newest release, to avoid anonymous rate limits (for example in CI). |
+| `PYFARO_DOWNLOAD_BASE` | For testing mirrors only. Replaces `https://github.com/pyfaro/pyfaro/releases/download`; files are read from `<base>/v<version>/`. Must start with `https://`, or `file://` for a local directory. The checksum is still verified. |
+
+=== "Linux / macOS"
+
+    ```console
+    $ curl --proto '=https' --tlsv1.2 -LsSf https://pyfaro.dev/install.sh |
+    >   PYFARO_VERSION=0.3.0-alpha.1 PYFARO_INSTALL_DIR=/opt/tools/bin sh
+    ```
+
+=== "Windows (PowerShell)"
+
+    ```powershell
+    $env:PYFARO_VERSION = "0.3.0-alpha.1"
+    $env:PYFARO_INSTALL_DIR = "C:\tools\bin"
+    irm https://pyfaro.dev/install.ps1 | iex
+    ```
+
+### Put it on your PATH
+
+If the install directory is not on your `PATH`, the script prints how to add
+it. On Linux and macOS, add this line to your shell profile (`~/.profile`,
+`~/.bashrc` or `~/.zshrc`):
+
+```sh
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+On Windows, add the directory to your user `PATH` (Settings, System, About,
+Advanced system settings, Environment Variables), or run the
+`SetEnvironmentVariable` line the script prints.
+
+## Install with Cargo
+
+With Rust 1.90 or newer:
+
+```console
+$ cargo install pyfaro --version 0.4.0-alpha.1 --locked
+```
+
+Cargo puts the binary in `~/.cargo/bin`, which `rustup` normally adds to your
+`PATH`.
+
+!!! note "The version is required for now"
+    Cargo only selects pre-release versions when you name one. While every
+    published Pyfaro version is an alpha, a bare `cargo install pyfaro
+    --locked` fails with `could not find pyfaro in registry crates-io with
+    version *`.
+
+## Install from an archive
+
+Prefer to do it by hand? Download the archive for your platform from
+[GitHub Releases](https://github.com/pyfaro/pyfaro/releases), together with
+`SHA256SUMS`.
+
+=== "Linux / macOS"
+
+    Archives are named `pyfaro-<version>-<target>.tar.gz`, with the targets
+    from the [table above](#supported-platforms). Verify the checksum, then
+    extract and install:
+
+    ```console
+    $ VERSION=0.4.0-alpha.1
     $ FILE=pyfaro-$VERSION-x86_64-unknown-linux-gnu.tar.gz
     $ grep " $FILE\$" SHA256SUMS | sha256sum -c -
-    pyfaro-0.3.0-alpha.1-x86_64-unknown-linux-gnu.tar.gz: OK
+    pyfaro-0.4.0-alpha.1-x86_64-unknown-linux-gnu.tar.gz: OK
     $ tar -xzf $FILE
     $ install -m 755 pyfaro-$VERSION-x86_64-unknown-linux-gnu/pyfaro ~/.local/bin/
     ```
@@ -59,16 +183,16 @@ prebuilt archive, then make sure [uv](#install-uv) is available.
     !!! warning "Unsigned binaries on macOS"
         The archives are not signed or notarized. If Gatekeeper blocks the
         binary, remove the quarantine attribute from the extracted file with
-        `xattr -d com.apple.quarantine pyfaro`.
+        `xattr -d com.apple.quarantine pyfaro`. The install script avoids
+        this because `curl` does not set the attribute.
 
-=== "Windows archive"
+=== "Windows"
 
-    Download `pyfaro-<version>-x86_64-pc-windows-msvc.zip` and `SHA256SUMS`
-    from [GitHub Releases](https://github.com/pyfaro/pyfaro/releases), then
-    in PowerShell:
+    Download `pyfaro-<version>-x86_64-pc-windows-msvc.zip`, then in
+    PowerShell:
 
     ```powershell
-    $Version = "0.3.0-alpha.1"
+    $Version = "0.4.0-alpha.1"
     $File = "pyfaro-$Version-x86_64-pc-windows-msvc.zip"
     $Expected = (Select-String -Path SHA256SUMS -Pattern " $File$").Line.Split(" ")[0]
     $Actual = (Get-FileHash $File -Algorithm SHA256).Hash.ToLower()
@@ -90,7 +214,8 @@ Each archive contains the `pyfaro` executable, `README.md`, `LICENSE` and
 ## Install uv
 
 Pyfaro delegates dependency and environment work to uv and requires **uv
-0.9.26 or newer**. It never installs uv for you.
+0.9.26 or newer**. **Pyfaro never installs uv for you**, and neither does the
+install script: it only tells you when uv is missing.
 
 === "Linux / macOS"
 
@@ -109,19 +234,31 @@ Other installation methods are covered in the
 Pyfaro finds `uv` on your `PATH`; use the `--uv` option on a command to
 select another executable.
 
+If uv is missing, too old or broken, [`pyfaro doctor`](../commands/doctor.md)
+and every command that needs uv say so in one line and tell you what to do:
+install uv, run `uv self update` (or reinstall uv) when it is older than
+0.9.26, or pass `--uv <path>`.
+
 ## Verify the installation
 
 ```console
 $ pyfaro --version
-pyfaro 0.3.0-alpha.1
+pyfaro 0.4.0-alpha.1
 $ pyfaro tools uv
 uv: /home/you/.local/bin/uv (uv 0.9.26)
 ```
 
 `pyfaro tools uv` fails with exit code 1 when uv is missing or older than
-0.9.26. See [`pyfaro tools`](../commands/tools.md).
+0.9.26. `pyfaro doctor` checks the rest of the toolchain; see
+[`pyfaro tools`](../commands/tools.md).
 
 ## Upgrade
+
+=== "Install script"
+
+    Run the script again. It installs the newest release over the old binary
+    and says which version it replaced. Set `PYFARO_VERSION` to move to a
+    specific version, including an older one.
 
 === "Cargo"
 
@@ -135,18 +272,33 @@ uv: /home/you/.local/bin/uv (uv 0.9.26)
 
 ## Uninstall
 
+=== "Install script / archive"
+
+    Delete the executable: `~/.local/bin/pyfaro` on Linux and macOS,
+    `%USERPROFILE%\.local\bin\pyfaro.exe` on Windows, or wherever you put it
+    (`PYFARO_INSTALL_DIR`). The script changed nothing else on your machine.
+    If you added the install directory to your `PATH` yourself and nothing
+    else uses it, remove that line too.
+
 === "Cargo"
 
     ```console
     $ cargo uninstall pyfaro
     ```
 
-=== "Archive"
-
-    Delete the `pyfaro` executable you copied onto your `PATH`.
-
 Pyfaro keeps no global state. Your projects, `uv.lock` files and `.venv`
-directories are untouched.
+directories are untouched, and uv stays installed.
+
+## If the install fails
+
+| Message | What to do |
+| --- | --- |
+| `checksum mismatch … nothing was installed` | The download is corrupt or has been tampered with. Run the script again; if it repeats, report it. |
+| `no SHA-256 tool found` | Install `sha256sum`, `shasum` or `openssl`. The script refuses to install what it cannot verify. |
+| `could not look up the newest release` | GitHub rate-limited the lookup. Set `PYFARO_VERSION`, or `GITHUB_TOKEN`. |
+| `musl-based Linux is not supported` | The archives need glibc. Use Cargo. |
+| `unsupported CPU architecture` | There is no prebuilt archive for it. Use Cargo. |
+| `neither curl nor wget found` | Install one of them. |
 
 ## Next steps
 

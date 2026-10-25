@@ -141,7 +141,7 @@ entering the project directory.
 
 ```console
 $ pyfaro init demo --apply --uv /nonexistent/uv
-error: could not find uv at /nonexistent/uv: cannot find binary path; install uv or use --uv <path>
+error: could not find uv at /nonexistent/uv; fix --uv <path> or install uv (https://docs.astral.sh/uv/getting-started/installation/, or `curl -LsSf https://astral.sh/uv/install.sh | sh`)
 ```
 
 uv 0.9.26 or newer (stable) is required. Pyfaro never installs uv or Python,
@@ -176,7 +176,7 @@ another tool that writes those files at the same time.
 | --- | --- |
 | `expected a standard [project] table in pyproject.toml` | The project uses Poetry-only metadata. Migrate it to `[project]` first. |
 | `tool.pyfaro.schema-version must be the integer 1` | Fix or remove the unsupported `[tool.pyfaro]` value. Unknown keys are rejected too. |
-| `could not find uv at …` | Install uv (>= 0.9.26) or pass `--uv <path>`. |
+| `could not find uv …` | Install uv (>= 0.9.26) as the message says, or pass `--uv <path>`. |
 | uv's own error, then `uv … failed` | Read uv's output above. Dynamic or source dependencies that need a build can fail with `--no-build`. |
 | unsupported platform on `--apply` | Run it on Linux for now. |
 

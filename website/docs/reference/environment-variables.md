@@ -21,6 +21,18 @@ that they cannot change what a command means.
 Boolean uv variables (`UV_NO_DEV` and friends) are true for `1`, `true`, `t`,
 `yes`, `y` and `on`, case-insensitive.
 
+## Read by the install scripts
+
+These belong to [`install.sh` and `install.ps1`](../getting-started/installation.md#install-with-the-script),
+not to the `pyfaro` executable.
+
+| Variable | Effect |
+| --- | --- |
+| `PYFARO_VERSION` | Version to install instead of the newest release (also pins or downgrades). |
+| `PYFARO_INSTALL_DIR` | Directory for the binary. Default `~/.local/bin` (Windows: `%USERPROFILE%\.local\bin`). |
+| `PYFARO_DOWNLOAD_BASE` | Release download URL prefix, for testing mirrors only. `https://` or `file://`. |
+| `GITHUB_TOKEN` | Optional; sent to `api.github.com` only, to avoid rate limits when finding the newest release. |
+
 ## Cleared before calling uv
 
 These variables are removed from the environment of every uv process that
