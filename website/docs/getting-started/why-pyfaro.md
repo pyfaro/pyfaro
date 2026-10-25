@@ -120,7 +120,7 @@ a ranking: every task runner below can run the same commands Pyfaro runs.
     ```sh
     cd old-project
     pyfaro init            # preview, writes nothing
-    pyfaro init --apply    # Linux only in 0.5.0-beta.1
+    pyfaro init --apply    # macOS and Windows: from 0.6.0-beta.1
     pyfaro add --dev ruff ty pytest
     pyfaro sync
     ```
@@ -656,8 +656,9 @@ not promises: milestones can move.
   never installs uv or a Python interpreter for you.
 - **No `publish` command.** `pyfaro build` builds the distributions and
   stops there.
-- **`init --apply` is Linux-only in `0.5.0-beta.1`.** On macOS and Windows,
-  `init` previews and `create` works.
+- **`init --apply` is Linux-only in `0.5.0-beta.1`.** It works on macOS and
+  Windows on `main` and ships in `0.6.0-beta.1`; until then `init` previews
+  there and `create` works.
 - **Beta.** Interfaces may still change before 1.0. See the
   [project status](https://github.com/pyfaro/pyfaro#project-status).
 
