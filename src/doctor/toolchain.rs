@@ -2,6 +2,8 @@ use std::ffi::OsString;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 
+use pep440_rs::Version;
+
 use crate::cli::Tool;
 use crate::error::{Error, Result};
 use crate::tools;
@@ -44,4 +46,21 @@ pub(super) fn inspect_tool(
             Ok(None)
         }
     }
+}
+
+/// Reports pytest 9-only configuration when the found pytest is older.
+pub(super) fn check_pytest_9_configuration(
+    version: &str,
+    report: &mut Report,
+) -> Result<()> {
+    let number = version.split_whitespace().nth(1).unwrap_or_default();
+    let old = number
+        .parse::<Version>()
+        .ok()
+        .and_then(|found| found.release().first().copied())
+        .is_some_and(|major| major < 9);
+    if old {
+        report.line(Severity::Error, format!("configuration: pytest {number} cannot use pytest 9 configuration; upgrade to pytest >=9 or use INI configuration"))?;
+    }
+    Ok(())
 }

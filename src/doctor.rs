@@ -1,7 +1,5 @@
 use std::io::Write;
 
-use pep440_rs::Version;
-
 use crate::cli::{DoctorArgs, Tool};
 use crate::config::Config;
 use crate::error::{Error, Result};
@@ -13,7 +11,9 @@ use self::configuration::{
 };
 use self::dependencies::{declared_dependencies, inspect_dependencies};
 use self::python::{inspect_python_pin, inspect_python_requirement};
-use self::toolchain::{failure_detail, inspect_tool};
+use self::toolchain::{
+    check_pytest_9_configuration, failure_detail, inspect_tool,
+};
 use self::workspace::{inspect_layout, inspect_workspace};
 
 mod configuration;
@@ -183,15 +183,7 @@ pub(crate) fn run(args: DoctorArgs) -> Result<()> {
         if let Some(version) =
             version.filter(|_| matches!(tool, Tool::Pytest) && pytest_9_only)
         {
-            let number = version.split_whitespace().nth(1).unwrap_or_default();
-            let old = number
-                .parse::<Version>()
-                .ok()
-                .and_then(|found| found.release().first().copied())
-                .is_some_and(|major| major < 9);
-            if old {
-                report.line(Severity::Error, format!("configuration: pytest {number} cannot use pytest 9 configuration; upgrade to pytest >=9 or use INI configuration"))?;
-            }
+            check_pytest_9_configuration(&version, &mut report)?;
         }
     }
     if let (Some(root), Some(dependencies)) =
