@@ -211,6 +211,23 @@ Each archive contains the `pyfaro` executable, `README.md`, `LICENSE` and
     download is corrupt or has been tampered with: delete it and download
     again.
 
+### Verify provenance (optional)
+
+Releases from `0.5.0-beta.1` on carry GitHub build-provenance attestations for
+every archive and the `.crate`. They show which workflow run built a file, which
+the checksum alone cannot. With the [GitHub CLI](https://cli.github.com/),
+verify a downloaded archive before you extract it:
+
+```console
+$ gh attestation verify pyfaro-<version>-x86_64-unknown-linux-gnu.tar.gz --repo pyfaro/pyfaro
+```
+
+Earlier releases, including `0.4.0-alpha.1`, have no attestations. The install
+script does not run this check, since it would make the GitHub CLI a
+requirement. See the
+[release guide](https://github.com/pyfaro/pyfaro/blob/main/docs/releasing.md)
+for how releases are built and reproduced.
+
 ## Install uv
 
 Pyfaro delegates dependency and environment work to uv and requires **uv
