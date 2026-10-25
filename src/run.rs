@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::cli::RunArgs;
 use crate::config::Config;
 use crate::error::{Error, Result};
-use crate::{process, project, uv};
+use crate::{process, project, redact, uv};
 
 /// What to hand to `uv run ... --`, and where and with which variables.
 enum Launch {
@@ -82,7 +82,10 @@ fn program_launch(config: &Config, args: Vec<OsString>) -> Result<Launch> {
         && config.tasks().get(name).is_some()
     {
         eprintln!(
-            "pyfaro: running the program \"{name}\"; a task with the same name exists, run it with pyfaro run {name}"
+            "{}",
+            redact::text(&format!(
+                "pyfaro: running the program \"{name}\"; a task with the same name exists, run it with pyfaro run {name}"
+            ))
         );
     }
     let mut command = Vec::with_capacity(args.len() + 2);

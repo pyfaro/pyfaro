@@ -14,6 +14,7 @@ use files::Snapshot;
 
 pub(crate) fn run(args: InitArgs) -> Result<()> {
     let root = project::target(&args.path)?;
+    crate::verbose::project_root(&root);
     let metadata = Snapshot::read(root.join("pyproject.toml"))?;
     let lockfile = Snapshot::read(root.join("uv.lock"))?;
     if !metadata.exists() && lockfile.exists() {

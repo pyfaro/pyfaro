@@ -10,7 +10,7 @@ use semver::Version;
 
 use crate::cli::{Tool, ToolsArgs};
 use crate::error::{Error, Result};
-use crate::{process, project, uv};
+use crate::{process, project, redact, uv, verbose};
 
 const ALL: [Tool; 4] = [Tool::Uv, Tool::Ruff, Tool::Ty, Tool::Pytest];
 
@@ -36,14 +36,14 @@ pub(crate) fn run(args: ToolsArgs) -> Result<()> {
             Ok((path, version)) => {
                 let report =
                     format!("{}: {} ({version})", name(tool), path.display());
-                writeln!(output, "{}", single_line(&report))
+                writeln!(output, "{}", single_line(&redact::text(&report)))
                     .map_err(Error::Output)?
             }
             Err(Error::Cancelled) => return Err(Error::Cancelled),
             Err(error) if args.tool.is_some() => return Err(error),
             Err(error) => {
                 let report = format!("{}: unavailable ({error})", name(tool));
-                writeln!(output, "{}", single_line(&report))
+                writeln!(output, "{}", single_line(&redact::text(&report)))
                     .map_err(Error::Output)?
             }
         }
@@ -112,6 +112,32 @@ pub(crate) fn inspect(
             }
         })?;
     Ok((binary, version))
+}
+
+/// With `--verbose`, report the path and version of each of `names`, resolved
+/// like the commands that run them. A tool that cannot be resolved or probed
+/// is reported too; the command itself then fails or degrades as usual.
+pub(crate) fn announce(
+    names: &[&'static str],
+    root: Option<&Path>,
+    cancelled: &AtomicBool,
+) {
+    if !verbose::enabled() {
+        return;
+    }
+    for &name in names {
+        match resolve(name, root) {
+            Ok(binary) => match probe_version(&binary, name, cancelled) {
+                Ok(version) => verbose::tool(&version, &binary),
+                Err(Error::Cancelled) => return,
+                Err(error) => verbose::say(&format!(
+                    "{name}: cannot read the version of {}: {error}",
+                    binary.display()
+                )),
+            },
+            Err(error) => verbose::say(&error.to_string()),
+        }
+    }
 }
 
 pub(crate) fn inspect_python(

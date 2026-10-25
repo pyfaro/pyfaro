@@ -9,6 +9,7 @@ use std::time::Duration;
 
 use crate::error::Error;
 use crate::error::Result;
+use crate::{redact, verbose};
 
 #[cfg(any(target_os = "windows", test))]
 mod console_stop;
@@ -47,10 +48,11 @@ pub(crate) fn read_diagnostic(path: &Path) -> Result<String> {
         .take(4096)
         .read_to_end(&mut captured)
         .map_err(|error| Error::io("read", path, error))?;
-    Ok(String::from_utf8_lossy(&captured)
+    let text = String::from_utf8_lossy(&captured)
         .trim()
         .replace('\r', "\\r")
-        .replace('\n', "\\n"))
+        .replace('\n', "\\n");
+    Ok(redact::text(&text))
 }
 
 pub(crate) fn run(
@@ -99,6 +101,7 @@ fn run_with_input(
     #[cfg_attr(not(target_os = "windows"), allow(unused_variables))]
     supervised: bool,
 ) -> Result<ExitStatus> {
+    verbose::command(&command);
     #[cfg(target_os = "linux")]
     {
         let mut command = command;

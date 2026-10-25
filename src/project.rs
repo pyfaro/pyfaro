@@ -3,6 +3,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::error::{Error, Result};
+use crate::verbose;
 
 pub(crate) fn select(explicit: Option<&Path>) -> Result<PathBuf> {
     let start = explicit.unwrap_or_else(|| Path::new("."));
@@ -31,7 +32,10 @@ fn find(start: &Path, exact: bool) -> Result<PathBuf> {
     for candidate in candidates {
         let metadata = candidate.join("pyproject.toml");
         match fs::metadata(&metadata) {
-            Ok(entry) if entry.is_file() => return Ok(candidate.to_owned()),
+            Ok(entry) if entry.is_file() => {
+                verbose::project_root(candidate);
+                return Ok(candidate.to_owned());
+            }
             Ok(_) => {
                 return Err(Error::Project(format!(
                     "project metadata is not a file: {}",

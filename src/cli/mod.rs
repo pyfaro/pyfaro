@@ -11,6 +11,10 @@ use clap::{Args, Parser, Subcommand};
     after_help = "Experimental alpha: create, init, sync, run, dev, add, remove, python, tools, doctor, lint, fmt, type, test, and check are implemented; other workflow commands are not implemented yet."
 )]
 pub(crate) struct Cli {
+    /// Print tool versions and every command line before it runs
+    #[arg(short, long)]
+    pub verbose: bool,
+
     #[command(subcommand)]
     pub command: Command,
 }
@@ -49,6 +53,59 @@ pub(crate) enum Command {
     Doctor(DoctorArgs),
 }
 
+impl Command {
+    /// Whether `-v`/`--verbose` followed the subcommand. `test` has none: its
+    /// arguments, those two included, belong to pytest.
+    pub(crate) fn verbose(&self) -> bool {
+        match self {
+            Self::Create(args) => args.verbose,
+            Self::Init(args) => args.verbose.verbose,
+            Self::Sync(args) => args.verbose.verbose,
+            Self::Add(args) | Self::Remove(args) => args.verbose.verbose,
+            Self::Run(args) => args.verbose.verbose,
+            Self::Dev(args) => args.verbose.verbose,
+            Self::Lint(args) => args.verbose.verbose,
+            Self::Fmt(args) => args.verbose.verbose,
+            Self::Type(args) => args.verbose.verbose,
+            Self::Test(_) => false,
+            Self::Check(args) => args.verbose.verbose,
+            Self::Python(args) => args.verbose,
+            Self::Tools(args) => args.verbose.verbose,
+            Self::Doctor(args) => args.verbose.verbose,
+        }
+    }
+
+    /// The name typed on the command line, as in `pyfaro <name>:` lines.
+    pub(crate) fn name(&self) -> &'static str {
+        match self {
+            Self::Create(_) => "create",
+            Self::Init(_) => "init",
+            Self::Sync(_) => "sync",
+            Self::Add(_) => "add",
+            Self::Remove(_) => "remove",
+            Self::Run(_) => "run",
+            Self::Dev(_) => "dev",
+            Self::Lint(_) => "lint",
+            Self::Fmt(_) => "fmt",
+            Self::Type(_) => "type",
+            Self::Test(_) => "test",
+            Self::Check(_) => "check",
+            Self::Python(_) => "python",
+            Self::Tools(_) => "tools",
+            Self::Doctor(_) => "doctor",
+        }
+    }
+}
+
+/// `-v`/`--verbose` after the subcommand. Not global: `test` has none, so its
+/// arguments, `-v` and `--verbose` included, all reach pytest.
+#[derive(Args)]
+pub(crate) struct VerboseArgs {
+    /// Print tool versions and every command line before it runs
+    #[arg(short, long)]
+    pub verbose: bool,
+}
+
 #[derive(Args)]
 pub(crate) struct LintArgs {
     /// Files or directories relative to the current directory (default: the project)
@@ -57,6 +114,8 @@ pub(crate) struct LintArgs {
     /// Explicit project directory; otherwise discover the nearest project
     #[arg(long)]
     pub project: Option<PathBuf>,
+    #[command(flatten)]
+    pub verbose: VerboseArgs,
 }
 
 #[derive(Args)]
@@ -67,6 +126,8 @@ pub(crate) struct TypeArgs {
     /// Explicit project directory; otherwise discover the nearest project
     #[arg(long)]
     pub project: Option<PathBuf>,
+    #[command(flatten)]
+    pub verbose: VerboseArgs,
 }
 
 #[derive(Args)]
@@ -81,6 +142,8 @@ pub(crate) struct CheckArgs {
     /// Explicit project directory; otherwise discover the nearest project
     #[arg(long)]
     pub project: Option<PathBuf>,
+    #[command(flatten)]
+    pub verbose: VerboseArgs,
 }
 
 #[derive(Args)]
@@ -95,6 +158,8 @@ pub(crate) struct FmtArgs {
     /// Explicit project directory; otherwise discover the nearest project
     #[arg(long)]
     pub project: Option<PathBuf>,
+    #[command(flatten)]
+    pub verbose: VerboseArgs,
 }
 
 #[derive(Args)]
@@ -117,6 +182,8 @@ pub(crate) struct DoctorArgs {
     /// uv executable (a path or a name found on PATH)
     #[arg(long)]
     pub uv: Option<OsString>,
+    #[command(flatten)]
+    pub verbose: VerboseArgs,
 }
 
 #[derive(Args)]
@@ -144,12 +211,17 @@ pub(crate) struct DependencyArgs {
     /// Disable network access in uv
     #[arg(long)]
     pub offline: bool,
+    #[command(flatten)]
+    pub verbose: VerboseArgs,
 }
 
 #[derive(Args)]
 pub(crate) struct CreateArgs {
     #[command(subcommand)]
     pub kind: CreateKind,
+    /// Print tool versions and every command line before it runs
+    #[arg(short, long, global = true)]
+    pub verbose: bool,
 }
 
 #[derive(Subcommand)]
@@ -216,6 +288,9 @@ pub(crate) struct PythonArgs {
     /// Disable network access in uv
     #[arg(long, global = true)]
     pub offline: bool,
+    /// Print tool versions and every command line before it runs
+    #[arg(short, long, global = true)]
+    pub verbose: bool,
 }
 
 #[derive(Subcommand)]
@@ -259,6 +334,8 @@ pub(crate) struct ToolsArgs {
     /// uv executable (a path or a name found on PATH)
     #[arg(long)]
     pub uv: Option<OsString>,
+    #[command(flatten)]
+    pub verbose: VerboseArgs,
 }
 
 #[derive(Clone, Copy, clap::ValueEnum)]
@@ -287,6 +364,8 @@ pub(crate) struct InitArgs {
     /// Disable network access in uv
     #[arg(long)]
     pub offline: bool,
+    #[command(flatten)]
+    pub verbose: VerboseArgs,
 }
 
 #[derive(Args)]
@@ -314,6 +393,8 @@ pub(crate) struct SyncArgs {
     /// Disable network access in uv
     #[arg(long)]
     pub offline: bool,
+    #[command(flatten)]
+    pub verbose: VerboseArgs,
 }
 
 #[derive(Args)]
@@ -344,6 +425,8 @@ pub(crate) struct RunArgs {
     /// Program and arguments after --, or extra arguments for the task
     #[arg(last = true, num_args = 0.., value_name = "ARGS")]
     pub command: Vec<OsString>,
+    #[command(flatten)]
+    pub verbose: VerboseArgs,
 }
 
 #[derive(Args)]
@@ -368,11 +451,9 @@ pub(crate) struct DevArgs {
     #[arg(long)]
     pub offline: bool,
 
-    /// Print the full uv command line before launching
-    #[arg(short, long)]
-    pub verbose: bool,
-
     /// Extra arguments after --, appended after the configured arguments
     #[arg(last = true, num_args = 0..)]
     pub extra: Vec<OsString>,
+    #[command(flatten)]
+    pub verbose: VerboseArgs,
 }

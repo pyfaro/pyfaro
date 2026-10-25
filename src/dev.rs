@@ -10,7 +10,7 @@ use crate::cli::DevArgs;
 use crate::config::{Config, DevConfig, DevPreset};
 use crate::error::{Error, Result};
 use crate::quality::strip_verbatim;
-use crate::{process, project, uv};
+use crate::{process, project, redact, uv};
 
 /// A server needs longer than a short-lived command to shut down cleanly.
 const GRACE: Duration = Duration::from_secs(5);
@@ -52,9 +52,6 @@ pub(crate) fn run(args: DevArgs) -> Result<()> {
     command.push(OsString::from("--"));
     command.extend(plan.argv);
     say(&plan.startup);
-    if args.verbose {
-        say(&format!("running {}", uv.command_line(&command)));
-    }
     match uv.execute_supervised(&root, "run", &command, GRACE, &cancelled) {
         Ok(()) => Ok(()),
         Err(Error::Cancelled) => {
@@ -270,7 +267,8 @@ fn missing_table(root: &Path) -> Error {
 }
 
 fn say(message: &str) {
-    let _ = writeln!(io::stderr().lock(), "pyfaro dev: {message}");
+    let _ =
+        writeln!(io::stderr().lock(), "pyfaro dev: {}", redact::text(message));
 }
 
 /// Print `lines` as Pyfaro diagnostics; the caller exits with status 1.

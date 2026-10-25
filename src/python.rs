@@ -16,6 +16,7 @@ pub(crate) fn run(args: PythonArgs) -> Result<()> {
             Error::io("resolve working directory", Path::new("."), source)
         })?
     };
+    crate::verbose::project_root(&root);
     let cancelled = process::cancellation()?;
     let uv = uv::Uv::discover(args.uv, args.offline, &cancelled)?;
     let (operation, downloads, command) = match args.command {
