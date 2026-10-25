@@ -16,7 +16,8 @@ each release on GitHub.
 | `0.1.0-alpha.2` | 2026-10-19 | `sync`, `run`, `tools`, project discovery, configuration |
 | `0.1.0-alpha.1` | 2026-10-19 | First release: `init` |
 
-`0.4.0-alpha.1` is in development on `main` and is not published.
+`0.4.0-alpha.1` is prepared and awaits publication. `0.5.0-alpha.1` is in
+development on `main` and is not published.
 
 !!! note
     Each version is an experimental alpha. Interfaces may change between
