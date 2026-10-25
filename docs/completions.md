@@ -45,7 +45,10 @@ The same flag has the same help text everywhere:
 | `--offline` | Disable network access in uv |
 | `--locked` | Refuse to update an absent or stale uv.lock |
 | `--frozen` | Use uv.lock without checking it against project metadata |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
+`-v`/`--verbose` is flattened into every subcommand except `test` through
+`VerboseArgs`, and the completion scripts offer it everywhere it is accepted.
 `python --project` says how it differs: the directory is exact and not
 discovered. Switches start with an imperative verb, values with a noun phrase;
 defaults are written `(defaults to ...)` and sentences have no trailing period.

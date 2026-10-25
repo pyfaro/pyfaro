@@ -63,6 +63,22 @@ fn completions_need_no_project_and_no_uv() {
 }
 
 #[test]
+fn completions_accept_the_verbose_flag_and_print_the_same_script() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    for shell in SHELLS {
+        let plain = sandbox.pyfaro(["completions", shell]).run();
+        for args in [
+            ["completions", shell, "--verbose"],
+            ["--verbose", "completions", shell],
+        ] {
+            let verbose = sandbox.pyfaro(args).run();
+            verbose.success().stdout_eq(&plain.stdout).stderr_empty();
+        }
+    }
+}
+
+#[test]
 fn an_unknown_shell_is_a_usage_error() {
     e2e_guard!();
     let sandbox = Sandbox::new();
@@ -207,6 +223,11 @@ fn bash_completes_subcommands_flags_and_values() {
 
     assert_eq!(bash_complete(&script, &["pyfaro", "sy"]), ["sync"]);
     assert_eq!(bash_complete(&script, &["pyfaro", "comp"]), ["completions"]);
+    assert_eq!(bash_complete(&script, &["pyfaro", "--verb"]), ["--verbose"]);
+    assert_eq!(
+        bash_complete(&script, &["pyfaro", "sync", "--verb"]),
+        ["--verbose"]
+    );
     let all = bash_complete(&script, &["pyfaro", ""]);
     for command in ["create", "sync", "run", "dev", "check", "completions"] {
         assert!(all.iter().any(|word| word == command), "{command}: {all:?}");

@@ -69,6 +69,8 @@ pub(crate) struct CompletionsArgs {
     /// Shell to generate the completion script for
     #[arg(value_enum)]
     pub shell: CompletionShell,
+    #[command(flatten)]
+    pub verbose: VerboseArgs,
 }
 
 #[derive(Clone, Copy, clap::ValueEnum)]
@@ -99,6 +101,7 @@ impl Command {
             Self::Python(args) => args.verbose,
             Self::Tools(args) => args.verbose.verbose,
             Self::Doctor(args) => args.verbose.verbose,
+            Self::Completions(args) => args.verbose.verbose,
         }
     }
 
@@ -120,6 +123,7 @@ impl Command {
             Self::Python(_) => "python",
             Self::Tools(_) => "tools",
             Self::Doctor(_) => "doctor",
+            Self::Completions(_) => "completions",
         }
     }
 }
