@@ -37,6 +37,13 @@ Version `0.6.0-beta.1` has not been published.
   also lists what Pyfaro does not do yet: task graph, parallelism and cache,
   workspaces, and JSON output. The README's "Why Pyfaro" section is shortened
   and links to it.
+- Add an animated terminal demo to the README and the site's home page: `pyfaro
+  create fastapi`, `sync`, `check`, `test`, then `dev` with a reload and Ctrl-C,
+  with the same commands as text next to it. It is a roughly 130 KB SVG recorded
+  by `demo/record.py`, a development-only script (not packaged, no new
+  dependency) that runs the real published binary; the README links it by an
+  absolute URL so that PyPI and crates.io show it. The publishing guide explains
+  how to regenerate it for each release.
 
 ## 0.5.0-beta.1 — 2026-10-25
 

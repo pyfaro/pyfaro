@@ -44,34 +44,25 @@ Hatch or PDM, and what it does not do yet? Read
 
 ## Demo
 
-```console
-$ pyfaro create lib textkit
-Created library at ~/projects/textkit
-$ cd textkit
-$ pyfaro sync
-Using CPython 3.13.11
-Creating virtual environment at: .venv
-Resolved 12 packages in 93ms
-...
-$ pyfaro check
-4 files already formatted
-All checks passed!
-All checks passed!
+<p align="center">
+  <img src="https://raw.githubusercontent.com/pyfaro/pyfaro/main/website/docs/assets/demo.svg" alt="A terminal recording: pyfaro create fastapi acme-api, then pyfaro sync, pyfaro check and pyfaro test, which all pass. pyfaro dev serves the app with Uvicorn, reloads it after a source file changes and stops on Ctrl-C with exit status 130." width="860">
+</p>
 
-== pyfaro check summary ==
-format: ok
-lint: ok
-type: ok
-check: ok
-$ pyfaro test
-============================= test session starts ==============================
-...
-collected 1 item
+The same commands as text, from creating a FastAPI project to the dev server:
 
-tests/test_library.py .                                                  [100%]
-
-============================== 1 passed in 0.01s ===============================
+```sh
+pyfaro create fastapi acme-api   # scaffold a typed FastAPI project
+cd acme-api
+pyfaro sync                      # create .venv and uv.lock
+pyfaro check                     # format check, lint, type check
+pyfaro test                      # run pytest
+pyfaro dev                       # Uvicorn with reload; Ctrl-C stops the whole tree
 ```
+
+Recorded on Linux with `0.5.0-beta.1`, from
+[a script](https://github.com/pyfaro/pyfaro/blob/main/demo/record.py) that
+types the commands and runs the real binary. The edit that makes the server
+reload is made by that script, not typed.
 
 ## Installation
 

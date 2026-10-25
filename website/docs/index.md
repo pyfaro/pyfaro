@@ -27,6 +27,26 @@ pytest, from creating a project to running its quality checks and tests.
 </div>
 </div>
 
+## See it work
+
+![A terminal recording: pyfaro create fastapi acme-api, then pyfaro sync, pyfaro check and pyfaro test, which all pass. pyfaro dev serves the app with Uvicorn, reloads it after a source file changes and stops on Ctrl-C with exit status 130.](assets/demo.svg)
+
+The same commands as text:
+
+```sh
+pyfaro create fastapi acme-api   # scaffold a typed FastAPI project
+cd acme-api
+pyfaro sync                      # create .venv and uv.lock
+pyfaro check                     # format check, lint, type check
+pyfaro test                      # run pytest
+pyfaro dev                       # Uvicorn with reload; Ctrl-C stops the whole tree
+```
+
+Recorded on Linux with `0.5.0-beta.1`, from
+[a script](https://github.com/pyfaro/pyfaro/blob/main/demo/record.py) that
+types the commands and runs the real binary. The edit that makes the server
+reload is made by that script, not typed.
+
 ## Install
 
 === "Linux / macOS"

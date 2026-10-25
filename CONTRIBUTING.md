@@ -180,3 +180,8 @@ See [the publishing guide](docs/releasing.md) for verified release records and
 explicit approval gates for future uploads, tags, and releases, and for
 ownership and credentials. No registry
 credentials are stored in this repository.
+
+The terminal demo in the README and on the home page is recorded by
+`demo/record.py`, a development-only script (Python standard library, not
+packaged). Regenerate it for each release as described in
+[Regenerating the terminal demo](docs/releasing.md#regenerating-the-terminal-demo).
