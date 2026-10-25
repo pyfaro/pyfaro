@@ -14,6 +14,7 @@ is implemented in `0.3.0-alpha.1` or on `main`.
 | [`run`](../commands/run.md) | Run a command, or a named task from `[tool.pyfaro.tasks]`, in the project environment | uv |
 | [`dev`](../commands/dev.md) | Run the development server (the `fastapi` preset runs Uvicorn with reload) or process, supervised | uv, Uvicorn |
 | [`python`](../commands/python.md) | List, install or pin Python versions | uv |
+| [`build`](../commands/build.md) | Build a source distribution and a wheel with the project's own build backend | uv |
 
 ## Code quality
 
@@ -45,8 +46,8 @@ is implemented in `0.3.0-alpha.1` or on `main`.
   [Exit codes](../concepts/exit-codes.md).
 
 !!! info "Planned, not available"
-    `build` and workspaces are on the roadmap but are not implemented. They do
-    not appear in `pyfaro --help`. Build with `uv build` for now.
+    Workspaces are on the roadmap but are not implemented. They do not appear
+    in `pyfaro --help`.
 
 ## Next steps
 

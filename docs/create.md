@@ -104,7 +104,7 @@ The `[tool.pyfaro.dev]` table is what `pyfaro dev` reads (see
 `GET /` returning `{"message": "Hello from acme-api!"}` and `GET /health`
 returning `{"status": "ok"}`; `tests/test_main.py` covers both routes with
 `TestClient`. After `pyfaro sync`, `pyfaro check`, `pyfaro test`, and
-`uv build` pass. Serve the application with auto-reload using `pyfaro dev`
+`pyfaro build` pass. Serve the application with auto-reload using `pyfaro dev`
 (pass Uvicorn options after `--`, for example `pyfaro dev -- --port 8001`), or
 check the import with
 `pyfaro run -- python -c "from backend.main import app; print(app.title)"`.
@@ -118,7 +118,7 @@ installed and network access for the first sync:
 pyfaro sync
 pyfaro check
 pyfaro test
-uv build
+pyfaro build
 ```
 
 `pyfaro sync` creates `.venv` and `uv.lock` and installs the pinned Ruff, ty,

@@ -4,6 +4,13 @@
 
 Version `0.5.0-beta.1` has not been published.
 
+- Add `pyfaro build`, which builds a source distribution and a wheel through
+  `uv build` with the project's own `[build-system]` backend (`uv_build`,
+  hatchling, setuptools or none). `--sdist` and `--wheel` select a kind,
+  `--out-dir` chooses the directory (default `dist`), `--clear` empties it
+  first (refused when it would delete the project), and uv's exit status is
+  forwarded. Pyfaro lists the artifacts each run created or rewrote as
+  `built <path>` lines and fails when an expected kind is missing.
 - Add a global `-v`/`--verbose` flag, accepted before the subcommand for every
   command and after it for every command except `test` (whose arguments after
   `test`, `-v` and `--verbose` included, still go to pytest verbatim; use

@@ -4,8 +4,8 @@ Pyfaro wraps uv, Ruff, ty and pytest behind one command. Every command is a
 thin, predictable layer: Pyfaro picks the project, builds the arguments, runs
 the tool and forwards its exit status.
 
-<span class="pf-badge">alpha</span> The commands below are implemented. Others
-(such as `build` and workspaces) are planned and not available.
+<span class="pf-badge">alpha</span> The commands below are implemented.
+Workspaces are planned and not available.
 
 ## All commands
 
@@ -26,6 +26,7 @@ the tool and forwards its exit status.
 | [`type`](type.md) | Type-check project files with ty. |
 | [`check`](check.md) | Run format check, lint and type check, optionally applying safe fixes first. |
 | [`test`](test.md) | Run pytest in the project environment. |
+| [`build`](build.md) | Build a source distribution and a wheel through uv. |
 
 ## Project setup
 
