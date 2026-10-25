@@ -118,5 +118,8 @@ runs `pyfaro sync`.
   [releasing](releasing.md).
 - crates.io publishing uses trusted publishing with no long-lived token, after
   maintainer approval of the `crates-io` environment.
-- Archives are not code-signed or notarized (macOS Gatekeeper, Windows
-  SmartScreen may warn).
+- Archives are not code-signed or notarized. On macOS, Gatekeeper only checks
+  files that carry the `com.apple.quarantine` attribute, which browsers set
+  and `curl` does not: the install script, `cargo install` and the PyPI wheels
+  are not affected, a browser download needs `xattr -d com.apple.quarantine
+  pyfaro` once. Windows SmartScreen may warn.

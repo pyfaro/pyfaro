@@ -127,6 +127,13 @@ archives are not code-signed: verify them against `SHA256SUMS` (and, with the
 GitHub CLI, `gh attestation verify <file> --repo pyfaro/pyfaro`), extract,
 and put `pyfaro` on your `PATH`.
 
+**macOS note.** The install script, `uv tool install`, `pipx`, `pip` and
+`cargo install` produce files macOS does not quarantine, so Gatekeeper stays
+out of the way. Only an archive downloaded in a browser carries the
+`com.apple.quarantine` attribute; if macOS refuses to open it, run
+`xattr -d com.apple.quarantine pyfaro` on the extracted binary. See
+[macOS and Gatekeeper](https://pyfaro.dev/getting-started/installation/#macos-and-gatekeeper).
+
 Check the installation, and the toolchain around it:
 
 ```sh

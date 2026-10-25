@@ -231,11 +231,12 @@ Prefer to do it by hand? Download the archive for your platform from
     $ grep " $FILE\$" SHA256SUMS | shasum -a 256 -c -
     ```
 
-    !!! warning "Unsigned binaries on macOS"
-        The archives are not signed or notarized. If Gatekeeper blocks the
-        binary, remove the quarantine attribute from the extracted file with
-        `xattr -d com.apple.quarantine pyfaro`. The install script avoids
-        this because `curl` does not set the attribute.
+    !!! note "Archive downloaded in a browser on macOS"
+        The archives are not signed or notarized, so Gatekeeper may stop a
+        binary that came from a browser download. See
+        [macOS and Gatekeeper](#macos-and-gatekeeper) for why and for the
+        one-line fix. The install script, `uv tool install`, `pipx`, `pip` and
+        `cargo install` are not affected.
 
 === "Windows"
 
@@ -284,6 +285,40 @@ for how releases are built and reproduced.
 `pyfaro completions <SHELL>` prints a completion script for Bash, Zsh, Fish or
 PowerShell. Where to save it is in the [`completions` guide](../commands/completions.md);
 run it again after an upgrade to pick up new commands.
+
+## macOS and Gatekeeper
+
+Pyfaro's macOS binaries are not signed with an Apple Developer ID and are not
+notarized. That only matters for files macOS marks as downloaded from the
+internet. macOS does this by adding a `com.apple.quarantine` extended
+attribute, which Gatekeeper checks the first time you open the file. Browsers
+add the attribute; command-line tools such as `curl` do not.
+
+| How you installed Pyfaro | Quarantined? |
+| --- | --- |
+| [Install script](#install-with-the-script) (it downloads with `curl`) | No |
+| [`uv tool install`, `pipx`, `pip`](#install-from-pypi) | No |
+| [`cargo install`](#install-with-cargo) (built on your machine) | No |
+| [Archive downloaded in a browser](#install-from-an-archive) | Yes |
+
+If you downloaded the archive in a browser and macOS refuses to open
+`pyfaro` (the message says Apple cannot verify the developer or that it is
+free of malware), remove the attribute from the extracted binary, once:
+
+```console
+$ xattr -d com.apple.quarantine pyfaro
+```
+
+`xattr -l pyfaro` lists the attributes: if `com.apple.quarantine` is not
+there, Gatekeeper is not the problem. Verify the archive against
+`SHA256SUMS` first, as above; the attribute only tells macOS where the file
+came from, and removing it tells macOS you trust it. You can also open
+**System Settings → Privacy & Security** and choose **Open Anyway** after the
+first blocked attempt.
+
+The Apple silicon binaries carry the ad-hoc code signature that the Rust
+linker adds, which Apple silicon requires to run any program, so an
+unquarantined `pyfaro` runs without further steps.
 
 ## Install uv
 
