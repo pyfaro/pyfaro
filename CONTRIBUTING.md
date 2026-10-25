@@ -126,10 +126,13 @@ Experimental `0.1.0-alpha.1`, `0.1.0-alpha.2`, and `0.2.0-alpha.1` crates
 were published manually. `0.3.0-alpha.1` was the first release made through
 the manual Release workflow, which publishes through crates.io trusted
 publishing, tags the commit, and creates a GitHub Release with standalone
-archives. Future versions use the same workflow. Backlog issue B06 still
-owns signing, provenance, and installers for the public beta. The
+archives. Future versions use the same workflow, which now builds the
+standalone archives reproducibly before the upload and attaches signed build
+provenance attestations to them. Pull requests that touch the release
+pipeline run the Release build check workflow. The
 `v0.1.0-alpha.2`, `v0.2.0-alpha.1`, and `v0.3.0-alpha.1` tags point to their
 published source commits and all have GitHub prereleases. To cut a release, follow [How to release](docs/releasing.md#how-to-release).
 See [the publishing guide](docs/releasing.md) for verified release records and
-explicit approval gates for future uploads, tags, and releases. No registry
+explicit approval gates for future uploads, tags, and releases, and for
+ownership and credentials. No registry
 credentials are stored in this repository.
