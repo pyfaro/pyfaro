@@ -294,8 +294,11 @@ jobs:
           import hashlib, json, pathlib, sys
           listed = {u["filename"]: u["digests"]["sha256"]
                     for u in json.load(open("pypi.json"))["urls"]}
+          # The publish action leaves `*.publish.attestation` files beside
+          # the distributions; only the distributions are on PyPI's list.
           local = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-                   for p in pathlib.Path("dist").iterdir()}
+                   for p in pathlib.Path("dist").iterdir()
+                   if p.name.endswith((".whl", ".tar.gz"))}
           for name in sorted(set(local) | set(listed)):
               print(f"{name}: reviewed={local.get(name)} pypi={listed.get(name)}")
           if local != listed:

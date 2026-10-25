@@ -207,6 +207,9 @@ jobs:
   release:
     name: Create the GitHub Release
     needs: [resolve, assemble]
+    # The skipped `build` and `wheels` jobs of a prebuilt run would otherwise
+    # skip this job too: a skip propagates through every later `needs`.
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
