@@ -17,6 +17,7 @@ pyfaro dev
 pyfaro dev --project ./my-project --locked
 pyfaro dev -- --port 9000 --log-level debug
 pyfaro dev --verbose
+pyfaro -v dev           # the same: --verbose is a global option
 ```
 
 ## Settings
@@ -94,7 +95,7 @@ and a syntax error shows its traceback in the output until you fix it. Use
 | `--locked` / `--frozen` | Passed to `uv run`. Mutually exclusive. |
 | `--uv <EXE>` | The uv executable (default `uv`). |
 | `--offline` | Disable uv network access. |
-| `-v`, `--verbose` | Also print the full uv command line, quoting arguments that contain spaces. |
+| `-v`, `--verbose` | Also print the uv version and path and every command line, including the full `uv run` line with arguments that contain spaces quoted. This is Pyfaro's global option (see the [diagnostics guide](diagnostics.md)), so `pyfaro -v dev` works as well. |
 | `-- <extra>...` | Arguments appended after the configured `args`. |
 
 ## Output
@@ -106,6 +107,8 @@ error and all start with `pyfaro dev: `:
 ```text
 pyfaro dev: starting demo.main:app with uvicorn (reload on) at http://127.0.0.1:8000 - press Ctrl-C to stop
 pyfaro dev: starting python -m demo.worker (press Ctrl-C to stop)
+pyfaro dev: running /usr/bin/uv --version   (with --verbose)
+pyfaro dev: using uv 0.9.26 at /usr/bin/uv   (with --verbose)
 pyfaro dev: running /usr/bin/uv --no-python-downloads --no-progress run --project /work/demo -- uvicorn demo.main:app --reload --reload-dir /work/demo/src   (with --verbose)
 ```
 

@@ -106,6 +106,20 @@ tests/test_parser.py::test_parse_slow
 4 tests collected in 0.00s
 ```
 
+### Pyfaro's `--verbose` goes before `test`
+
+`-v` and `--verbose` after `test` belong to pytest, as in the example above.
+Pyfaro's own trace of the pytest version, path and command line is requested
+before the subcommand, where it leaves pytest quiet:
+
+```console
+$ pyfaro -v test
+pyfaro test: running ~/demo/.venv/bin/pytest --version
+pyfaro test: using pytest 9.1.1 at ~/demo/.venv/bin/pytest
+pyfaro test: running ~/demo/.venv/bin/python -c "import importlib.util, sys; sys.exit(importlib.util.find_spec('pytest') is None)"
+pyfaro test: running ~/demo/.venv/bin/python -m pytest
+```
+
 ### Separate with `--`
 
 A leading `--` is accepted and removed. Use it when the first pytest argument

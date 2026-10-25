@@ -2,7 +2,28 @@
 
 ## Unreleased — 0.5.0-beta.1 development
 
-Version `0.5.0-beta.1` has not been published. It has no changes yet.
+Version `0.5.0-beta.1` has not been published.
+
+- Add a global `-v`/`--verbose` flag, accepted before the subcommand for every
+  command and after it for every command except `test` (whose arguments after
+  `test`, `-v` and `--verbose` included, still go to pytest verbatim; use
+  `pyfaro -v test` for Pyfaro's trace). Pyfaro then prints to standard error,
+  before launching anything, each tool it resolved with its version and path
+  and every command line it executes, in the `pyfaro <command>: <message>`
+  format `pyfaro dev` already used. `pyfaro dev --verbose` keeps working; it
+  now also lists the uv version probe and the uv version, so the `running`
+  line for the launch is no longer the first one. Output without the flag is
+  unchanged.
+- Mask credentials: the password of a URL's userinfo prints as `****`
+  (`https://user:****@host`, and `https://****@host` for a lone token) in
+  verbose lines, error messages, Clap usage errors, the `doctor` report and
+  text taken from tool diagnostics, and environment variable values are never
+  printed (only the names of a task's `env`). Output that child processes
+  write themselves is not rewritten.
+- Document the exit codes as a stable contract for the public beta
+  (`docs/exit-codes.md` and the site's exit-codes page): `0`, `1`
+  (Pyfaro failures, a failing `check`, `doctor` errors, a tool that ends
+  without a numeric status), `2` (usage), forwarded tool codes and `130`.
 
 ## 0.4.0-alpha.1 — 2026-10-23
 

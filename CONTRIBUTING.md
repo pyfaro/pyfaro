@@ -59,7 +59,9 @@ version pinned in `.github/workflows/security.yml`, then run `cargo audit`.
 
 The CLI uses Clap's help/version status 0 and usage-error status 2. Initialization
 errors use status 1; delegated uv failures preserve their numeric exit code;
-cancellation uses 130. Test both preservation and idempotence when changing
+cancellation uses 130; the [exit codes guide](docs/exit-codes.md) is the stable
+contract and the [diagnostics guide](docs/diagnostics.md) covers `--verbose` and
+redaction. Test both preservation and idempotence when changing
 initialization. See the [init guide](docs/init.md), [create guide](docs/create.md),
 [dependency guide](docs/dependencies.md), [sync guide](docs/sync.md),
 [run guide](docs/run.md), [Python guide](docs/python.md), and
