@@ -151,10 +151,57 @@ These are problems in your code, not in Pyfaro. Fix them, or let
 `pyfaro check --fix` repair what is safe to repair; see
 [The quality gate](quality-gate.md).
 
+## Verbose output
+
+When a failure is not obvious, rerun the command with `-v` (or `--verbose`).
+Before launching anything, Pyfaro prints to standard error which tools it
+resolved, with their versions and paths, and every command line it executes:
+
+```console
+$ pyfaro -v lint
+pyfaro lint: running ~/projects/demo/.venv/bin/ruff --version
+pyfaro lint: using ruff 0.16.10 at ~/projects/demo/.venv/bin/ruff
+pyfaro lint: running ~/projects/demo/.venv/bin/ruff check
+All checks passed!
+```
+
+The flag works before the subcommand (`pyfaro -v sync`) and after it
+(`pyfaro sync --verbose`) for every command except `test`. `pyfaro test`
+forwards everything after `test` to pytest, so `pyfaro test -v` makes pytest
+verbose; use `pyfaro -v test` for Pyfaro's trace.
+
+The trace includes:
+
+- `using <tool version> at <path>`: uv for every command that runs it, Ruff
+  for `lint`, `fmt` and `check`, ty for `type` and `check`, pytest for `test`.
+  This shows which installation wins when you have several.
+- `running <command line>`: every process, including uv's version probes, task
+  commands and the three steps of `check`. Copy a line to reproduce it by hand.
+- `working directory <path>`: when a process does not run in the project root.
+- `environment variables set: A, B`: the names, never the values, of the
+  variables Pyfaro sets, for example a task's `env`.
+
+```console
+$ pyfaro -v run build
+pyfaro run: running ~/.local/bin/uv --version
+pyfaro run: using uv 0.9.26 at ~/.local/bin/uv
+pyfaro run: running ~/.local/bin/uv --no-python-downloads --no-progress run --project ~/projects/demo -- python build.py
+pyfaro run: environment variables set: BUILD_MODE, TOKEN
+```
+
+Credentials are masked, so you can paste the output into an issue: the
+password of `https://user:secret@host/simple` prints as
+`https://user:****@host/simple`, and a lone token as `https://****@host`. This
+applies to the trace, to Pyfaro's error messages and to the `doctor` report.
+The output of the tools themselves streams through untouched. See
+[Verbose output and redaction](https://github.com/pyfaro/pyfaro/blob/main/docs/diagnostics.md)
+for the exact rules.
+
 ## Still stuck?
 
-- Run `pyfaro doctor` and `pyfaro tools` and read every line.
+- Run `pyfaro doctor` and `pyfaro tools` and read every line, then rerun the
+  failing command with [`-v`](#verbose-output).
 - Check [Platform support](../concepts/platform-support.md): `init --apply` is
   Linux-only for now.
 - Open an issue at <https://github.com/pyfaro/pyfaro/issues> with the output
-  of `pyfaro --version` and `pyfaro doctor`.
+  of `pyfaro --version`, `pyfaro doctor` and the failing command with `-v`.

@@ -69,6 +69,8 @@ With `preset = "fastapi"`, Pyfaro runs Uvicorn through `uv run`:
 
 ```console
 $ pyfaro dev --verbose
+pyfaro dev: running /usr/bin/uv --version
+pyfaro dev: using uv 0.9.26 at /usr/bin/uv
 pyfaro dev: starting demo.main:app with uvicorn (reload on) at http://127.0.0.1:8000 - press Ctrl-C to stop
 pyfaro dev: running /usr/bin/uv --no-python-downloads --no-progress run --project /work/demo -- uvicorn demo.main:app --reload --reload-dir /work/demo/src
 ```
@@ -172,7 +174,7 @@ again.
 | `--locked`, `--frozen` | Passed to `uv run`; mutually exclusive. |
 | `--uv <EXE>` | Choose the uv executable. |
 | `--offline` | Disable network access in uv. |
-| `-v`, `--verbose` | Print the full uv command line before launching. |
+| `-v`, `--verbose` | Print the uv version and path and every command line, including the full `uv run` line, before launching. This is Pyfaro's global flag, so `pyfaro -v dev` works too. See [Verbose output](../workflows/troubleshooting.md#verbose-output). |
 | `-- <extra>...` | Arguments appended to the configured `args`. |
 
 ## Validation

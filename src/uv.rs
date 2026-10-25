@@ -8,7 +8,7 @@ use std::time::Duration;
 use semver::Version;
 
 use crate::error::{Error, Result};
-use crate::process;
+use crate::{process, verbose};
 
 pub(crate) struct Uv {
     binary: PathBuf,
@@ -21,7 +21,8 @@ impl Uv {
         offline: bool,
         cancelled: &AtomicBool,
     ) -> Result<Self> {
-        let (binary, _) = Self::inspect(binary, cancelled)?;
+        let (binary, version) = Self::inspect(binary, cancelled)?;
+        verbose::tool(&version, &binary);
         Ok(Self { binary, offline })
     }
 
@@ -206,22 +207,6 @@ impl Uv {
         }
     }
 
-    /// The uv invocation `args` would run, for display.
-    pub(crate) fn command_line<A: AsRef<OsStr>>(&self, args: &[A]) -> String {
-        let mut words = vec![
-            self.binary.to_string_lossy().into_owned(),
-            "--no-python-downloads".to_owned(),
-            "--no-progress".to_owned(),
-        ];
-        if self.offline {
-            words.push("--offline".to_owned());
-        }
-        words.extend(
-            args.iter().map(|arg| arg.as_ref().to_string_lossy().into_owned()),
-        );
-        words.iter().map(|word| quote_word(word)).collect::<Vec<_>>().join(" ")
-    }
-
     fn execute_with_input<A: AsRef<OsStr>>(
         &self,
         root: &Path,
@@ -279,14 +264,6 @@ impl Uv {
         }
         command
     }
-}
-
-/// Quote a word for display when it is empty or contains spaces or quotes.
-fn quote_word(word: &str) -> String {
-    if !word.is_empty() && !word.contains([' ', '\t', '"', '\'']) {
-        return word.to_owned();
-    }
-    format!("\"{}\"", word.replace('"', "\\\""))
 }
 
 fn validate_version(output: &str) -> Result<()> {
@@ -348,14 +325,6 @@ mod tests {
                 "café"
             ]
         );
-    }
-
-    #[test]
-    fn displayed_command_lines_quote_ambiguous_words() {
-        assert_eq!(quote_word("plain"), "plain");
-        assert_eq!(quote_word(""), "\"\"");
-        assert_eq!(quote_word("a b"), "\"a b\"");
-        assert_eq!(quote_word("say \"hi\""), "\"say \\\"hi\\\"\"");
     }
 
     #[cfg(windows)]

@@ -80,7 +80,9 @@ render useful context at the CLI without exposing tokens or environment dumps.
   diagnostic. Implement and test Unix signals and Windows process cleanup
   before claiming cross-platform cancellation support (F05).
 
-The full stable error contract remains backlog B05. Use `Command` with explicit
+The stable exit-code contract is in the [exit codes guide](../exit-codes.md) and
+the verbose and redaction rules are in the [diagnostics guide](../diagnostics.md).
+Use `Command` with explicit
 arguments and per-child cwd, never an implicit shell. Preserve `OsString`
 arguments and cross-platform paths. Stream output; cancellation must stop and
 reap owned children without orphaning them. Shell tasks need explicit opt-in

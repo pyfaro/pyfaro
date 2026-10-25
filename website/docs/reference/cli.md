@@ -7,7 +7,7 @@ development build, version `0.5.0-beta.1`.
 $ pyfaro --help
 Experimental Python project workflows powered by uv
 
-Usage: pyfaro <COMMAND>
+Usage: pyfaro [OPTIONS] <COMMAND>
 
 Commands:
   create  Create a packaged Python library, command-line or FastAPI project
@@ -28,6 +28,7 @@ Commands:
   help    Print this message or the help of the given subcommand(s)
 
 Options:
+  -v, --verbose  Print tool versions and every command line before it runs
   -h, --help     Print help
   -V, --version  Print version
 ```
@@ -40,6 +41,9 @@ page that explains the command.
     - `--uv <UV>`: the uv executable, as a path or a name found on `PATH`
       (default `uv`).
     - `--offline`: forbid network access in uv.
+    - `-v`, `--verbose`: print tool versions and every command line before it
+      runs. Accepted before the subcommand for every command and after it for
+      every command except `test`. See [Verbose output](../workflows/troubleshooting.md#verbose-output).
 
     Not every command accepts every common option; the tables are exact.
 
@@ -59,6 +63,7 @@ Usage: pyfaro create lib [OPTIONS] <NAME>
 | `<NAME>` | Distribution name (also the default target directory name) |
 | `--path <PATH>` | Target directory; its parent must already exist |
 | `--python <PYTHON>` | Minimum Python version as `MAJOR.MINOR` (default `3.10`) |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ### `pyfaro create cli`
 
@@ -73,6 +78,7 @@ Usage: pyfaro create cli [OPTIONS] <NAME>
 | `--python <PYTHON>` | Minimum Python version as `MAJOR.MINOR` (default `3.10`) |
 | `--package <PACKAGE>` | Import package name (defaults to the normalized distribution name) |
 | `--command <COMMAND>` | Installed command name (defaults to the distribution name with dots replaced by hyphens) |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ### `pyfaro create fastapi`
 
@@ -86,6 +92,7 @@ Usage: pyfaro create fastapi [OPTIONS] <NAME>
 | `--path <PATH>` | Target directory; its parent must already exist |
 | `--python <PYTHON>` | Minimum Python version as `MAJOR.MINOR` (default `3.10`) |
 | `--package <PACKAGE>` | Import package name (defaults to the normalized distribution name) |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## `pyfaro init`
 
@@ -103,6 +110,7 @@ Usage: pyfaro init [OPTIONS] [PATH]
 | `--apply` | Apply the displayed plan; without this flag no files are written |
 | `--uv <UV>` | uv executable (default `uv`) |
 | `--offline` | Disable network access in uv |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## `pyfaro sync`
 
@@ -121,6 +129,7 @@ Usage: pyfaro sync [OPTIONS] [PATH]
 | `--frozen` | Use `uv.lock` without checking it against project metadata |
 | `--uv <UV>` | uv executable (default `uv`) |
 | `--offline` | Disable network access in uv |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 `--locked` and `--frozen` are mutually exclusive.
 
@@ -141,6 +150,7 @@ Usage: pyfaro add [OPTIONS] <PACKAGES>...
 | `--project <PROJECT>` | Explicit project directory (otherwise discover from the current directory) |
 | `--uv <UV>` | uv executable (default `uv`) |
 | `--offline` | Disable network access in uv |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## `pyfaro remove`
 
@@ -158,6 +168,7 @@ Usage: pyfaro remove [OPTIONS] <PACKAGES>...
 | `--project <PROJECT>` | Explicit project directory (otherwise discover from the current directory) |
 | `--uv <UV>` | uv executable (default `uv`) |
 | `--offline` | Disable network access in uv |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## `pyfaro run`
 
@@ -179,6 +190,7 @@ Either name a task (`pyfaro run <task> [-- <extra>...]`) or give a program after
 | `--frozen` | Use `uv.lock` without checking it against project metadata |
 | `--uv <UV>` | uv executable (default `uv`) |
 | `--offline` | Disable network access in uv |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## `pyfaro dev`
 
@@ -197,7 +209,7 @@ Usage: pyfaro dev [OPTIONS] [-- [EXTRA]...]
 | `--frozen` | Use `uv.lock` without checking it against project metadata |
 | `--uv <UV>` | uv executable (default `uv`) |
 | `--offline` | Disable network access in uv |
-| `-v`, `--verbose` | Print the full uv command line before launching |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## `pyfaro python`
 
@@ -215,6 +227,7 @@ The options below are accepted before the subcommand and also by each one.
 | `--project <PROJECT>` | Exact project directory; otherwise use the current directory |
 | `--uv <UV>` | uv executable (default `uv`) |
 | `--offline` | Disable network access in uv |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ### `pyfaro python list`
 
@@ -266,6 +279,7 @@ Usage: pyfaro tools [OPTIONS] [TOOL]
 | `[TOOL]` | Check one tool and fail if it is missing or incompatible. One of `uv`, `ruff`, `ty`, `pytest` |
 | `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
 | `--uv <UV>` | uv executable (a path or a name found on `PATH`) |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## `pyfaro doctor`
 
@@ -281,6 +295,7 @@ Usage: pyfaro doctor [OPTIONS]
 | --- | --- |
 | `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
 | `--uv <UV>` | uv executable (a path or a name found on `PATH`) |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## `pyfaro lint`
 
@@ -294,6 +309,7 @@ Usage: pyfaro lint [OPTIONS] [PATHS]...
 | --- | --- |
 | `[PATHS]...` | Files or directories relative to the current directory (default: the project) |
 | `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## `pyfaro fmt`
 
@@ -308,6 +324,7 @@ Usage: pyfaro fmt [OPTIONS] [PATHS]...
 | `[PATHS]...` | Files or directories relative to the current directory (default: the project) |
 | `--check` | Report files that would change without modifying them |
 | `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## `pyfaro type`
 
@@ -321,6 +338,7 @@ Usage: pyfaro type [OPTIONS] [PATHS]...
 | --- | --- |
 | `[PATHS]...` | Files or directories relative to the current directory (default: the project) |
 | `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## `pyfaro check`
 
@@ -337,6 +355,7 @@ Usage: pyfaro check [OPTIONS] [PATHS]...
 | `[PATHS]...` | Files or directories relative to the current directory (default: the project) |
 | `--fix` | Apply safe Ruff fixes and formatting first, then verify without writing |
 | `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## `pyfaro test`
 
@@ -351,6 +370,11 @@ Usage: pyfaro test [OPTIONS] [PYTEST_ARGS]...
 | --- | --- |
 | `[PYTEST_ARGS]...` | Arguments forwarded verbatim to pytest (paths are relative to the project root) |
 | `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
+
+!!! note "`test` and `--verbose`"
+    `pyfaro test` forwards everything after `test` other than `--project` to
+    pytest, so `pyfaro test -v` and `pyfaro test --verbose` are pytest's
+    options. Use `pyfaro -v test` for Pyfaro's trace.
 
 ## Exit codes
 

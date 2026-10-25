@@ -14,7 +14,7 @@ use toml_edit::{DocumentMut, Table};
 use crate::cli::{DoctorArgs, Tool};
 use crate::config::Config;
 use crate::error::{Error, Result};
-use crate::{process, project, tools};
+use crate::{process, project, redact, tools};
 mod uv_config;
 use uv_config::{UvConfiguration, uv_configuration};
 
@@ -52,7 +52,7 @@ impl Report {
             std::io::stdout().lock(),
             "{}: {}",
             level.label(),
-            tools::single_line(message.as_ref())
+            tools::single_line(&redact::text(message.as_ref()))
         )
         .map_err(Error::Output)
     }

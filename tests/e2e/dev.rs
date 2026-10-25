@@ -12,7 +12,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::harness::{
-    Cmd, SHORT, STARTUP, Sandbox, free_port, process_exists,
+    Cmd, SHORT, STARTUP, Sandbox, UV, free_port, process_exists,
     wait_until_port_is_free, wait_until_process_is_gone,
 };
 
@@ -386,6 +386,42 @@ fn project_selects_the_project_from_anywhere() {
         .stderr_contains("no pyproject.toml found");
 }
 
+/// The verbose line for the `uv run` that launches the process; the version
+/// probe has a line of its own.
+fn launch_line(stderr: &str) -> &str {
+    stderr
+        .lines()
+        .find(|line| {
+            line.starts_with("pyfaro dev: running ")
+                && line.contains(" run --project ")
+        })
+        .unwrap_or_else(|| panic!("no verbose line:\n{stderr}"))
+}
+
+#[test]
+fn verbose_is_global_and_reports_the_uv_it_resolved() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    let root = module_project(&sandbox, WORKER);
+    for args in [["-v", "dev"], ["dev", "-v"]] {
+        let out = Cmd::pyfaro(&root, args).run();
+        out.success().stdout_contains("hello");
+        let version = format!("pyfaro dev: using uv {UV} ");
+        let using = out
+            .stderr
+            .find(&version)
+            .unwrap_or_else(|| panic!("no uv version line:\n{}", out.stderr));
+        let starting = out.stderr.find("pyfaro dev: starting").unwrap();
+        let launch = out.stderr.find(launch_line(&out.stderr)).unwrap();
+        assert!(using < starting && starting < launch, "{}", out.stderr);
+    }
+    // Without the flag the only Pyfaro line is the startup line.
+    let out = Cmd::pyfaro(&root, ["dev"]).run();
+    out.success();
+    assert!(!out.stderr.contains("running"), "{}", out.stderr);
+    assert!(!out.stderr.contains("using uv"), "{}", out.stderr);
+}
+
 #[test]
 fn verbose_prints_the_full_uv_command_line() {
     e2e_guard!();
@@ -393,11 +429,7 @@ fn verbose_prints_the_full_uv_command_line() {
     let root = module_project(&sandbox, WORKER);
     let out = Cmd::pyfaro(&root, ["dev", "--verbose", "--", "a b"]).run();
     out.success();
-    let line = out
-        .stderr
-        .lines()
-        .find(|line| line.starts_with("pyfaro dev: running "))
-        .unwrap_or_else(|| panic!("no verbose line:\n{}", out.stderr));
+    let line = launch_line(&out.stderr);
     assert!(line.contains("uv"), "{line}");
     assert!(line.contains("--no-progress run --project "), "{line}");
     assert!(
@@ -406,7 +438,7 @@ fn verbose_prints_the_full_uv_command_line() {
     );
     // The verbose line follows the startup line.
     let starting = out.stderr.find("pyfaro dev: starting").unwrap();
-    assert!(starting < out.stderr.find("pyfaro dev: running").unwrap());
+    assert!(starting < out.stderr.find(line).unwrap());
 
     // Short flag and the lock options reach uv.
     Cmd::pyfaro(&root, ["sync"]).run().success();
@@ -692,10 +724,7 @@ fn fastapi_mode_serves_with_uvicorns_own_reload_and_stops_on_ctrl_c() {
         )),
         "{stderr}"
     );
-    let line = stderr
-        .lines()
-        .find(|line| line.starts_with("pyfaro dev: running "))
-        .unwrap_or_else(|| panic!("no verbose line:\n{stderr}"));
+    let line = launch_line(&stderr);
     let separator = std::path::MAIN_SEPARATOR;
     assert!(
         line.contains(" -- uvicorn demo.main:app --reload --reload-dir "),
@@ -749,10 +778,7 @@ fn reload_false_is_honored_and_extra_arguments_win() {
         )),
         "{stderr}"
     );
-    let line = stderr
-        .lines()
-        .find(|line| line.starts_with("pyfaro dev: running "))
-        .unwrap();
+    let line = launch_line(&stderr);
     assert!(
         line.ends_with(&format!(
             " -- uvicorn demo.main:app --port {taken} --port {port}"

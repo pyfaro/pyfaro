@@ -38,7 +38,13 @@ pyfaro test --project ../app -- -x --maxfail=2
 ```
 
 A leading `--` is accepted and removed; use it when the first pytest argument
-could be confused with a Pyfaro option. Forwarded paths are relative to the
+could be confused with a Pyfaro option.
+
+Pyfaro's global `-v`/`--verbose` is the one flag that is **not** accepted after
+`test`: `pyfaro test -v` and `pyfaro test --verbose` are pytest's own options
+(verbose output) and print no Pyfaro trace. To see the pytest version, path and
+command line Pyfaro uses, write the flag before the subcommand: `pyfaro -v test`.
+See the [diagnostics guide](diagnostics.md). Forwarded paths are relative to the
 project root, not to the directory where you ran `pyfaro`, because pytest runs
 there.
 

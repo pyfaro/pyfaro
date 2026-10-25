@@ -12,7 +12,7 @@ use std::sync::atomic::AtomicBool;
 use crate::cli::{CheckArgs, FmtArgs, LintArgs, TestArgs, TypeArgs};
 use crate::config::Config;
 use crate::error::{Error, Result};
-use crate::{process, project, tools};
+use crate::{process, project, redact, tools};
 
 /// A selected project and the cancellation flag shared by its steps.
 pub(crate) struct Context {
@@ -171,6 +171,7 @@ impl Step {
 
 fn single(step: Step, project: Option<&Path>, paths: &[PathBuf]) -> Result<()> {
     let context = context(project)?;
+    tools::announce(&[step.tool()], Some(&context.root), &context.cancelled);
     require_success(step.tool(), step.run(&context, paths)?)
 }
 
@@ -241,7 +242,7 @@ const VERIFY: [(&str, Step); 3] = [
 /// Print to stderr; never panic when it is closed.
 fn say(text: &str) {
     use std::io::Write;
-    let _ = writeln!(std::io::stderr().lock(), "{text}");
+    let _ = writeln!(std::io::stderr().lock(), "{}", redact::text(text));
 }
 
 /// Run format check, lint and type check in order, then print the summary.
@@ -286,6 +287,7 @@ fn apply_fixes(context: &Context, paths: &[PathBuf]) -> Result<()> {
 
 pub(crate) fn check(args: CheckArgs) -> Result<()> {
     let context = context(args.project.as_deref())?;
+    tools::announce(&["ruff", "ty"], Some(&context.root), &context.cancelled);
     if args.fix {
         apply_fixes(&context, &args.paths)?;
         say("fix: rechecking without writing");
@@ -302,6 +304,7 @@ pub(crate) fn check(args: CheckArgs) -> Result<()> {
 /// not importable) are reported as errors, never as pytest statuses.
 pub(crate) fn test(args: TestArgs) -> Result<()> {
     let context = context(args.project.as_deref())?;
+    tools::announce(&["pytest"], Some(&context.root), &context.cancelled);
     let python = tools::project_python(&context.root);
     if !python.is_file() {
         return Err(Error::Tool {

@@ -10,11 +10,13 @@ mod process;
 mod project;
 mod python;
 mod quality;
+mod redact;
 mod run;
 mod sync;
 mod tasks;
 mod tools;
 mod uv;
+mod verbose;
 
 #[cfg(test)]
 #[path = "../tests/support/mod.rs"]
@@ -23,8 +25,27 @@ mod test_support;
 use clap::Parser;
 use std::io::Write;
 
+/// Parse the command line like `Cli::parse`, but never echo a credential:
+/// Clap quotes the offending argument in its usage errors.
+fn parse() -> cli::Cli {
+    let error = match cli::Cli::try_parse() {
+        Ok(cli) => return cli,
+        Err(error) => error,
+    };
+    let message = error.to_string();
+    let redacted = redact::text(&message);
+    if redacted == message {
+        error.exit();
+    }
+    let _ = write!(std::io::stderr().lock(), "{redacted}");
+    std::process::exit(error.exit_code());
+}
+
 fn main() {
-    let cli = cli::Cli::parse();
+    let cli = parse();
+    if cli.verbose || cli.command.verbose() {
+        verbose::enable(cli.command.name());
+    }
     let tools_command = matches!(cli.command, cli::Command::Tools(_));
     let result = match cli.command {
         cli::Command::Create(args) => create::run(args),
@@ -50,7 +71,7 @@ fn main() {
         ) {
             std::process::exit(error.exit_code());
         }
-        let diagnostic = format!("error: {error}");
+        let diagnostic = redact::text(&format!("error: {error}"));
         let diagnostic = if tools_command {
             tools::single_line(&diagnostic)
         } else {
