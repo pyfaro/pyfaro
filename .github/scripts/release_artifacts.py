@@ -4,7 +4,9 @@
 `build` compiles the release binary for one target with a normalized build
 environment and packs it into a byte-for-byte deterministic archive.
 `compare` checks that two independent builds of every supported target
-produced identical binaries and archives. The release workflows use both;
+produced identical binaries and archives. `check-crate` and `check-assets`
+check a `.crate` and a set of archives against a version. The release
+workflows use all of them;
 docs/releasing.md explains how to reproduce a published archive by hand.
 
 Requires Python 3.11+, git, and the Rust toolchain pinned in
@@ -26,7 +28,9 @@ import tomllib
 import zipfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+# The source tree to build; --source overrides it, so a checkout of an older
+# tag can be built with this script.
+SOURCE = Path(__file__).resolve().parents[2]
 BINARY = "pyfaro"
 DOCS = ("README.md", "LICENSE", "CHANGELOG.md")
 # Release targets; Windows gets a .zip, everything else a .tar.gz.
@@ -53,7 +57,7 @@ def notice(message):
 
 
 def run(args, **kwargs):
-    kwargs.setdefault("cwd", ROOT)
+    kwargs.setdefault("cwd", SOURCE)
     return subprocess.run(args, check=True, **kwargs)
 
 
@@ -66,7 +70,7 @@ def sha256_file(path):
 
 
 def manifest_version():
-    with open(ROOT / "Cargo.toml", "rb") as manifest:
+    with open(SOURCE / "Cargo.toml", "rb") as manifest:
         return tomllib.load(manifest)["package"]["version"]
 
 
@@ -84,7 +88,7 @@ def source_date_epoch():
 
 
 def require_clean_tree():
-    dirty = subprocess.run(["git", "diff", "--quiet", "HEAD"], cwd=ROOT)
+    dirty = subprocess.run(["git", "diff", "--quiet", "HEAD"], cwd=SOURCE)
     if dirty.returncode != 0:
         fail("tracked files differ from HEAD; build from a clean checkout")
 
@@ -113,7 +117,7 @@ def build_flags(target):
     for prefix, replacement in (
         (cargo_home, "/cargo"),
         (rustup_home, "/rustup"),
-        (ROOT, "/pyfaro"),
+        (SOURCE, "/pyfaro"),
     ):
         for form in path_forms(prefix):
             flags.append(f"--remap-path-prefix={form}={replacement}")
@@ -138,12 +142,12 @@ def build_binary(target, epoch):
             "--target",
             target,
             "--target-dir",
-            str(ROOT / "target"),
+            str(SOURCE / "target"),
         ],
         env=env,
     )
     exe = BINARY + (".exe" if "windows" in target else "")
-    binary = ROOT / "target" / target / "release" / exe
+    binary = SOURCE / "target" / target / "release" / exe
     if not binary.is_file():
         fail(f"cargo did not produce {binary}")
     return binary
@@ -187,7 +191,7 @@ def check_version(binary, target, host, version):
 
 def archive_entries(name, binary, target):
     exe = BINARY + (".exe" if "windows" in target else "")
-    files = {doc: (ROOT / doc, 0o644) for doc in DOCS}
+    files = {doc: (SOURCE / doc, 0o644) for doc in DOCS}
     files[exe] = (binary, 0o755)
     return [
         (f"{name}/{leaf}", path.read_bytes(), mode)
@@ -241,7 +245,14 @@ def write_zip(path, name, entries, epoch):
             )
 
 
+def archive_name(version, target):
+    suffix = ".zip" if "windows" in target else ".tar.gz"
+    return f"{BINARY}-{version}-{target}{suffix}"
+
+
 def cmd_build(args):
+    global SOURCE
+    SOURCE = Path(args.source).resolve()
     target = args.target
     if target not in TARGETS:
         fail(f"unsupported target {target}; expected one of {', '.join(TARGETS)}")
@@ -261,11 +272,10 @@ def cmd_build(args):
     entries = archive_entries(name, binary, target)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    archive = out / archive_name(version, target)
     if "windows" in target:
-        archive = out / f"{name}.zip"
         write_zip(archive, name, entries, epoch)
     else:
-        archive = out / f"{name}.tar.gz"
         write_tar_gz(archive, name, entries, epoch)
 
     report = {
@@ -381,12 +391,59 @@ def cmd_compare(args):
           f"archives copied to {out}")
 
 
+def cmd_check_crate(args):
+    """The .crate must be this version of the package, cut from this commit."""
+    top = f"{BINARY}-{args.version}"
+    with tarfile.open(args.crate, "r:gz") as crate:
+        names = crate.getnames()
+        stray = [n for n in names if n != top and not n.startswith(top + "/")]
+        if stray:
+            fail(f"{args.crate} holds files outside {top}/: {stray[:3]}")
+        try:
+            manifest = tomllib.loads(
+                crate.extractfile(f"{top}/Cargo.toml").read().decode()
+            )
+            vcs = json.loads(
+                crate.extractfile(f"{top}/.cargo_vcs_info.json").read()
+            )
+        except KeyError as missing:
+            fail(f"{args.crate} has no {missing}")
+    package = manifest["package"]
+    if package["name"] != BINARY or package["version"] != args.version:
+        fail(
+            f"{args.crate} is {package['name']} {package['version']}, "
+            f"not {BINARY} {args.version}"
+        )
+    if vcs.get("git", {}).get("sha1") != args.commit or vcs.get("dirty"):
+        fail(
+            f"{args.crate} was not packaged from a clean {args.commit} "
+            f"(it records {vcs})"
+        )
+    print(f"{args.crate}: {BINARY} {args.version} from clean {args.commit}")
+
+
+def cmd_check_assets(args):
+    """The directory holds exactly one archive per supported target."""
+    expected = {archive_name(args.version, target) for target in TARGETS}
+    found = {path.name for path in Path(args.directory).iterdir()}
+    if found != expected:
+        fail(
+            f"{args.directory} should hold {sorted(expected)}; "
+            f"missing {sorted(expected - found)}, "
+            f"unexpected {sorted(found - expected)}"
+        )
+    print(f"{args.directory}: {len(expected)} archives for {args.version}")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest="command", required=True)
 
     build = commands.add_parser("build", help="build and archive one target")
     build.add_argument("--target", required=True, choices=TARGETS)
+    build.add_argument(
+        "--source", default=str(SOURCE), help="checkout to build (default: this one)"
+    )
     build.add_argument("--out", default="dist", help="archive directory")
     build.add_argument("--report", help="directory for the JSON build report")
     build.add_argument(
@@ -401,6 +458,21 @@ def main():
     compare.add_argument("--second", required=True, help="second build directory")
     compare.add_argument("--out", default="dist", help="directory for the archives")
     compare.set_defaults(handler=cmd_compare)
+
+    check = commands.add_parser(
+        "check-crate", help="check a .crate against its version and commit"
+    )
+    check.add_argument("crate")
+    check.add_argument("--version", required=True)
+    check.add_argument("--commit", required=True)
+    check.set_defaults(handler=cmd_check_crate)
+
+    assets = commands.add_parser(
+        "check-assets", help="check a directory holds one archive per target"
+    )
+    assets.add_argument("directory")
+    assets.add_argument("--version", required=True)
+    assets.set_defaults(handler=cmd_check_assets)
 
     args = parser.parse_args()
     args.handler(args)

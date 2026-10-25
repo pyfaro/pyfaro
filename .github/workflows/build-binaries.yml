@@ -1,0 +1,127 @@
+name: Build binaries
+
+# Reusable. Builds the release binary and archive for every supported target
+# twice, each time from a fresh checkout in a different directory, and fails
+# unless both builds are byte-for-byte identical. The Release workflow runs it
+# before the crates.io upload, GitHub Release runs it when backfilling a tag,
+# and Release build check runs it on pull requests. See docs/releasing.md.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit or tag to build (defaults to the calling workflow's ref)
+        type: string
+        default: ''
+      version:
+        description: Version Cargo.toml must have at that ref (defaults to any)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }} (${{ matrix.attempt }})
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - aarch64-unknown-linux-gnu
+          - aarch64-apple-darwin
+          - x86_64-apple-darwin
+          - x86_64-pc-windows-msvc
+        attempt: [1, 2]
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-22.04-arm
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          # Built on the Arm runner; --version runs under Rosetta 2 when the
+          # runner has it, because x86_64 code cannot run natively there.
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+        # A different directory per attempt proves paths do not leak into the
+        # binary.
+        working-directory: build-${{ matrix.attempt }}/pyfaro
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          path: build-${{ matrix.attempt }}/pyfaro
+          persist-credentials: false
+      # The script comes from the calling ref, so it can also build an older
+      # tag that predates it.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: release-tools
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249
+        with:
+          toolchain: '1.90.0'
+          targets: ${{ matrix.target }}
+      - name: Install the script's Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Build and archive
+        env:
+          TARGET: ${{ matrix.target }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          args=(--target "$TARGET" --out dist --report release-report)
+          if [ -n "$VERSION" ]; then args+=(--expect-version "$VERSION"); fi
+          python ../../release-tools/.github/scripts/release_artifacts.py build --source . "${args[@]}"
+      - name: Keep the build
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: build-${{ matrix.attempt }}-${{ matrix.target }}
+          path: |
+            build-${{ matrix.attempt }}/pyfaro/dist
+            build-${{ matrix.attempt }}/pyfaro/release-report
+          retention-days: 7
+          if-no-files-found: error
+
+  compare:
+    name: Compare the two builds
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+      - name: Download the first builds
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: build-1-*
+          path: builds/1
+          merge-multiple: true
+      - name: Download the second builds
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: build-2-*
+          path: builds/2
+          merge-multiple: true
+      - name: Require identical binaries and archives
+        run: python3 .github/scripts/release_artifacts.py compare --first builds/1 --second builds/2 --out dist
+      - name: Keep the verified archives
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: binaries
+          path: dist/*
+          if-no-files-found: error

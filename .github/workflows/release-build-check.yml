@@ -1,0 +1,28 @@
+name: Release build check
+
+# Builds every release binary twice and requires identical bytes whenever a
+# pull request touches the release pipeline, so changes to it are exercised
+# before a real release. Nothing is uploaded or published.
+on:
+  pull_request:
+    paths:
+      - .github/workflows/build-binaries.yml
+      - .github/workflows/github-release.yml
+      - .github/workflows/release.yml
+      - .github/workflows/release-build-check.yml
+      - .github/scripts/**
+      - Cargo.lock
+      - Cargo.toml
+      - rust-toolchain.toml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-build-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  binaries:
+    name: Reproducible binaries
+    uses: ./.github/workflows/build-binaries.yml
