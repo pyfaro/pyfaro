@@ -19,13 +19,16 @@ import hashlib
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tarfile
 import time
 import tomllib
+import venv
 import zipfile
+from email.parser import BytesParser
 from pathlib import Path
 
 # The source tree to build; --source overrides it, so a checkout of an older
@@ -41,6 +44,16 @@ TARGETS = (
     "x86_64-apple-darwin",
     "x86_64-pc-windows-msvc",
 )
+# The platform tag of each target's wheel. Linux wheels target the oldest
+# glibc Rust 1.90 supports on both architectures (manylinux 2.17, a.k.a.
+# manylinux2014); macOS and Windows tags carry the deployment target.
+WHEEL_PLATFORMS = {
+    "x86_64-unknown-linux-gnu": r"manylinux_2_17_x86_64(\.manylinux2014_x86_64)?",
+    "aarch64-unknown-linux-gnu": r"manylinux_2_17_aarch64(\.manylinux2014_aarch64)?",
+    "aarch64-apple-darwin": r"macosx_\d+_\d+_arm64",
+    "x86_64-apple-darwin": r"macosx_\d+_\d+_x86_64",
+    "x86_64-pc-windows-msvc": r"win_amd64",
+}
 # The ZIP format cannot record times before 1980.
 ZIP_MIN_EPOCH = 315532800
 
@@ -391,6 +404,133 @@ def cmd_compare(args):
           f"archives copied to {out}")
 
 
+def pep440(version):
+    """The PEP 440 form of a Cargo version, as maturin writes it."""
+    match = re.fullmatch(
+        r"(\d+\.\d+\.\d+)(?:-(alpha|beta|rc)\.(\d+))?", version
+    )
+    if not match:
+        fail(f"cannot map Cargo version {version} to PEP 440")
+    release, kind, number = match.groups()
+    if kind is None:
+        return release
+    return release + {"alpha": "a", "beta": "b", "rc": "rc"}[kind] + number
+
+
+def cmd_pep440(args):
+    print(pep440(args.version))
+
+
+def wheel_target(wheel):
+    """The release target a wheel file name belongs to, or None."""
+    for target, platform_tag in WHEEL_PLATFORMS.items():
+        if re.fullmatch(
+            rf"{BINARY}-[^-]+-py3-none-{platform_tag}\.whl", wheel.name
+        ):
+            return target
+    return None
+
+
+def check_wheel_contents(wheel, version):
+    """A wheel ships exactly the executable, with this package's metadata."""
+    leaf = BINARY + (".exe" if "win_amd64" in wheel.name else "")
+    with zipfile.ZipFile(wheel) as archive:
+        names = archive.namelist()
+        scripts = [n for n in names if ".data/scripts/" in n]
+        if scripts != [f"{BINARY}-{pep440(version)}.data/scripts/{leaf}"]:
+            fail(f"{wheel.name} should ship only {leaf} as a script: {scripts}")
+        code = [n for n in names if n.endswith((".py", ".so", ".pyd"))]
+        if code:
+            fail(f"{wheel.name} ships Python code or extensions: {code}")
+        info = f"{BINARY}-{pep440(version)}.dist-info"
+        if f"{info}/licenses/LICENSE-APACHE" not in names:
+            fail(f"{wheel.name} does not ship the license text")
+        metadata = BytesParser().parsebytes(archive.read(f"{info}/METADATA"))
+    if metadata["Name"] != BINARY or metadata["Version"] != pep440(version):
+        fail(
+            f"{wheel.name} is {metadata['Name']} {metadata['Version']}, "
+            f"not {BINARY} {pep440(version)}"
+        )
+
+
+def cmd_check_wheels(args):
+    """The directory holds the sdist and one wheel per target, nothing else."""
+    wheels = Path(args.directory)
+    found = {path.name: path for path in wheels.iterdir()}
+    sdist = f"{BINARY}-{pep440(args.version)}.tar.gz"
+    by_target = {}
+    problems = []
+    for name, path in sorted(found.items()):
+        if name == sdist:
+            continue
+        target = wheel_target(path) if name.endswith(".whl") else None
+        if target is None or target in by_target:
+            problems.append(f"unexpected file {name}")
+        else:
+            by_target[target] = path
+    if sdist not in found:
+        problems.append(f"missing {sdist}")
+    problems += [
+        f"missing the wheel for {target}"
+        for target in TARGETS
+        if target not in by_target
+    ]
+    if problems:
+        fail(f"{wheels}: " + "; ".join(problems))
+    for wheel in by_target.values():
+        if f"-{pep440(args.version)}-" not in wheel.name:
+            fail(f"{wheel.name} is not version {pep440(args.version)}")
+        check_wheel_contents(wheel, args.version)
+    with tarfile.open(wheels / sdist) as archive:
+        if f"{BINARY}-{pep440(args.version)}/pyproject.toml" not in archive.getnames():
+            fail(f"{sdist} has no pyproject.toml")
+    print(f"{wheels}: sdist and {len(by_target)} wheels for {pep440(args.version)}")
+
+
+def cmd_cargo_version(args):
+    global SOURCE
+    SOURCE = Path(args.source).resolve()
+    print(manifest_version())
+
+
+def cmd_smoke_wheel(args):
+    """Install this target's wheel into a fresh venv and run --version."""
+    global SOURCE
+    SOURCE = Path(args.source).resolve()
+    version = args.version or manifest_version()
+    wheels = [
+        path
+        for path in Path(args.directory).glob("*.whl")
+        if wheel_target(path) == args.target
+    ]
+    if len(wheels) != 1:
+        fail(f"expected one {args.target} wheel in {args.directory}: {wheels}")
+    wheel = wheels[0]
+    _, host = rustc_info()
+    exe = BINARY + (".exe" if "windows" in args.target else "")
+    scratch = Path(args.scratch)
+    shutil.rmtree(scratch, ignore_errors=True)
+    if args.target == host:
+        venv.create(scratch, with_pip=True)
+        bin_dir = scratch / ("Scripts" if os.name == "nt" else "bin")
+        python = bin_dir / ("python.exe" if os.name == "nt" else "python")
+        run(
+            [str(python), "-m", "pip", "install", "--no-index", "--no-deps",
+             "--disable-pip-version-check", str(wheel)],
+            cwd=scratch.parent,
+        )
+        binary = bin_dir / exe
+    else:
+        # pip refuses a wheel for another architecture; unpack the script.
+        with zipfile.ZipFile(wheel) as archive:
+            member = f"{BINARY}-{pep440(version)}.data/scripts/{exe}"
+            scratch.mkdir(parents=True)
+            binary = scratch / exe
+            binary.write_bytes(archive.read(member))
+            binary.chmod(0o755)
+    check_version(binary, args.target, host, version)
+
+
 def cmd_check_crate(args):
     """The .crate must be this version of the package, cut from this commit."""
     top = f"{BINARY}-{args.version}"
@@ -458,6 +598,35 @@ def main():
     compare.add_argument("--second", required=True, help="second build directory")
     compare.add_argument("--out", default="dist", help="directory for the archives")
     compare.set_defaults(handler=cmd_compare)
+
+    version_cmd = commands.add_parser(
+        "pep440", help="print the PEP 440 form of a Cargo version"
+    )
+    version_cmd.add_argument("version")
+    version_cmd.set_defaults(handler=cmd_pep440)
+
+    cargo_version = commands.add_parser(
+        "cargo-version", help="print the Cargo.toml version of a checkout"
+    )
+    cargo_version.add_argument("--source", default=str(SOURCE))
+    cargo_version.set_defaults(handler=cmd_cargo_version)
+
+    wheels = commands.add_parser(
+        "check-wheels", help="check a directory holds the sdist and all wheels"
+    )
+    wheels.add_argument("directory")
+    wheels.add_argument("--version", required=True, help="Cargo version")
+    wheels.set_defaults(handler=cmd_check_wheels)
+
+    smoke = commands.add_parser(
+        "smoke-wheel", help="install a wheel in a fresh venv and run it"
+    )
+    smoke.add_argument("directory", help="directory with the wheels")
+    smoke.add_argument("--target", required=True, choices=TARGETS)
+    smoke.add_argument("--version", help="Cargo version (default: Cargo.toml)")
+    smoke.add_argument("--source", default=str(SOURCE), help="checkout with Cargo.toml")
+    smoke.add_argument("--scratch", default="wheel-venv")
+    smoke.set_defaults(handler=cmd_smoke_wheel)
 
     check = commands.add_parser(
         "check-crate", help="check a .crate against its version and commit"
