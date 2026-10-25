@@ -91,6 +91,7 @@ nav:
   - Home: index.md
   - Getting started:
       - getting-started/index.md
+      - Why Pyfaro: getting-started/why-pyfaro.md
       - Installation: getting-started/installation.md
       - First steps: getting-started/first-steps.md
       - Features: getting-started/features.md

@@ -20,6 +20,7 @@ pytest, from creating a project to running its quality checks and tests.
 
 <div class="pf-hero__actions" markdown>
 [Get started](getting-started/index.md){ .md-button .md-button--primary }
+[Why Pyfaro?](getting-started/why-pyfaro.md){ .md-button }
 [GitHub](https://github.com/pyfaro/pyfaro){ .md-button }
 </div>
 
@@ -167,7 +168,8 @@ flowchart LR
     pyfaro --> pytest[pytest<br/>tests]
 ```
 
-Read more in [How it works](concepts/how-it-works.md).
+Read more in [How it works](concepts/how-it-works.md). Wondering why not
+just uv, a Makefile or a task runner? See [Why Pyfaro](getting-started/why-pyfaro.md).
 
 ## Status
 
@@ -185,6 +187,7 @@ or tell us [how it went](https://github.com/pyfaro/pyfaro/issues/new?template=be
 Where to go next:
 
 - [Getting started](getting-started/index.md): install Pyfaro and run your first commands.
+- [Why Pyfaro](getting-started/why-pyfaro.md): what it adds on top of uv, how it compares with other tools, and what it does not do yet.
 - [Commands](commands/index.md): one tutorial per command.
 - [Workflows](workflows/index.md): end-to-end recipes, including a [FastAPI app](workflows/fastapi.md).
 - [Reference](reference/index.md): command line, environment variables, tested versions.

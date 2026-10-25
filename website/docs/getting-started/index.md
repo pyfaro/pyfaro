@@ -17,6 +17,11 @@ quality gate, without resolving packages or linting code itself.
 
 <div class="grid cards" markdown>
 
+-   :material-help-circle-outline: **[Why Pyfaro](why-pyfaro.md)**
+
+    Why not just uv? What Pyfaro adds, how it compares with a Makefile or
+    `just`, poethepoet, Hatch and PDM, and what it does not do yet.
+
 -   :material-download: **[Installation](installation.md)**
 
     Install Pyfaro with the install script, Cargo or a prebuilt archive, and
@@ -51,6 +56,7 @@ quality gate, without resolving packages or linting code itself.
 
 ## Next steps
 
+- Read [why Pyfaro](why-pyfaro.md) if you are comparing it with other tools.
 - [Install Pyfaro](installation.md).
 - Follow the [first steps](first-steps.md).
 - Browse the [commands](../commands/index.md) or the [workflows](../workflows/index.md).
