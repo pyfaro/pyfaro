@@ -107,6 +107,7 @@ nav:
       - type: commands/type.md
       - check: commands/check.md
       - test: commands/test.md
+      - build: commands/build.md
   - Workflows:
       - workflows/index.md
       - A new library: workflows/new-library.md

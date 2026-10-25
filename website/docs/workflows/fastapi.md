@@ -485,15 +485,17 @@ the defined ones. The rules are in
 
 ## 9. Build distributions
 
-Pyfaro does not have a `build` command yet; `pyfaro build` is planned for
-v0.5.0. Build with uv, which is what `pyfaro build` will call:
+[`pyfaro build`](../commands/build.md) calls `uv build` with the backend the
+project declares:
 
 ```console
-$ uv build
+$ pyfaro build
 Building source distribution (uv build backend)...
 Building wheel from source distribution (uv build backend)...
 Successfully built dist/demo_api-0.1.0.tar.gz
 Successfully built dist/demo_api-0.1.0-py3-none-any.whl
+built dist/demo_api-0.1.0.tar.gz
+built dist/demo_api-0.1.0-py3-none-any.whl
 ```
 
 `dist/` now holds the source distribution and the wheel. Publish them with

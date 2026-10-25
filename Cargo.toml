@@ -28,6 +28,7 @@ include = [
     "/docs/create.md",
     "/docs/config.md",
     "/docs/sync.md",
+    "/docs/build.md",
     "/docs/dependencies.md",
     "/docs/run.md",
     "/docs/dev.md",

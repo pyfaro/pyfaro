@@ -64,8 +64,9 @@ contract and the [diagnostics guide](docs/diagnostics.md) covers `--verbose` and
 redaction. Test both preservation and idempotence when changing
 initialization. See the [init guide](docs/init.md), [create guide](docs/create.md),
 [dependency guide](docs/dependencies.md), [sync guide](docs/sync.md),
-[run guide](docs/run.md), [Python guide](docs/python.md), and
-[doctor guide](docs/doctor.md) for command contracts.
+[run guide](docs/run.md), [build guide](docs/build.md),
+[Python guide](docs/python.md), and [doctor guide](docs/doctor.md) for command
+contracts.
 The [uv adapter guide](docs/uv-adapter.md) records delegation and platform
 behavior for new workflows.
 

@@ -60,7 +60,7 @@ This holds for:
 
 | Command | Code returned |
 | --- | --- |
-| `sync`, `add`, `remove`, `python` | uv's |
+| `sync`, `build`, `add`, `remove`, `python` | uv's |
 | `init --apply` | uv's |
 | `run` (a program or a task) | the program's, through `uv run` |
 | `dev` | the process's, through `uv run` |

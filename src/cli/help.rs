@@ -67,6 +67,12 @@ Examples:
   pyfaro python pin 3.12
   pyfaro python pin --rm";
 
+pub(super) const BUILD: &str = "\
+Examples:
+  pyfaro build
+  pyfaro build --wheel
+  pyfaro build --out-dir wheelhouse --clear";
+
 pub(super) const COMPLETIONS: &str = "\
 Examples:
   pyfaro completions bash

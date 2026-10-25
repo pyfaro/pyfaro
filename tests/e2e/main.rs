@@ -9,6 +9,7 @@
 #[macro_use]
 mod harness;
 
+mod build;
 mod cli;
 mod completions;
 mod create_init;

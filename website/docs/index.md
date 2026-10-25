@@ -121,6 +121,13 @@ for details, upgrading and uninstalling.
 
     [:octicons-arrow-right-24: test](commands/test.md)
 
+-   :material-package-down: **Build**
+
+    `build` produces a source distribution and a wheel through `uv build`,
+    with the build backend your project declares.
+
+    [:octicons-arrow-right-24: build](commands/build.md)
+
 -   :material-stethoscope: **Diagnostics**
 
     `doctor` reports on the toolchain; `python` and `tools` inspect
@@ -154,8 +161,8 @@ Read more in [How it works](concepts/how-it-works.md).
     <span class="pf-badge">alpha</span> The latest published version is
     `0.3.0-alpha.1`. Interfaces may change between alpha versions. `dev`, the
     FastAPI preset and named tasks are on `main` and ship in `0.4.0-alpha.1`.
-    Commands that are planned but not implemented yet, such as `build` and
-    workspaces, are not documented as available.
+    Commands that are planned but not implemented yet, such as workspaces,
+    are not documented as available.
 
 Where to go next:
 

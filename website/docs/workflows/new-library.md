@@ -133,15 +133,17 @@ tests/test_size.py .                                                     [100%]
 
 ## 6. Build
 
-Pyfaro does not have a `build` command yet (it is planned). Build with uv
-directly, which the generated `pyproject.toml` is already set up for:
+[`pyfaro build`](../commands/build.md) builds with the backend the generated
+`pyproject.toml` already declares:
 
 ```console
-$ uv build
+$ pyfaro build
 Building source distribution (uv build backend)...
 Building wheel from source distribution (uv build backend)...
 Successfully built dist/textkit-0.1.0.tar.gz
 Successfully built dist/textkit-0.1.0-py3-none-any.whl
+built dist/textkit-0.1.0.tar.gz
+built dist/textkit-0.1.0-py3-none-any.whl
 ```
 
 The wheel and source distribution are in `dist/`. Publish them with

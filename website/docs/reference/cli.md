@@ -23,6 +23,7 @@ Commands:
   test         Run pytest in the project environment
   check        Run format check, lint, and type check; optionally apply safe fixes first
   python       List, install, or pin Python versions through uv
+  build        Build source and wheel distributions through uv
   tools        Show resolved paths and versions of external tools
   doctor       Diagnose project configuration, environment, and tool availability
   completions  Print the shell completion script for bash, zsh, fish or PowerShell
@@ -277,6 +278,25 @@ Usage: pyfaro python pin [OPTIONS] [REQUEST]
 | --- | --- |
 | `[REQUEST]` | Python version request; omit to display the current pin |
 | `--rm` | Remove the local pin |
+
+## `pyfaro build`
+
+Build source and wheel distributions through uv. Guide: [`build`](../commands/build.md)
+
+```text
+Usage: pyfaro build [OPTIONS]
+```
+
+| Option | Description |
+| --- | --- |
+| `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
+| `--sdist` | Build only the source distribution |
+| `--wheel` | Build only the wheel |
+| `--out-dir <DIR>` | Directory for the artifacts, relative to the current directory (defaults to `dist` in the project) |
+| `--clear` | Empty the output directory before building |
+| `--uv <UV>` | uv executable (a path or a name found on `PATH`; default `uv`) |
+| `--offline` | Disable network access in uv |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## `pyfaro tools`
 

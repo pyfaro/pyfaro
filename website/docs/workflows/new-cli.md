@@ -122,15 +122,17 @@ tests/test_cli.py ..                                                     [100%]
 
 ## 4. Distribute
 
-Build the distributions with uv (Pyfaro's own `build` command is planned, not
-available yet), then install the wheel as a tool:
+Build the distributions with [`pyfaro build`](../commands/build.md), then
+install the wheel as a tool:
 
 ```console
-$ uv build
+$ pyfaro build
 Building source distribution (uv build backend)...
 Building wheel from source distribution (uv build backend)...
 Successfully built dist/greeter-0.1.0.tar.gz
 Successfully built dist/greeter-0.1.0-py3-none-any.whl
+built dist/greeter-0.1.0.tar.gz
+built dist/greeter-0.1.0-py3-none-any.whl
 $ uv tool install ./dist/greeter-0.1.0-py3-none-any.whl
 Resolved 1 package in 0.99ms
 Prepared 1 package in 2ms

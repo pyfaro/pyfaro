@@ -8,7 +8,7 @@ Newer versions are accepted but not claimed as tested.
 
 The shared adapter passes OS-native arguments and a per-command working
 directory to uv. Delegated operations inherit stdout and stderr for streamed
-output. `init`, `sync`, `add`, and `remove` use null stdin; `run` passes
+output. `init`, `sync`, `add`, `remove`, and `build` use null stdin; `run` passes
 redirected input through and relays foreground-terminal input on Unix, where
 the delegated process group cannot read directly from the parent's foreground
 terminal.
