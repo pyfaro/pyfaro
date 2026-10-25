@@ -4,7 +4,7 @@
 explicit project directory. `pyfaro run [OPTIONS] <task> [-- extra...]` runs a
 named task from `[tool.pyfaro.tasks]` the same way; see [Tasks](#tasks). The
 program form is available in published `0.1.0-alpha.2` and later versions,
-not in `0.1.0-alpha.1`; tasks arrive in `0.4.0-alpha.1`.
+not in `0.1.0-alpha.1`; tasks are available in `0.4.0-alpha.1` and later.
 
 ```sh
 pyfaro run -- python -m pytest

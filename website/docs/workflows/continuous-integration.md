@@ -26,7 +26,7 @@ Release archive and verifies the download against the release's `SHA256SUMS`.
       quality:
         runs-on: ubuntu-latest
         env:
-          PYFARO_VERSION: 0.3.0-alpha.1
+          PYFARO_VERSION: 0.4.0-alpha.1
         steps:
           - uses: actions/checkout@v7
             with:

@@ -159,8 +159,9 @@ Read more in [How it works](concepts/how-it-works.md).
 
 !!! warning "Alpha software"
     <span class="pf-badge">alpha</span> The latest published version is
-    `0.3.0-alpha.1`. Interfaces may change between alpha versions. `dev`, the
-    FastAPI preset and named tasks are on `main` and ship in `0.4.0-alpha.1`.
+    `0.4.0-alpha.1`. Interfaces may change between alpha versions. `dev`, the
+    FastAPI preset and named tasks are published in it; `build`, shell
+    completions and `--verbose` are on `main` for `0.5.0-beta.1`.
     Commands that are planned but not implemented yet, such as workspaces,
     are not documented as available.
 

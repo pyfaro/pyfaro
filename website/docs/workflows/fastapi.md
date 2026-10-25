@@ -44,19 +44,10 @@ variants differ only where the shell does; they are shown in tabs.
     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
     ```
 
-!!! warning "This guide needs Pyfaro 0.4.0-alpha.1 or newer"
-    `create fastapi`, `dev` and named tasks are new in `0.4.0-alpha.1`, which is
-    not published yet; the latest published version is `0.3.0-alpha.1`. Until
-    it is, install Pyfaro from the repository (Rust 1.90 or newer), on every
-    platform:
-
-    ```console
-    $ cargo install --git https://github.com/pyfaro/pyfaro --locked pyfaro
-    ```
-
-    Once `0.4.0-alpha.1` is released, the prebuilt archives and
-    `cargo install pyfaro --version 0.4.0-alpha.1 --locked` described in
-    [Installation](../getting-started/installation.md) work too.
+!!! note "This guide needs Pyfaro 0.4.0-alpha.1 or newer"
+    `create fastapi`, `dev` and named tasks are new in `0.4.0-alpha.1`. Install
+    that version or a newer one as described in
+    [Installation](../getting-started/installation.md).
 
 Check both tools:
 
@@ -512,8 +503,8 @@ the checksum verification in more detail.
 
 === "cargo install"
 
-    This variant works today, before `0.4.0-alpha.1` is published. Pin
-    `--rev <commit>` to make the build reproducible.
+    Builds Pyfaro from crates.io with Rust, so it takes longer than the
+    release archive. Pin the version for a reproducible build.
 
     ```yaml title=".github/workflows/ci.yml"
     name: CI
@@ -549,7 +540,7 @@ the checksum verification in more detail.
               python-version: "3.13"
 
           - name: Install pyfaro
-            run: cargo install --git https://github.com/pyfaro/pyfaro --locked pyfaro
+            run: cargo install pyfaro --version 0.4.0-alpha.1 --locked
 
           - name: Show tool versions
             run: |
@@ -568,7 +559,7 @@ the checksum verification in more detail.
 
 === "Release archive"
 
-    For `0.4.0-alpha.1` or newer, once it is published. Set `PYFARO_VERSION` to
+    For `0.4.0-alpha.1` or newer. Set `PYFARO_VERSION` to
     the version you pin. Linux and Windows archives differ, so each platform has
     its own install step.
 

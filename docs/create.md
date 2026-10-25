@@ -6,7 +6,7 @@ files locally; it does not run uv, install Python, resolve dependencies, or
 download anything. The target's parent directory must already exist, and an
 existing file, directory, or symlink is never replaced. This command is
 available in published `0.2.0-alpha.1` and later versions; `create fastapi`
-is new in `0.4.0-alpha.1`.
+is available in `0.4.0-alpha.1` and later.
 
 ## Library
 
