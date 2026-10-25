@@ -5,10 +5,10 @@ from PyPI with `uv tool install`, with Cargo or from a prebuilt archive,
 then make sure [uv](#install-uv) is available.
 Pyfaro never installs uv for you.
 
-!!! note "Alpha release"
-    The latest published version is `0.4.0-alpha.1`. Releases are unsigned.
-    Every release is a prerelease, which is why the install script looks up
-    the newest release itself and Cargo needs an explicit `--version`.
+!!! note "Beta release"
+    The latest published version is `0.5.0-beta.1`. Every release is a
+    prerelease, which is why the install script looks up the newest release
+    itself and Cargo needs an explicit `--version`.
 
 ## Supported platforms
 
@@ -187,7 +187,7 @@ and open a new terminal.
 With Rust 1.90 or newer:
 
 ```console
-$ cargo install pyfaro --version 0.4.0-alpha.1 --locked
+$ cargo install pyfaro --version 0.5.0-beta.1 --locked
 ```
 
 Cargo puts the binary in `~/.cargo/bin`, which `rustup` normally adds to your
@@ -195,7 +195,7 @@ Cargo puts the binary in `~/.cargo/bin`, which `rustup` normally adds to your
 
 !!! note "The version is required for now"
     Cargo only selects pre-release versions when you name one. While every
-    published Pyfaro version is an alpha, a bare `cargo install pyfaro
+    published Pyfaro version is a pre-release, a bare `cargo install pyfaro
     --locked` fails with `could not find pyfaro in registry crates-io with
     version *`.
 
@@ -212,10 +212,10 @@ Prefer to do it by hand? Download the archive for your platform from
     extract and install:
 
     ```console
-    $ VERSION=0.4.0-alpha.1
+    $ VERSION=0.5.0-beta.1
     $ FILE=pyfaro-$VERSION-x86_64-unknown-linux-gnu.tar.gz
     $ grep " $FILE\$" SHA256SUMS | sha256sum -c -
-    pyfaro-0.4.0-alpha.1-x86_64-unknown-linux-gnu.tar.gz: OK
+    pyfaro-0.5.0-beta.1-x86_64-unknown-linux-gnu.tar.gz: OK
     $ tar -xzf $FILE
     $ install -m 755 pyfaro-$VERSION-x86_64-unknown-linux-gnu/pyfaro ~/.local/bin/
     ```
@@ -239,7 +239,7 @@ Prefer to do it by hand? Download the archive for your platform from
     PowerShell:
 
     ```powershell
-    $Version = "0.4.0-alpha.1"
+    $Version = "0.5.0-beta.1"
     $File = "pyfaro-$Version-x86_64-pc-windows-msvc.zip"
     $Expected = (Select-String -Path SHA256SUMS -Pattern " $File$").Line.Split(" ")[0]
     $Actual = (Get-FileHash $File -Algorithm SHA256).Hash.ToLower()
@@ -315,7 +315,7 @@ and version it uses before it runs anything.
 
 ```console
 $ pyfaro --version
-pyfaro 0.4.0-alpha.1
+pyfaro 0.5.0-beta.1
 $ pyfaro tools uv
 uv: /home/you/.local/bin/uv (uv 0.9.26)
 ```

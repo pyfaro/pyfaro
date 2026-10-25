@@ -11,17 +11,17 @@ each release on GitHub.
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| `0.5.0-beta.1` | 2026-10-25 | `build`, shell completions, `--verbose`, install scripts, PyPI wheels, build provenance attestations |
 | `0.4.0-alpha.1` | 2026-10-23 | `dev`, named tasks in `[tool.pyfaro.tasks]`, `create fastapi` |
 | `0.3.0-alpha.1` | 2026-10-22 | `lint`, `fmt`, `type`, `test` and `check`; prebuilt archives with `SHA256SUMS` |
 | `0.2.0-alpha.1` | 2026-10-22 | `add`, `remove`, `create lib`, `create cli`, `python`, `doctor` |
 | `0.1.0-alpha.2` | 2026-10-19 | `sync`, `run`, `tools`, project discovery, configuration |
 | `0.1.0-alpha.1` | 2026-10-19 | First release: `init` |
 
-`0.5.0-beta.1` is in development on `main` and is not published.
+Nothing is in development yet beyond `main`.
 
 !!! note
-    Each version is an experimental alpha. Interfaces may change between
-    releases.
+    Pyfaro is in beta. Interfaces may still change before 1.0.
 
 ## Next steps
 

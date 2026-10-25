@@ -26,7 +26,7 @@ Release archive and verifies the download against the release's `SHA256SUMS`.
       quality:
         runs-on: ubuntu-latest
         env:
-          PYFARO_VERSION: 0.4.0-alpha.1
+          PYFARO_VERSION: 0.5.0-beta.1
         steps:
           - uses: actions/checkout@v7
             with:
@@ -130,8 +130,8 @@ your `requires-python` range; see [Python versions](python-versions.md).
     The example uses version tags for readability. For supply-chain safety,
     pin third-party actions to a full commit SHA.
 
-!!! note "Pyfaro is alpha"
-    Pin `PYFARO_VERSION` so a new alpha does not change your CI unexpectedly,
+!!! note "Pyfaro is in beta"
+    Pin `PYFARO_VERSION` so a new release does not change your CI unexpectedly,
     and bump it deliberately.
 
 ## Next steps

@@ -7,7 +7,7 @@ By default it only **previews** the plan. Nothing is written until you pass
 `--apply`.
 
 !!! warning "Linux only for now"
-    `init --apply` works on Linux only in the current alpha series. On other
+    `init --apply` works on Linux only for now. On other
     platforms the preview still works, but `--apply` stops with an explicit
     unsupported-platform error before running uv or changing any file. Use
     [`pyfaro create`](create.md) there, which works everywhere.

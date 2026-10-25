@@ -1,7 +1,7 @@
 # Features
 
 Pyfaro wraps uv, Ruff, ty and pytest behind one command. Every command below
-is implemented in `0.4.0-alpha.1` or on `main`.
+is implemented in `0.5.0-beta.1` or on `main`.
 
 ## Project lifecycle
 

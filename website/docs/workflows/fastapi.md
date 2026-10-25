@@ -53,7 +53,7 @@ Check both tools:
 
 ```console
 $ pyfaro --version
-pyfaro 0.4.0-alpha.1
+pyfaro 0.5.0-beta.1
 $ pyfaro tools uv
 uv: /home/you/.local/bin/uv (uv 0.9.26)
 ```
@@ -540,7 +540,7 @@ the checksum verification in more detail.
               python-version: "3.13"
 
           - name: Install pyfaro
-            run: cargo install pyfaro --version 0.4.0-alpha.1 --locked
+            run: cargo install pyfaro --version 0.5.0-beta.1 --locked
 
           - name: Show tool versions
             run: |
@@ -582,7 +582,7 @@ the checksum verification in more detail.
           matrix:
             os: [ubuntu-latest, windows-latest]
         env:
-          PYFARO_VERSION: 0.4.0-alpha.1
+          PYFARO_VERSION: 0.5.0-beta.1
         steps:
           - uses: actions/checkout@v7
             with:
