@@ -328,6 +328,7 @@ fn absent_or_incompatible_uv_fails_without_changing_the_project() {
 }
 
 #[test]
+#[cfg(target_os = "linux")]
 fn an_exited_uv_leader_does_not_leave_a_running_descendant() {
     use std::thread;
     use std::time::Duration;
@@ -436,7 +437,6 @@ fn a_relative_path_entry_is_resolved_once_before_changing_directories() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn both_failed_file_restorations_are_reported() {
     let project = tempdir().unwrap();
     fs::write(
