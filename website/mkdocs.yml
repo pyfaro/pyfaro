@@ -101,6 +101,7 @@ nav:
       - python: commands/python.md
       - tools: commands/tools.md
       - doctor: commands/doctor.md
+      - completions: commands/completions.md
       - lint: commands/lint.md
       - fmt: commands/fmt.md
       - type: commands/type.md

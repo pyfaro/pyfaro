@@ -83,6 +83,11 @@ Run the suite locally with uv 0.9.26 and Python 3.10 or newer on PATH:
 PYFARO_E2E=1 cargo test --locked --test e2e
 ```
 
+The completion tests check the generated scripts with the real shells, so
+they also need `bash`, `zsh` and `fish` on PATH (they fail, not skip, when a
+shell is missing; the CI job installs them). See the
+[completion guide](docs/completions.md).
+
 Without `PYFARO_E2E=1` every e2e test prints a skip note and passes. Network
 access is needed the first time tools are fetched into the uv cache. The suite
 lives in `tests/e2e/`: `main.rs` declares one module per command group

@@ -56,6 +56,14 @@ Version `0.5.0-beta.1` has not been published.
   command, `uv self update` or a reinstall, or `--uv <path>`. This replaces
   the chained `could not inspect uv at uv: could not find uv at uv: cannot
   find binary path; ...` message. Exit codes are unchanged.
+- Add `pyfaro completions <SHELL>`, which prints a static tab-completion script
+  for `bash`, `zsh`, `fish` or `powershell`. It needs no project and no uv. The
+  help of `pyfaro --help` now shows a short workflow and a link to
+  https://pyfaro.dev/ instead of a stale status line, and `create`, `sync`,
+  `add`, `run`, `dev`, `test`, `check`, `python` and `completions` end with
+  examples that are checked against the argument definitions. Argument help
+  now uses the same wording for `--project`, `--uv`, `--offline`, `--locked`
+  and `--frozen` on every command; no flag, default or behavior changed.
 
 ## 0.4.0-alpha.1 — 2026-10-23
 
