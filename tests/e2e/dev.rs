@@ -914,6 +914,30 @@ fn editing_the_template_reloads_and_a_syntax_error_is_visible() {
     stop_template(live, port, &sandbox);
 }
 
+// The workflow printed by `pyfaro --help`, line by line: each command must
+// work in the project the previous one prepared, `dev` included.
+#[test]
+fn the_workflow_in_the_top_level_help_works_as_a_sequence() {
+    e2e_guard!();
+    let sandbox = Sandbox::new();
+    sandbox.pyfaro(["create", "fastapi", "acme-api"]).run().success();
+    let root = sandbox.join("acme-api");
+    Cmd::pyfaro(&root, ["sync"]).run().success();
+    Cmd::pyfaro(&root, ["run", "--", "python", "--version"])
+        .run()
+        .success()
+        .stdout_contains("Python 3.");
+    Cmd::pyfaro(&root, ["check", "--fix"]).run().success();
+    Cmd::pyfaro(&root, ["test"]).run().success();
+
+    let port = free_port();
+    let mut live =
+        Cmd::pyfaro(&root, ["dev", "--", "--port", &port.to_string()]).spawn();
+    live.wait_for_port(port, STARTUP);
+    live.wait_for_http(port, "/", "Hello from acme-api!", SHORT);
+    stop_template(live, port, &sandbox);
+}
+
 #[test]
 fn a_custom_package_template_is_served_by_pyfaro_dev() {
     e2e_guard!();

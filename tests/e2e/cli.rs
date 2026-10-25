@@ -103,7 +103,7 @@ fn top_level_help_shows_the_workflow_and_the_website() {
     let out = sandbox.pyfaro(["--help"]).run();
     out.success()
         .stdout_contains("\nWorkflow:\n")
-        .stdout_contains("  pyfaro create cli acme-tools")
+        .stdout_contains("  pyfaro create fastapi acme-api")
         .stdout_contains("  pyfaro sync ")
         .stdout_contains("  pyfaro run -- python --version")
         .stdout_contains("  pyfaro check --fix")

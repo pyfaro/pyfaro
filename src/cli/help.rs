@@ -4,12 +4,12 @@
 
 pub(super) const WORKFLOW: &str = "\
 Workflow:
-  pyfaro create cli acme-tools     # then: cd acme-tools
+  pyfaro create fastapi acme-api   # then: cd acme-api
   pyfaro sync                      # build the environment
   pyfaro run -- python --version   # run a command in the environment
   pyfaro check --fix               # format, lint and type-check
   pyfaro test                      # run pytest
-  pyfaro dev                       # run the [tool.pyfaro.dev] process
+  pyfaro dev                       # serve the app with auto-reload
 
 Shell completion: pyfaro completions --help
 Documentation: https://pyfaro.dev/";
