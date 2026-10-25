@@ -97,6 +97,19 @@ Prefer to read a script before running it? Download it first with `curl ... -o
 install.sh` (or `irm ... -OutFile install.ps1`), inspect it, then run the file.
 Run the script again to upgrade; set `PYFARO_VERSION` to pin a version.
 
+**From PyPI**, without a Rust toolchain (from `0.5.0b1`; Pyfaro's
+`0.5.0-beta.1` is `0.5.0b1` in Python's version format):
+
+```sh
+uv tool install pyfaro      # or: pipx install pyfaro / pip install pyfaro
+```
+
+Every published version is still a pre-release, and installers fall back to
+the newest pre-release when there is no stable one, so these commands work
+as they are. To pin one, name it (`uv tool install pyfaro==0.5.0b1`). Once a
+stable version exists, add `--prerelease allow` (uv) or `--pre` (pip, and
+`pipx install --pip-args=--pre`) to keep following the pre-releases.
+
 **From crates.io** (Rust 1.90 or newer):
 
 ```sh

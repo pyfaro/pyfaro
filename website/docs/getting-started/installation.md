@@ -1,7 +1,8 @@
 # Installation
 
 Pyfaro ships as one native executable. Install it with the install script,
-Cargo or a prebuilt archive, then make sure [uv](#install-uv) is available.
+from PyPI with `uv tool install`, with Cargo or from a prebuilt archive,
+then make sure [uv](#install-uv) is available.
 Pyfaro never installs uv for you.
 
 !!! note "Alpha release"
@@ -135,6 +136,52 @@ On Windows, add the directory to your user `PATH` (Settings, System, About,
 Advanced system settings, Environment Variables), or run the
 `SetEnvironmentVariable` line the script prints.
 
+## Install from PyPI
+
+If you already use Python tools, install Pyfaro like any other command-line
+tool. The wheels hold only the `pyfaro` executable, so there is no Rust
+toolchain and no Python code to import. They are published from `0.5.0b1`
+(Pyfaro's `0.5.0-beta.1`; Python spells pre-releases `a`, `b` and `rc`).
+
+=== "uv"
+
+    ```console
+    $ uv tool install pyfaro
+    ```
+
+=== "pipx"
+
+    ```console
+    $ pipx install pyfaro
+    ```
+
+=== "pip"
+
+    ```console
+    $ pip install pyfaro
+    ```
+
+    This installs into the active environment. Prefer `uv tool install` or
+    `pipx` to keep Pyfaro out of your project environments.
+
+Wheels exist for Linux x86_64 and aarch64 (glibc 2.17 or newer, so also older
+distributions than the archives support), macOS Apple silicon and Intel, and
+Windows x86_64. Other platforms build from the source distribution, which
+needs Rust 1.90 or newer.
+
+!!! note "Pre-releases"
+    Every published Pyfaro version is a pre-release for now. When a package
+    has no stable version, uv and pip fall back to the newest pre-release, so
+    the commands above work as written. To install an exact version, name it:
+    `uv tool install pyfaro==0.5.0b1`. After a stable release exists, the
+    plain command installs that one; add `--prerelease allow` (uv) or `--pre`
+    (pip, or `pipx install --pip-args=--pre pyfaro`) to keep following the
+    pre-releases.
+
+The executable lands in the tool bin directory (`~/.local/bin`). If your
+shell cannot find `pyfaro`, run `uv tool update-shell` or `pipx ensurepath`
+and open a new terminal.
+
 ## Install with Cargo
 
 With Rust 1.90 or newer:
@@ -214,7 +261,7 @@ Each archive contains the `pyfaro` executable, `README.md`, `LICENSE` and
 ### Verify provenance (optional)
 
 Releases from `0.5.0-beta.1` on carry GitHub build-provenance attestations for
-every archive and the `.crate`. They show which workflow run built a file, which
+every archive, wheel and the `.crate`. They show which workflow run built a file, which
 the checksum alone cannot. With the [GitHub CLI](https://cli.github.com/),
 verify a downloaded archive before you extract it:
 
@@ -285,6 +332,16 @@ uv: /home/you/.local/bin/uv (uv 0.9.26)
     and says which version it replaced. Set `PYFARO_VERSION` to move to a
     specific version, including an older one.
 
+=== "uv / pipx"
+
+    ```console
+    $ uv tool upgrade pyfaro
+    $ pipx upgrade pyfaro
+    ```
+
+    Add `--prerelease allow` (uv) once a stable version exists and you want
+    to stay on pre-releases.
+
 === "Cargo"
 
     ```console
@@ -304,6 +361,13 @@ uv: /home/you/.local/bin/uv (uv 0.9.26)
     (`PYFARO_INSTALL_DIR`). The script changed nothing else on your machine.
     If you added the install directory to your `PATH` yourself and nothing
     else uses it, remove that line too.
+
+=== "uv / pipx"
+
+    ```console
+    $ uv tool uninstall pyfaro
+    $ pipx uninstall pyfaro
+    ```
 
 === "Cargo"
 

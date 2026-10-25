@@ -46,6 +46,19 @@ pytest, from creating a project to running its quality checks and tests.
     The script verifies the download against `SHA256SUMS` and installs to
     `%USERPROFILE%\.local\bin`.
 
+=== "uv / pipx / pip"
+
+    ```sh
+    uv tool install pyfaro
+    pyfaro --version
+    ```
+
+    Also `pipx install pyfaro` or `pip install pyfaro`. No Rust toolchain is
+    needed; the wheels hold the same `pyfaro` executable (from `0.5.0b1`).
+    While every release is a pre-release, installers pick the newest one on
+    their own. See [Installation](getting-started/installation.md#install-from-pypi)
+    to pin a version.
+
 === "Cargo"
 
     Requires Rust 1.90 or newer.
