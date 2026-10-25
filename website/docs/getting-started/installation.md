@@ -1,3 +1,7 @@
+---
+description: "Install Pyfaro on Linux, macOS or Windows with the install script, uv, pipx, pip, Cargo or a prebuilt binary, and verify it."
+---
+
 # Installation
 
 Pyfaro ships as one native executable. Install it with the install script,

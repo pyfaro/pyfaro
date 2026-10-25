@@ -1,0 +1,34 @@
+{#
+  Open Graph and Twitter card metadata, plus the icons the theme does not
+  emit. Material's social plugin was not used: it renders one card per page
+  and needs Cairo and Pango on every build machine, while one branded image
+  (assets/social-preview.png) serves every page.
+#}
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {% if page.canonical_url %}
+  {% set meta_title = (page.meta.title if page.meta and page.meta.title else page.title) ~ " - " ~ config.site_name %}
+  {% set meta_description = page.meta.description if page.meta and page.meta.description
+    else config.site_description %}
+  {% set meta_image = config.site_url ~ "assets/social-preview.png" %}
+  {% set meta_image_alt = "Pyfaro: the unified Python development toolchain" %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ config.site_name }}">
+  <meta property="og:title" content="{{ meta_title | striptags | e }}">
+  <meta property="og:description" content="{{ meta_description | e }}">
+  <meta property="og:url" content="{{ page.canonical_url }}">
+  <meta property="og:image" content="{{ meta_image }}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="{{ meta_image_alt }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ meta_title | striptags | e }}">
+  <meta name="twitter:description" content="{{ meta_description | e }}">
+  <meta name="twitter:image" content="{{ meta_image }}">
+  <meta name="twitter:image:alt" content="{{ meta_image_alt }}">
+  {% endif %}
+  <link rel="icon" type="image/png" sizes="64x64" href="{{ 'assets/favicon.png' | url }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ 'assets/apple-touch-icon.png' | url }}">
+{% endblock %}

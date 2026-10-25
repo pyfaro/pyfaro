@@ -1,3 +1,7 @@
+---
+description: "List, install and pin Python versions through uv with pyfaro python."
+---
+
 # pyfaro python
 
 `pyfaro python` lists, installs and pins Python versions through uv. Use it to

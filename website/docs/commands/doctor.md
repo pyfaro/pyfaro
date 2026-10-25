@@ -1,3 +1,7 @@
+---
+description: "Diagnose a Python project and the tools Pyfaro uses with pyfaro doctor, with actionable findings and a clear exit code."
+---
+
 # pyfaro doctor
 
 `pyfaro doctor` inspects a project and reports what is wrong with it, in one

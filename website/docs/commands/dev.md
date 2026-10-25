@@ -1,3 +1,7 @@
+---
+description: "Run the development server with auto-reload using pyfaro dev, supervised so Ctrl-C stops the whole process tree."
+---
+
 # pyfaro dev
 
 `pyfaro dev` runs the project's development process, usually a web server,

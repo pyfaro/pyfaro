@@ -1,3 +1,7 @@
+---
+description: "Format Python code with Ruff through pyfaro fmt, or only check formatting with --check."
+---
+
 # pyfaro fmt
 
 `pyfaro fmt` formats your code with Ruff (`ruff format`). Use it to rewrite

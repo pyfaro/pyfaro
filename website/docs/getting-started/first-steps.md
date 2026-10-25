@@ -1,3 +1,7 @@
+---
+description: "A five-minute tour of Pyfaro: create a library, install its dependencies, run the quality gate and the tests."
+---
+
 # First steps
 
 This tour takes about five minutes. You create a library, install its

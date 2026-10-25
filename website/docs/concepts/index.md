@@ -1,3 +1,7 @@
+---
+description: "The ideas behind Pyfaro: projects, environments and tools, configuration, exit codes, security and platform support."
+---
+
 # Concepts
 
 The ideas behind Pyfaro, in the order you are likely to need them.

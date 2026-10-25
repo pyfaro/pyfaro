@@ -2,7 +2,16 @@
 
 ## Unreleased — 0.6.0-beta.1 development
 
-Version `0.6.0-beta.1` has not been published. It has no changes yet.
+Version `0.6.0-beta.1` has not been published.
+
+- Docs: every page of the site now carries its own description, a canonical
+  URL and Open Graph and Twitter card metadata, with a 1280 x 640 social
+  preview image (source: `assets/branding/social-preview.svg`), a
+  `robots.txt` that points to the sitemap, a `favicon.ico` and an Apple touch
+  icon. The Docs workflow checks the metadata of the built site.
+- Packaging: the crates.io and PyPI keywords are now `python`, `uv`, `ruff`,
+  `toolchain` and `cli`, and the PyPI classifiers add the Quality Assurance and
+  Testing topics.
 
 ## 0.5.0-beta.1 — 2026-10-25
 

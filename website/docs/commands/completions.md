@@ -1,3 +1,7 @@
+---
+description: "Generate Bash, Zsh, Fish, PowerShell or Elvish tab completions for the pyfaro command."
+---
+
 # pyfaro completions
 
 `pyfaro completions <SHELL>` prints a tab-completion script for Bash, Zsh, Fish

@@ -1,3 +1,7 @@
+---
+description: "Type-check a Python project with ty through pyfaro type."
+---
+
 # pyfaro type
 
 `pyfaro type` type-checks your project with [ty](https://docs.astral.sh/ty/)

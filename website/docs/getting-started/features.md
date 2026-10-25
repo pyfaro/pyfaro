@@ -1,3 +1,7 @@
+---
+description: "What Pyfaro does: one command over uv, Ruff, ty and pytest, from creating a project to running its checks and tests."
+---
+
 # Features
 
 Pyfaro wraps uv, Ruff, ty and pytest behind one command. Every command below

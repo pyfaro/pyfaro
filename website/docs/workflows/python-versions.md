@@ -1,3 +1,7 @@
+---
+description: "Install, list and pin Python versions with pyfaro python, which delegates interpreter management to uv."
+---
+
 # Python versions
 
 Pyfaro delegates interpreter management to uv. `pyfaro python` is a thin

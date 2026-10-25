@@ -1,3 +1,7 @@
+---
+description: "Take a FastAPI web API from nothing to a running server and a passing CI with Pyfaro."
+---
+
 # A FastAPI app
 
 This recipe takes a web API from nothing to a running server and a passing CI

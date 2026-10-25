@@ -1,3 +1,7 @@
+---
+description: "Lint Python code with Ruff through pyfaro lint, inside the project environment, with Ruff's output passed through."
+---
+
 # pyfaro lint
 
 `pyfaro lint` runs [Ruff](https://docs.astral.sh/ruff/)'s linter (`ruff check`)

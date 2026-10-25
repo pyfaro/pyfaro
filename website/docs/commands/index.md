@@ -1,3 +1,7 @@
+---
+description: "Every Pyfaro command at a glance: create, init, sync, add, run, dev, lint, fmt, type, check, test, build and more."
+---
+
 # Commands
 
 Pyfaro wraps uv, Ruff, ty and pytest behind one command. Every command is a

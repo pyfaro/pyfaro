@@ -1,3 +1,7 @@
+---
+description: "Pyfaro is one command-line tool over uv, Ruff, ty and pytest. Install it and run your first project in minutes."
+---
+
 # Getting started
 
 Pyfaro is a single command-line tool that puts one workflow on top of

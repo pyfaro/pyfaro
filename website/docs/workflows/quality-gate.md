@@ -1,3 +1,7 @@
+---
+description: "Use pyfaro check as the single command to run before you commit: format check, lint and type check."
+---
+
 # The quality gate
 
 [`pyfaro check`](../commands/check.md) is the one command to run before you

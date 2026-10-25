@@ -1,3 +1,7 @@
+---
+description: "Every Pyfaro command and subcommand with its usage line, arguments, flags and defaults."
+---
+
 # Command line
 
 Every Pyfaro command and subcommand, with its usage line, every argument and

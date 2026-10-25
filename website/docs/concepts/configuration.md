@@ -1,3 +1,7 @@
+---
+description: "How Pyfaro reads pyproject.toml and the small [tool.pyfaro] table, and how errors in it are reported."
+---
+
 # Configuration
 
 Pyfaro reads `pyproject.toml` from the selected [project](projects.md) root.

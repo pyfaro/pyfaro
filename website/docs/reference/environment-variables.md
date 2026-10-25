@@ -1,3 +1,7 @@
+---
+description: "The environment variables Pyfaro reads and passes on, such as NO_COLOR and the uv variables."
+---
+
 # Environment variables
 
 The `pyfaro` executable has no variables of its own: it reads a few standard

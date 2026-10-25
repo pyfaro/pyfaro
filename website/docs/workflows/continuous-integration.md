@@ -1,3 +1,7 @@
+---
+description: "Run Pyfaro in GitHub Actions: install uv and Pyfaro, then run the quality gate and the tests on every push."
+---
+
 # Continuous integration
 
 This page shows a GitHub Actions workflow that installs uv and Pyfaro, then

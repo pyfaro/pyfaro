@@ -1,3 +1,7 @@
+---
+description: "Build a source distribution and a wheel for your Python project with pyfaro build, using uv build."
+---
+
 # pyfaro build
 
 `pyfaro build` builds your project into a source distribution (`.tar.gz`) and

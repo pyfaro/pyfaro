@@ -1,3 +1,7 @@
+---
+description: "Add and remove project dependencies with pyfaro add and pyfaro remove, including dev dependency groups and optional extras, through uv."
+---
+
 # pyfaro add and remove
 
 `pyfaro add` and `pyfaro remove` edit the project's dependencies through

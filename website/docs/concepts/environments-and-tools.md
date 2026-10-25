@@ -1,3 +1,7 @@
+---
+description: "How Pyfaro finds the project virtual environment and the uv, Ruff, ty and pytest executables it runs."
+---
+
 # Environments and tools
 
 ## The project environment
