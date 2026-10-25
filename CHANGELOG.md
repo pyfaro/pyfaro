@@ -24,7 +24,6 @@ Version `0.5.0-beta.1` has not been published.
   (`docs/exit-codes.md` and the site's exit-codes page): `0`, `1`
   (Pyfaro failures, a failing `check`, `doctor` errors, a tool that ends
   without a numeric status), `2` (usage), forwarded tool codes and `130`.
-
 - Make the release pipeline build and attest its artifacts. The Release
   workflow now builds the five standalone archives (Linux x86_64 and
   aarch64, macOS x86_64 and aarch64, Windows x86_64) before the crates.io
