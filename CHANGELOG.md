@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased — 0.5.0-alpha.1 development
+## Unreleased — 0.5.0-beta.1 development
 
-Version `0.5.0-alpha.1` has not been published. It has no changes yet.
+Version `0.5.0-beta.1` has not been published. It has no changes yet.
 
 ## 0.4.0-alpha.1 — 2026-10-23
 
