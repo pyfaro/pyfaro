@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use glob::Pattern;
 use toml_edit::DocumentMut;
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::tools;
 
 use super::{Report, Severity};
@@ -228,6 +228,8 @@ pub(super) fn inspect_layout(root: &Path, report: &mut Report) -> Result<()> {
     #[cfg(unix)]
     if interpreter.is_file() {
         use std::os::unix::fs::PermissionsExt;
+
+        use crate::error::Error;
 
         let permissions = fs::metadata(&interpreter)
             .map_err(|error| Error::io("inspect", &interpreter, error))?
