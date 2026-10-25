@@ -33,7 +33,9 @@ fn main() {
         return;
     }
     if args == ["--heartbeat"] {
-        fs::write("uv-descendant.pid", process::id().to_string()).unwrap();
+        // Atomically, so that nobody reads a missing or half-written file.
+        fs::write("uv-descendant.pid.tmp", process::id().to_string()).unwrap();
+        fs::rename("uv-descendant.pid.tmp", "uv-descendant.pid").unwrap();
         let start = Instant::now();
         while start.elapsed() < Duration::from_secs(8) {
             fs::write("heartbeat", format!("{:?}", start.elapsed())).unwrap();
@@ -153,6 +155,13 @@ fn main() {
                 thread::sleep(Duration::from_millis(20));
             }
             process::exit(42);
+        }
+        // `uv-ready` promises that the descendant's pid is recorded.
+        let deadline = Instant::now() + Duration::from_secs(30);
+        while !std::path::Path::new("uv-descendant.pid").exists()
+            && Instant::now() < deadline
+        {
+            thread::sleep(Duration::from_millis(5));
         }
         fs::write("uv-ready", "ready").unwrap();
         let _ = child.wait();

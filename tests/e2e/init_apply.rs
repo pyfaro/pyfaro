@@ -12,7 +12,7 @@ use std::thread;
 use std::time::Duration;
 
 use crate::harness::{
-    SHORT, STARTUP, Sandbox, snapshot, wait_until_process_is_gone,
+    Live, SHORT, STARTUP, Sandbox, snapshot, wait_until_process_is_gone,
 };
 use crate::support;
 
@@ -247,11 +247,7 @@ fn ctrl_c_during_the_uv_step_stops_the_process_tree_and_restores_the_project() {
             .contains("[tool.pyfaro]"),
         "the configuration was not written before uv ran"
     );
-    let descendant: u32 = fs::read_to_string(root.join("uv-descendant.pid"))
-        .unwrap()
-        .trim()
-        .parse()
-        .unwrap();
+    let descendant = descendant_pid(&mut live, &root);
     live.interrupt();
     let out = live.finish(SHORT);
     out.code(130);
@@ -283,6 +279,18 @@ fn ctrl_c_during_the_uv_step_stops_the_process_tree_and_restores_the_project() {
     );
 }
 
+/// The pid the uv fixture's descendant recorded, once the file is complete.
+fn descendant_pid(live: &mut Live, root: &Path) -> u32 {
+    let mut pid = None;
+    live.wait_until(SHORT, "the descendant's pid", |_| {
+        pid = fs::read_to_string(root.join("uv-descendant.pid"))
+            .ok()
+            .and_then(|text| text.trim().parse().ok());
+        pid.is_some()
+    });
+    pid.unwrap()
+}
+
 #[test]
 fn ctrl_c_during_a_new_initialization_removes_the_partial_project() {
     e2e_guard!();
@@ -297,11 +305,7 @@ fn ctrl_c_during_a_new_initialization_removes_the_partial_project() {
     live.wait_until(STARTUP, "the uv fixture to start", |_| {
         root.join("uv-ready").exists()
     });
-    let descendant: u32 = fs::read_to_string(root.join("uv-descendant.pid"))
-        .unwrap()
-        .trim()
-        .parse()
-        .unwrap();
+    let descendant = descendant_pid(&mut live, &root);
     live.interrupt();
     live.finish(SHORT).code(130);
     wait_until_process_is_gone(descendant, SHORT);
