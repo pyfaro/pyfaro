@@ -1,8 +1,11 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Questions and ideas
-    url: https://github.com/pyfaro/pyfaro/discussions
-    about: Ask questions and discuss early ideas.
+  - name: Questions and help
+    url: https://github.com/pyfaro/pyfaro/discussions/categories/q-a
+    about: Ask how to use Pyfaro, or how to fix a problem you are not sure is a bug.
+  - name: Ideas and early proposals
+    url: https://github.com/pyfaro/pyfaro/discussions/categories/ideas
+    about: Talk through an idea before opening a feature request.
   - name: Report a vulnerability privately
     url: https://github.com/pyfaro/pyfaro/security/advisories/new
-    about: Keep security reports out of public issues.
+    about: Keep security reports out of public issues and discussions.

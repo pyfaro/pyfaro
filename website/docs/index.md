@@ -177,6 +177,11 @@ Read more in [How it works](concepts/how-it-works.md).
     1.0. Commands that are planned but not implemented yet, such as workspaces,
     are not documented as available.
 
+Feedback shapes the beta: ask a question or share an idea in
+[GitHub Discussions](https://github.com/pyfaro/pyfaro/discussions), report a
+bug with the [bug report form](https://github.com/pyfaro/pyfaro/issues/new?template=bug_report.yml),
+or tell us [how it went](https://github.com/pyfaro/pyfaro/issues/new?template=beta_feedback.yml).
+
 Where to go next:
 
 - [Getting started](getting-started/index.md): install Pyfaro and run your first commands.

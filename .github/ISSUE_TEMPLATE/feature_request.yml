@@ -7,6 +7,8 @@ body:
     attributes:
       value: |
         Review the roadmap and search existing issues before proposing work.
+        For an early idea you want to talk through first, start a discussion in
+        [Ideas](https://github.com/pyfaro/pyfaro/discussions/categories/ideas).
         Maintainers will adjust the default area and priority during triage.
   - type: textarea
     id: problem

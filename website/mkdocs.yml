@@ -61,6 +61,9 @@ extra:
       link: https://github.com/pyfaro/pyfaro
     - icon: fontawesome/brands/rust
       link: https://crates.io/crates/pyfaro
+    - icon: fontawesome/solid/comments
+      link: https://github.com/pyfaro/pyfaro/discussions
+      name: Pyfaro discussions
 
 markdown_extensions:
   - admonition

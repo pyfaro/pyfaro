@@ -1,0 +1,60 @@
+name: Beta feedback
+description: Tell us how the Pyfaro beta worked, or did not work, for you.
+title: '[beta] '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Pyfaro is in public beta and early feedback shapes what happens before 1.0. Honest, specific
+        reports are the most useful: what you tried, what you expected and what surprised you.
+        See the pinned [Beta feedback discussion](https://github.com/pyfaro/pyfaro/discussions/categories/announcements)
+        for the questions we most want answered.
+
+        Something is broken? Use the bug report form instead. Quick question? Ask in
+        [Q&A](https://github.com/pyfaro/pyfaro/discussions/categories/q-a). Redact secrets and private paths.
+  - type: input
+    id: version
+    attributes:
+      label: Pyfaro version
+      description: Output of `pyfaro --version`.
+      placeholder: pyfaro 0.5.0-beta.1
+    validations:
+      required: true
+  - type: textarea
+    id: project
+    attributes:
+      label: What did you try Pyfaro on?
+      description: A new project or an existing one, library, CLI or web app, rough size, OS and how you installed it.
+    validations:
+      required: true
+  - type: textarea
+    id: worked
+    attributes:
+      label: What worked well?
+    validations:
+      required: false
+  - type: textarea
+    id: friction
+    attributes:
+      label: What was confusing, missing or slower than expected?
+      description: Commands, messages, documentation or install steps. Quote the exact message if there was one.
+    validations:
+      required: true
+  - type: dropdown
+    id: adopt
+    attributes:
+      label: Would you use Pyfaro on a real project?
+      options:
+        - Yes, I already do
+        - Probably, with some changes
+        - Not yet
+        - No
+    validations:
+      required: false
+  - type: textarea
+    id: other
+    attributes:
+      label: Anything else?
+      description: What would make you adopt Pyfaro, or stop using it?
+    validations:
+      required: false

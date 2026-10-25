@@ -255,5 +255,12 @@ for the exact rules.
   failing command with [`-v`](#verbose-output) (`pyfaro -v <command>`).
 - Check [Platform support](../concepts/platform-support.md): `init --apply` is
   Linux-only for now.
-- Open an issue at <https://github.com/pyfaro/pyfaro/issues> with the output
-  of `pyfaro --version`, `pyfaro doctor` and the failing command with `-v`.
+- Not sure it is a bug? Ask in
+  [GitHub Discussions → Q&A](https://github.com/pyfaro/pyfaro/discussions/categories/q-a).
+- Open a [bug report](https://github.com/pyfaro/pyfaro/issues/new?template=bug_report.yml)
+  with the output of `pyfaro --version`, `uv --version`, `pyfaro doctor` and
+  the failing command with `-v`. The form lists what to include. Redact
+  secrets first: `-v` masks URL credentials only.
+- Report a vulnerability privately through the
+  [security advisory form](https://github.com/pyfaro/pyfaro/security/advisories/new),
+  never in a public issue.

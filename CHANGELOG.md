@@ -12,6 +12,12 @@ Version `0.6.0-beta.1` has not been published.
 - Packaging: the crates.io and PyPI keywords are now `python`, `uv`, `ruff`,
   `toolchain` and `cli`, and the PyPI classifiers add the Quality Assurance and
   Testing topics.
+- Community: issue forms for bug reports (Pyfaro and uv versions, OS, install
+  method, command, exit code and `pyfaro -v` output), feature requests and
+  beta feedback; `config.yml` sends questions to Discussions and security
+  reports to the private advisory form. CONTRIBUTING.md has a "Where to start"
+  section, and the README, the site and the PyPI project links point to
+  Discussions and the forms.
 
 ## 0.5.0-beta.1 — 2026-10-25
 

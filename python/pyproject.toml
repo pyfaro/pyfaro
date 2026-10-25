@@ -29,6 +29,7 @@ Documentation = "https://pyfaro.dev/"
 Repository = "https://github.com/pyfaro/pyfaro"
 Changelog = "https://github.com/pyfaro/pyfaro/blob/main/CHANGELOG.md"
 Issues = "https://github.com/pyfaro/pyfaro/issues"
+Discussions = "https://github.com/pyfaro/pyfaro/discussions"
 
 [tool.maturin]
 bindings = "bin"
