@@ -239,11 +239,26 @@ impl Cmd {
         Self::new("uv", cwd, args)
     }
 
-    fn new<I, S>(program: &str, cwd: &Path, args: I) -> Self
+    /// Any executable (for example the Python or a script of an environment
+    /// the test created), with the isolated environment applied.
+    pub fn program<I, S>(
+        program: impl AsRef<OsStr>,
+        cwd: &Path,
+        args: I,
+    ) -> Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<OsStr>,
     {
+        Self::new(program, cwd, args)
+    }
+
+    fn new<I, S>(program: impl AsRef<OsStr>, cwd: &Path, args: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        let program = program.as_ref();
         let mut command = Command::new(program);
         command.current_dir(cwd);
         for key in [
@@ -270,7 +285,8 @@ impl Cmd {
         command.env("XDG_CONFIG_HOME", sandbox.join("config"));
         command.env("APPDATA", sandbox.join("config"));
         command.args(args);
-        let description = format!("{program} (cwd {})", cwd.display());
+        let description =
+            format!("{} (cwd {})", Path::new(program).display(), cwd.display());
         Self { command, description, stdin: None }
     }
 

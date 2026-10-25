@@ -55,6 +55,9 @@ pub(crate) enum Command {
     /// List, install, or pin Python versions through uv
     #[command(after_help = help::PYTHON)]
     Python(PythonArgs),
+    /// Build source and wheel distributions through uv
+    #[command(after_help = help::BUILD)]
+    Build(BuildArgs),
     /// Show resolved paths and versions of external tools
     Tools(ToolsArgs),
     /// Diagnose project configuration, environment, and tool availability
@@ -202,6 +205,37 @@ pub(crate) struct TestArgs {
     /// Arguments forwarded verbatim to pytest (paths are relative to the project root)
     #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0..)]
     pub pytest_args: Vec<OsString>,
+}
+
+#[derive(Args)]
+pub(crate) struct BuildArgs {
+    /// Explicit project directory; otherwise discover the nearest project
+    #[arg(long)]
+    pub project: Option<PathBuf>,
+
+    /// Build only the source distribution
+    #[arg(long)]
+    pub sdist: bool,
+
+    /// Build only the wheel
+    #[arg(long)]
+    pub wheel: bool,
+
+    /// Directory for the artifacts, relative to the current directory (default: dist in the project)
+    #[arg(long, value_name = "DIR")]
+    pub out_dir: Option<PathBuf>,
+
+    /// Empty the output directory before building
+    #[arg(long)]
+    pub clear: bool,
+
+    /// uv executable (a path or a name found on PATH)
+    #[arg(long, default_value = "uv")]
+    pub uv: OsString,
+
+    /// Disable network access in uv
+    #[arg(long)]
+    pub offline: bool,
 }
 
 #[derive(Args)]
