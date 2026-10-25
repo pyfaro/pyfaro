@@ -508,7 +508,7 @@ def cmd_smoke_wheel(args):
     wheel = wheels[0]
     _, host = rustc_info()
     exe = BINARY + (".exe" if "windows" in args.target else "")
-    scratch = Path(args.scratch)
+    scratch = Path(args.scratch).resolve()
     shutil.rmtree(scratch, ignore_errors=True)
     if args.target == host:
         venv.create(scratch, with_pip=True)
@@ -516,7 +516,7 @@ def cmd_smoke_wheel(args):
         python = bin_dir / ("python.exe" if os.name == "nt" else "python")
         run(
             [str(python), "-m", "pip", "install", "--no-index", "--no-deps",
-             "--disable-pip-version-check", str(wheel)],
+             "--disable-pip-version-check", str(wheel.resolve())],
             cwd=scratch.parent,
         )
         binary = bin_dir / exe
