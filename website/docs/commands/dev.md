@@ -161,14 +161,20 @@ again.
     exit 130; if it keeps running, or a new process starts (a restarted
     worker), the event was not a stop request and `pyfaro dev` keeps
     supervising. If only part of the tree ended and nothing replaced it, the
-    rest is terminated. Press Ctrl+C a second time to stop the tree at once,
-    for example when the process ignores the first.
+    rest is terminated. Press Ctrl+C a second time to stop the tree, for
+    example when the process ignores the first: it stops at once, except on a
+    busy machine where a reload may have gone unnoticed. The Ctrl+C of the next
+    reload could then be mistaken for a second one, so `pyfaro dev` first
+    gives the command half a second (a second at most) to show a restart, and
+    stops the tree if none comes. A third Ctrl+C never waits.
 
-    While it supervises, `pyfaro dev` also touches the console every 20 ms. A
-    console delivers a Ctrl+C that one of its processes generated (Uvicorn's
-    reload restart) only when something next uses it; a terminal window always
-    does, but a console reached only through pipes (an IDE, a service, a test
-    harness) can hold the event back, and the worker would never restart.
+    While it supervises, `pyfaro dev` also touches the console every 20 ms,
+    from a thread of its own so that a slow console never delays the
+    supervision. A console delivers a Ctrl+C that one of its processes
+    generated (Uvicorn's reload restart) only when something next uses it; a
+    terminal window always does, but a console reached only through pipes (an
+    IDE, a service, a test harness) can hold the event back, and the worker
+    would never restart.
 
 ## Options
 
