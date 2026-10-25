@@ -4,7 +4,9 @@ name: GitHub Release
 # published and tagged version. The Release workflow calls this after
 # publishing, with the reproducible binaries it already built before the
 # upload; run it by hand to backfill an older tag, which builds them here.
-# Every archive and the crate get a signed build provenance attestation.
+# The PyPI wheels and sdist are attached too when the tag has them. Every
+# archive, wheel, sdist, and the crate get a signed build provenance
+# attestation.
 on:
   workflow_dispatch:
     inputs:
@@ -12,13 +14,21 @@ on:
         description: Existing release tag (for example v0.2.0-alpha.1)
         required: true
         type: string
+      pypi:
+        description: Mention installing from PyPI in the release notes
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       tag:
         required: true
         type: string
       prebuilt:
-        description: Use the `binaries` artifact the calling run already built and compared
+        description: Use the `binaries` and `wheels` artifacts the calling run already built and checked
+        type: boolean
+        default: false
+      pypi:
+        description: Mention installing from PyPI in the release notes
         type: boolean
         default: false
 
@@ -38,12 +48,14 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
       commit: ${{ steps.version.outputs.commit }}
+      wheels: ${{ steps.version.outputs.wheels }}
     steps:
       - name: Check the tag and crates.io version
         id: version
         env:
           TAG: ${{ inputs.tag }}
           REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           case "$TAG" in
@@ -66,6 +78,15 @@ jobs:
             echo "::error::pyfaro $version is not on crates.io (HTTP $status)"
             exit 1
           fi
+          # Tags from before the PyPI wheels existed have no python/ metadata.
+          status=$(curl -sS -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/$REPOSITORY/contents/python/pyproject.toml?ref=$commit")
+          case "$status" in
+            200) echo wheels=true >> "$GITHUB_OUTPUT" ;;
+            404) echo wheels=false >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::GitHub returned HTTP $status looking for python/pyproject.toml"; exit 1 ;;
+          esac
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "commit=$commit" >> "$GITHUB_OUTPUT"
           case "$version" in
@@ -82,11 +103,20 @@ jobs:
       ref: ${{ inputs.tag }}
       version: ${{ needs.resolve.outputs.version }}
 
+  wheels:
+    name: Wheels
+    needs: resolve
+    if: ${{ !inputs.prebuilt && needs.resolve.outputs.wheels == 'true' }}
+    uses: ./.github/workflows/build-wheels.yml
+    with:
+      ref: ${{ inputs.tag }}
+      version: ${{ needs.resolve.outputs.version }}
+
   # Collects and attests the assets. It is the only job with an OIDC token
   # and attestation rights, and it cannot write repository contents.
   assemble:
     name: Assemble and attest the assets
-    needs: [resolve, build]
+    needs: [resolve, build, wheels]
     if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -112,6 +142,18 @@ jobs:
           path: dist
       - name: Check the archives
         run: python3 .github/scripts/release_artifacts.py check-assets dist --version "$VERSION"
+      - name: Add the verified wheels and sdist
+        if: needs.resolve.outputs.wheels == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: wheels
+          path: wheels
+      - name: Check the wheels and sdist
+        if: needs.resolve.outputs.wheels == 'true'
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/release_artifacts.py check-wheels wheels --version "$VERSION"
+          cp wheels/* dist/
       - name: Download and verify the published crate
         run: |
           set -euo pipefail
@@ -135,6 +177,7 @@ jobs:
           subject-path: |
             dist/*.tar.gz
             dist/*.zip
+            dist/*.whl
             dist/*.crate
       - name: Verify the attestations
         run: |
@@ -172,6 +215,7 @@ jobs:
       TAG: ${{ inputs.tag }}
       VERSION: ${{ needs.resolve.outputs.version }}
       PRERELEASE: ${{ needs.resolve.outputs.prerelease }}
+      PYPI: ${{ inputs.pypi }}
       GH_TOKEN: ${{ github.token }}
       REPOSITORY: ${{ github.repository }}
     steps:
@@ -208,6 +252,15 @@ jobs:
           built with \`gh attestation verify <file> --repo $REPOSITORY\`. The
           \`.crate\` file is the exact archive published on crates.io.
           EOF
+          if [ "$PYPI" = true ]; then
+            pep=$(python3 .github/scripts/release_artifacts.py pep440 "$VERSION")
+            cat >> notes.md <<EOF
+
+          From PyPI: \`uv tool install pyfaro==$pep\`, \`pipx install pyfaro==$pep\`,
+          or \`pip install pyfaro==$pep\`. The wheels and source distribution are
+          attached to this release as well.
+          EOF
+          fi
       - name: Create or update the release
         run: |
           set -euo pipefail
