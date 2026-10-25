@@ -56,7 +56,9 @@ without `--offline`.
 | `python install` | Interpreter download, by default from the `python-build-standalone` releases on GitHub. | uv |
 | `python pin` | None. | - |
 | `lint`, `fmt`, `type`, `check`, `test` | None from Pyfaro; Ruff, ty and pytest are started directly. | the tool |
+| `build` | None with `uv_build` (built by uv itself); other backends are installed from the index into an isolated build environment. | uv |
 | `tools`, `doctor` | None; version probes, and `doctor` runs uv with `--offline`. | - |
+| `completions` | None. | - |
 
 `--locked` and `--frozen` decide whether uv may rewrite `uv.lock`; packages
 missing from uv's cache are still downloaded.

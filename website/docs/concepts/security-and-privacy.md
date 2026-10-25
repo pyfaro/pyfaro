@@ -65,7 +65,9 @@ was asked for.
 | `python install` | Downloads the interpreter. By default from the `python-build-standalone` releases on GitHub. | uv |
 | `python pin` | None. | - |
 | `lint`, `fmt`, `type`, `check`, `test` | None from Pyfaro. It starts Ruff, ty or pytest from the project environment directly, without uv. What your tests do is up to them. | the tool |
+| `build` | With the `uv_build` backend, none: uv builds the project itself. Other backends (hatchling, setuptools, ...) are installed from the index into an isolated build environment, as for any PEP 517 build. | uv |
 | `tools`, `doctor` | None. They run version probes, and `doctor` asks uv to validate its configuration with `--offline`. | - |
+| `completions` | None. | - |
 
 `sync --locked`, `sync --frozen` and the same flags on `run` and `dev` control
 whether uv may update `uv.lock`. Packages missing from uv's cache are still
