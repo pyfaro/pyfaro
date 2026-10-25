@@ -18,6 +18,11 @@ Version `0.6.0-beta.1` has not been published.
   reports to the private advisory form. CONTRIBUTING.md has a "Where to start"
   section, and the README, the site and the PyPI project links point to
   Discussions and the forms.
+- Docs: the installation guide has a "macOS and Gatekeeper" section: the
+  install script, `uv tool install`, `pipx`, `pip` and `cargo install` are not
+  quarantined, and only archives downloaded in a browser need
+  `xattr -d com.apple.quarantine pyfaro`. The binaries stay unsigned: signing
+  and notarizing them would need a paid Apple Developer account.
 
 ## 0.5.0-beta.1 — 2026-10-25
 

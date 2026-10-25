@@ -150,9 +150,12 @@ What backs a release:
   workflow with a short-lived credential, after a maintainer approves the
   deployment. There is no long-lived token to leak.
 - **Unsigned binaries.** The archives are not code-signed or notarized. On
-  macOS, Gatekeeper may block a binary you downloaded in a browser; the install
-  scripts avoid that because `curl` does not mark files as quarantined. On
-  Windows, SmartScreen may warn.
+  macOS, Gatekeeper only checks files marked as quarantined, which browsers do
+  and `curl` does not: the install script, `uv tool install`, `pipx`, `pip`
+  and `cargo install` are not affected, and an archive downloaded in a browser
+  needs one command, see
+  [macOS and Gatekeeper](../getting-started/installation.md#macos-and-gatekeeper).
+  On Windows, SmartScreen may warn.
 
 `cargo install pyfaro --locked` builds from source with the dependency
 versions of the lock file, which you can read in the repository.
