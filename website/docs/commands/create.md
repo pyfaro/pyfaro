@@ -1,3 +1,7 @@
+---
+description: "Generate a typed library, command-line app or FastAPI project with pyfaro create, ready for the quality gate."
+---
+
 # pyfaro create
 
 `pyfaro create` generates a small, packaged Python project: a **library**

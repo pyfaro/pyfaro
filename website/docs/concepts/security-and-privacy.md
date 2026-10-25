@@ -1,3 +1,7 @@
+---
+description: "What Pyfaro sends, what it runs, where the programs it runs come from, and how to report a vulnerability."
+---
+
 # Security and privacy
 
 What Pyfaro sends, what it runs, where the programs it runs come from, and

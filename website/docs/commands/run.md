@@ -1,3 +1,7 @@
+---
+description: "Run a command or a named task inside the project environment with pyfaro run, with no implicit shell."
+---
+
 # pyfaro run
 
 `pyfaro run` runs a command inside the project's environment, by delegating to

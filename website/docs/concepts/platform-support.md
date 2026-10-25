@@ -1,3 +1,7 @@
+---
+description: "Which operating systems and architectures Pyfaro supports, and what is tested on Linux, macOS and Windows."
+---
+
 # Platform support
 
 | Platform | Prebuilt archive | Implemented commands | `init --apply` |

@@ -1,3 +1,7 @@
+---
+description: "Release notes for every Pyfaro version: what was added, changed and fixed."
+---
+
 # Changelog
 
 Pyfaro keeps a single changelog at the root of the repository and publishes

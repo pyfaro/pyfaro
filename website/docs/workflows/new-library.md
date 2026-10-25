@@ -1,3 +1,7 @@
+---
+description: "Take a Python library from an empty directory to a built, tested distribution with Pyfaro."
+---
+
 # A new library
 
 This recipe takes a Python library from an empty directory to built

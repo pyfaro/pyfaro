@@ -1,3 +1,7 @@
+---
+description: "Pyfaro is a thin Rust layer over uv, Ruff, ty and pytest: what it owns, what it delegates and how it runs them."
+---
+
 # How it works
 
 Pyfaro is a thin Rust layer. It owns the command-line experience, project

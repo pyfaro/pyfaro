@@ -1,3 +1,7 @@
+---
+description: "What a Pyfaro project is, how it is found from the current directory, and why uv workspaces are not supported yet."
+---
+
 # Projects
 
 A Pyfaro project is a directory with a `pyproject.toml` that has a standard

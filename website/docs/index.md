@@ -1,5 +1,6 @@
 ---
 title: The unified Python development toolchain
+description: "Pyfaro is a fast, Rust-built command-line tool: one CLI over uv, Ruff, ty and pytest, from creating a project to running its quality checks and tests."
 hide:
   - navigation
   - toc

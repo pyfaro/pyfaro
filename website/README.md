@@ -27,7 +27,9 @@ The strict build must pass with no warnings (broken links, missing pages).
 | `website/docs/index.md` | Landing page |
 | `website/docs/getting-started/`, `commands/`, `workflows/`, `concepts/`, `reference/` | Sections, one file per page |
 | `website/docs/stylesheets/extra.css` | Brand theme (palette, cards, buttons, hero) |
-| `website/docs/assets/` | Logos and favicon derived from `assets/branding/pyfaro-logo.svg` |
+| `website/overrides/main.html` | Open Graph and Twitter card tags and the extra icon links, added to every page |
+| `website/docs/assets/` | Logos and favicon derived from `assets/branding/pyfaro-logo.svg`, plus `social-preview.png` |
+| `website/docs/robots.txt`, `website/docs/favicon.ico` | Copied to the site root by MkDocs (the `.ico` and `assets/apple-touch-icon.png` are rendered from `assets/favicon.svg`) |
 
 ## Style rules
 
@@ -42,9 +44,47 @@ The strict build must pass with no warnings (broken links, missing pages).
 
 ## Add a page
 
-1. Create the Markdown file under `website/docs/` with an H1 title.
+1. Create the Markdown file under `website/docs/` with an H1 title and a
+   `description:` front matter line (one sentence, about 150 characters; quote
+   it if it contains a colon). It becomes the search and social preview text.
 2. Add it to `nav` in `website/mkdocs.yml`.
 3. Run the strict build and fix any warning.
+4. Run `python3 -I .github/scripts/check_site_metadata.py website/site`, the
+   check the Docs workflow runs on the built site.
+
+## Site metadata
+
+- `site_url` in `mkdocs.yml` is `https://pyfaro.dev/`: it drives the canonical
+  links, the `sitemap.xml` MkDocs generates and the absolute image URLs.
+- `overrides/main.html` adds Open Graph and Twitter card tags to every page.
+  Material's social plugin is not used: it needs Cairo and Pango on every
+  build machine and renders one card per page, while one branded image is
+  enough here.
+- The social preview image is generated from
+  [`assets/branding/social-preview.svg`](../assets/branding/social-preview.svg);
+  see [`assets/branding/README.md`](../assets/branding/README.md) to
+  regenerate it. The same PNG is the repository's social preview, which is a
+  repository setting (Settings → General → Social preview) that a maintainer
+  uploads by hand.
+
+## Custom domain and HTTPS
+
+The site is served by GitHub Pages at `https://pyfaro.dev/`. DNS at the
+registrar:
+
+| Name | Type | Value |
+| --- | --- | --- |
+| `pyfaro.dev` | `A` | `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153` |
+| `pyfaro.dev` | `AAAA` | `2606:50c0:8000::153`, `2606:50c0:8001::153`, `2606:50c0:8002::153`, `2606:50c0:8003::153` |
+| `www.pyfaro.dev` | `CNAME` | `pyfaro.github.io` (without the repository name) |
+
+With the apex as the custom domain (Settings → Pages), GitHub Pages redirects
+`www.pyfaro.dev` to `https://pyfaro.dev/` once its certificate covers both
+names. If `https://www.pyfaro.dev` fails with a certificate error although
+the DNS records above are right, the certificate has not been re-issued for
+`www`: remove the custom domain in Settings → Pages, save, add `pyfaro.dev`
+again and wait for the DNS check to pass (up to an hour, sometimes longer;
+GitHub documents up to 24 hours), then tick "Enforce HTTPS".
 
 ## Authoring helpers
 

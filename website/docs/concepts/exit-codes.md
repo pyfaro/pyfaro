@@ -1,3 +1,7 @@
+---
+description: "Pyfaro exit codes: how its own failures differ from the failures of the tools it runs, for scripts and CI."
+---
+
 # Exit codes
 
 Pyfaro distinguishes its own failures from the failures of the tools it runs.

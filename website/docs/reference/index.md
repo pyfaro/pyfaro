@@ -1,3 +1,7 @@
+---
+description: "Exact reference for Pyfaro: the command line, configuration, environment variables, tested versions and changelog."
+---
+
 # Reference
 
 Exact, complete and terse. For explanations, see [Concepts](../concepts/index.md).

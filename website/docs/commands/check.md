@@ -1,3 +1,7 @@
+---
+description: "Run the whole quality gate with pyfaro check: format check, lint and type check in one run, with one exit code."
+---
+
 # pyfaro check
 
 `pyfaro check` is the one command for "is my project clean?". It runs the

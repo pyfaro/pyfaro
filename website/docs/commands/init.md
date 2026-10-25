@@ -1,3 +1,7 @@
+---
+description: "Adopt an existing Python project with pyfaro init: preview the changes, then apply them to prepare it for uv-backed development."
+---
+
 # pyfaro init
 
 `pyfaro init` prepares a standalone project for uv-backed development: it adds

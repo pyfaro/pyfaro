@@ -1,3 +1,7 @@
+---
+description: "Every [tool.pyfaro] setting Pyfaro reads, with its type, default and rules."
+---
+
 # Configuration reference
 
 Every setting Pyfaro reads, with its type, default, rule and the error you get

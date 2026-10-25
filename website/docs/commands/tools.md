@@ -1,3 +1,7 @@
+---
+description: "See which uv, Ruff, ty and pytest executables Pyfaro uses, and where they come from, with pyfaro tools."
+---
+
 # pyfaro tools
 
 `pyfaro tools` shows which executables Pyfaro would use for **uv**, **Ruff**,

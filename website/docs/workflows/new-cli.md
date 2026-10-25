@@ -1,3 +1,7 @@
+---
+description: "Create an installable Python command-line application with pyfaro create cli, then check, test and build it."
+---
+
 # A new CLI
 
 `create cli` generates an installable command-line application: a packaged

@@ -1,3 +1,7 @@
+---
+description: "Run the test suite with pytest through pyfaro test, inside the project environment."
+---
+
 # pyfaro test
 
 `pyfaro test` runs [pytest](https://docs.pytest.org/) with the project

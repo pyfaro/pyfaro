@@ -1,3 +1,7 @@
+---
+description: "Step-by-step Pyfaro recipes: a new library, a new CLI, a FastAPI app, adopting a project, CI and troubleshooting."
+---
+
 # Workflows
 
 Commands are the building blocks; workflows are the recipes. Each page here

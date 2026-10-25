@@ -1,3 +1,7 @@
+---
+description: "Adopt Pyfaro in a project you already have: preview with pyfaro init, keep your pyproject.toml and uv.lock, and add the quality gate."
+---
+
 # Adopt an existing project
 
 Pyfaro works with the `pyproject.toml` and `uv.lock` you already have. This

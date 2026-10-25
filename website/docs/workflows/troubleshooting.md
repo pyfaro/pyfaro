@@ -1,3 +1,7 @@
+---
+description: "Fix common Pyfaro problems: start with pyfaro doctor, then check tools, versions, exit codes and your environment."
+---
+
 # Troubleshooting
 
 Start with [`pyfaro doctor`](../commands/doctor.md): it inspects the project

@@ -1,3 +1,7 @@
+---
+description: "Make the project virtual environment match its dependencies and lockfile with pyfaro sync, through uv."
+---
+
 # pyfaro sync
 
 `pyfaro sync` makes the project's virtual environment match its dependencies,
