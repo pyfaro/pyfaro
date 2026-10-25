@@ -4,6 +4,16 @@
 
 Version `0.5.0-beta.1` has not been published.
 
+- Publish the CLI and configuration reference. The command-line reference now
+  documents every command and subcommand with its usage line, every argument
+  and flag with the help text Pyfaro prints, and its exit codes. A new
+  configuration reference lists every `[tool.pyfaro]` key with its type,
+  default, rule and error message. The installation, troubleshooting (adds
+  `pyfaro build` failures and tab completion) and environment-variable pages
+  are brought up to date. Unit tests keep the pages from drifting: they compare
+  the reference with the real argument definitions and `--help` output, and
+  validate every `[tool.pyfaro]` TOML example in the documentation with
+  Pyfaro's own configuration loader.
 - Add `pyfaro build`, which builds a source distribution and a wheel through
   `uv build` with the project's own `[build-system]` backend (`uv_build`,
   hatchling, setuptools or none). `--sdist` and `--wheel` select a kind,

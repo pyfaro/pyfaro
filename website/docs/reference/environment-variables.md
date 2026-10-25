@@ -1,8 +1,10 @@
 # Environment variables
 
-Pyfaro has no variables of its own. It reads a few standard ones to find
-environments and uv configuration, and removes others before calling uv so
-that they cannot change what a command means.
+The `pyfaro` executable has no variables of its own: it reads a few standard
+ones to find environments and uv configuration, and removes others before
+calling uv so that they cannot change what a command means. Only the
+[install scripts](#read-by-the-install-scripts) have `PYFARO_*` variables. This
+page lists every variable you can set.
 
 ## Read by Pyfaro
 
@@ -17,6 +19,7 @@ that they cannot change what a command means.
 | `XDG_CONFIG_HOME`, `HOME` | `doctor` (Linux, macOS) | Locate the user-level `uv/uv.toml`. |
 | `XDG_CONFIG_DIRS` | `doctor` (Linux, macOS) | Locate system-level `uv/uv.toml` files (default `/etc/xdg`, and `/etc/uv/uv.toml`). |
 | `APPDATA`, `PROGRAMDATA` | `doctor` (Windows) | Locate the user-level and system-level `uv\uv.toml`. |
+| `NO_COLOR`, `CLICOLOR_FORCE` | help and usage errors | Honored by the argument parser: `NO_COLOR` turns the colors of `--help` and usage errors off, `CLICOLOR_FORCE=1` turns them on when output is not a terminal. Pyfaro adds no color to its other messages, and the tools' own output is not touched. |
 
 Boolean uv variables (`UV_NO_DEV` and friends) are true for `1`, `true`, `t`,
 `yes`, `y` and `on`, case-insensitive.
@@ -59,7 +62,12 @@ proxy settings, passes through to uv unchanged.
 
 ## Set by Pyfaro
 
-Pyfaro does not export variables. It passes `--no-progress` to uv, adds
+Pyfaro does not export variables of its own. The one exception is the `env`
+table of a [task](configuration.md#toolpyfarotasks): its variables are added
+to the environment of that task's process (the task's values win; `-v` prints
+their names, never their values).
+
+On the uv command line, Pyfaro passes `--no-progress`, adds
 `--no-python-downloads` except for `python install` and `python list`, and
 `--offline` when you pass `--offline`.
 

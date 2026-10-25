@@ -73,13 +73,13 @@ Otherwise `pyfaro dev` exits 1 and suggests `pyfaro add "uvicorn[standard]"`.
 
 ## The FastAPI template
 
-`pyfaro create fastapi` writes this table for you, with the entry point
-following `--package`:
+`pyfaro create fastapi acme-api` writes this table for you, with the entry
+point following `--package` (`acme_api` by default):
 
 ```toml
 [tool.pyfaro.dev]
 preset = "fastapi"
-entry-point = "<package>.main:app"
+entry-point = "acme_api.main:app"
 ```
 
 So `pyfaro sync` followed by `pyfaro dev` serves the generated application at

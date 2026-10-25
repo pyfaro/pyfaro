@@ -130,6 +130,7 @@ nav:
   - Reference:
       - reference/index.md
       - Command line: reference/cli.md
+      - Configuration: reference/configuration.md
       - Environment variables: reference/environment-variables.md
       - Tested versions: reference/tested-versions.md
       - Changelog: reference/changelog.md

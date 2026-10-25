@@ -228,6 +228,12 @@ requirement. See the
 [release guide](https://github.com/pyfaro/pyfaro/blob/main/docs/releasing.md)
 for how releases are built and reproduced.
 
+## Tab completion
+
+`pyfaro completions <SHELL>` prints a completion script for Bash, Zsh, Fish or
+PowerShell. Where to save it is in the [`completions` guide](../commands/completions.md);
+run it again after an upgrade to pick up new commands.
+
 ## Install uv
 
 Pyfaro delegates dependency and environment work to uv and requires **uv
@@ -254,7 +260,9 @@ select another executable.
 If uv is missing, too old or broken, [`pyfaro doctor`](../commands/doctor.md)
 and every command that needs uv say so in one line and tell you what to do:
 install uv, run `uv self update` (or reinstall uv) when it is older than
-0.9.26, or pass `--uv <path>`.
+0.9.26, or pass `--uv <path>`. If it is unclear which uv Pyfaro picked,
+[`pyfaro -v`](../workflows/troubleshooting.md#verbose-output) prints the path
+and version it uses before it runs anything.
 
 ## Verify the installation
 
@@ -316,9 +324,13 @@ directories are untouched, and uv stays installed.
 | `musl-based Linux is not supported` | The archives need glibc. Use Cargo. |
 | `unsupported CPU architecture` | There is no prebuilt archive for it. Use Cargo. |
 | `neither curl nor wget found` | Install one of them. |
+| `could not write … (this script never uses sudo …)` | Set `PYFARO_INSTALL_DIR` to a directory you own. |
+| `HOME is not set` | Set `PYFARO_INSTALL_DIR` to the directory to install into. |
+| `invalid version: …` | `PYFARO_VERSION` may only contain letters, digits, `.`, `+` and `-`. |
 
 ## Next steps
 
 - Take the [five-minute tour](first-steps.md).
+- Set up [tab completion](../commands/completions.md).
 - Read about [platform support](../concepts/platform-support.md).
 - See the [tested tool versions](../reference/tested-versions.md).

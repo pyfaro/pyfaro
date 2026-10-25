@@ -57,6 +57,11 @@ version pinned in `.github/workflows/security.yml`, then run `cargo audit`.
 - Add tests for externally observable behavior and meaningful failure cases.
   Use disposable fixtures and isolated environments for future Python tests.
 
+Changing a command, a flag or its help text, or a `[tool.pyfaro]` example in
+the docs, also means updating `website/docs/reference/cli.md` and the
+configuration pages: `cargo test docs_check` (`src/docs_check.rs`) compares the
+reference with the real argument definitions and validates every TOML example.
+
 The CLI uses Clap's help/version status 0 and usage-error status 2. Initialization
 errors use status 1; delegated uv failures preserve their numeric exit code;
 cancellation uses 130; the [exit codes guide](docs/exit-codes.md) is the stable

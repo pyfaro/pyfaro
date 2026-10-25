@@ -5,6 +5,8 @@ mod config;
 mod create;
 mod deps;
 mod dev;
+#[cfg(test)]
+mod docs_check;
 mod doctor;
 mod error;
 mod init;
