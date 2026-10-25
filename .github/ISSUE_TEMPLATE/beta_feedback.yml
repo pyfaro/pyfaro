@@ -7,7 +7,7 @@ body:
       value: |
         Pyfaro is in public beta and early feedback shapes what happens before 1.0. Honest, specific
         reports are the most useful: what you tried, what you expected and what surprised you.
-        See the pinned [Beta feedback discussion](https://github.com/pyfaro/pyfaro/discussions/categories/announcements)
+        See the pinned [Beta feedback discussion](https://github.com/pyfaro/pyfaro/discussions/162)
         for the questions we most want answered.
 
         Something is broken? Use the bug report form instead. Quick question? Ask in
