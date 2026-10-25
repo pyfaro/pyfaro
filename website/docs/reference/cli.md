@@ -292,10 +292,11 @@ Usage: pyfaro build [OPTIONS]
 | `--project <PROJECT>` | Explicit project directory; otherwise discover the nearest project |
 | `--sdist` | Build only the source distribution |
 | `--wheel` | Build only the wheel |
-| `--out-dir <DIR>` | Directory for the artifacts, relative to the current directory (default: `dist` in the project) |
+| `--out-dir <DIR>` | Directory for the artifacts, relative to the current directory (defaults to `dist` in the project) |
 | `--clear` | Empty the output directory before building |
-| `--uv <UV>` | uv executable (default `uv`) |
+| `--uv <UV>` | uv executable (a path or a name found on `PATH`; default `uv`) |
 | `--offline` | Disable network access in uv |
+| `-v`, `--verbose` | Print tool versions and every command line before it runs |
 
 ## `pyfaro tools`
 

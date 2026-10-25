@@ -223,7 +223,7 @@ pub(crate) struct BuildArgs {
     #[arg(long)]
     pub wheel: bool,
 
-    /// Directory for the artifacts, relative to the current directory (default: dist in the project)
+    /// Directory for the artifacts, relative to the current directory (defaults to dist in the project)
     #[arg(long, value_name = "DIR")]
     pub out_dir: Option<PathBuf>,
 

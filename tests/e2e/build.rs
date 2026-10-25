@@ -660,7 +660,7 @@ fn reports_a_missing_uv_with_the_remedy() {
         .code(1)
         .stdout_empty()
         .stderr_contains("error: could not find uv at pyfaro-e2e-no-such-uv")
-        .stderr_contains("install uv or use --uv <path>");
+        .stderr_contains("fix --uv <path> or install uv");
     assert_eq!(project.snapshot(), before);
     assert!(!project.path("dist").exists());
 }
