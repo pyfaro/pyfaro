@@ -90,6 +90,18 @@ Version `0.5.0-beta.1` has not been published.
   examples that are checked against the argument definitions. Argument help
   now uses the same wording for `--project`, `--uv`, `--offline`, `--locked`
   and `--frozen` on every command; no flag, default or behavior changed.
+- Publish Pyfaro to PyPI as binary wheels, so `uv tool install pyfaro`,
+  `pipx install pyfaro` and `pip install pyfaro` work without a Rust
+  toolchain. The Release workflow builds, with maturin (`bindings = "bin"`,
+  metadata in `python/pyproject.toml`), one wheel holding only the `pyfaro`
+  executable for each release target (`manylinux_2_17` on Linux), plus an
+  sdist, before the crates.io upload. It installs each native wheel in a fresh
+  virtual environment and checks `pyfaro --version`, attests the files like
+  the archives, attaches them to the GitHub Release and `SHA256SUMS`, and
+  uploads them to PyPI from the gated `pypi` environment through trusted
+  publishing, with no token. While only prereleases exist, install with
+  `uv tool install --prerelease allow pyfaro` or an exact version such as
+  `pyfaro==0.5.0b1`.
 
 ## 0.4.0-alpha.1 — 2026-10-23
 
