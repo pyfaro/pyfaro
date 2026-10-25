@@ -48,7 +48,7 @@ without `--offline`.
 | --- | --- | --- |
 | `create` | None; never runs uv. | - |
 | `init` preview | None. | - |
-| `init --apply` (Linux) | Index reads for `uv lock --no-build`. | uv |
+| `init --apply` | Index reads for `uv lock --no-build`. | uv |
 | `sync` | Index reads if the lock must change; package downloads not in the cache. | uv |
 | `add`, `remove` | Index reads to resolve and lock; `--no-sync`, so nothing is installed. | uv |
 | `run`, `dev` | `uv run` locks and syncs first: as `sync`. Then the program runs. | uv, project code |

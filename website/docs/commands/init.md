@@ -10,11 +10,9 @@ the `[tool.pyfaro]` opt-in to `pyproject.toml` and creates or refreshes
 By default it only **previews** the plan. Nothing is written until you pass
 `--apply`.
 
-!!! warning "Linux only for now"
-    `init --apply` works on Linux only for now. On other
-    platforms the preview still works, but `--apply` stops with an explicit
-    unsupported-platform error before running uv or changing any file. Use
-    [`pyfaro create`](create.md) there, which works everywhere.
+`init --apply` works on Linux, macOS and Windows. Releases up to
+`0.5.0-beta.1` apply it on Linux only; there, `--apply` on macOS and Windows
+stops with an unsupported-platform error before changing any file.
 
 ## Quick example
 
@@ -171,8 +169,23 @@ dependencies, `[tool.uv]` sources and indexes, Ruff, ty and pytest settings
 and the build system are preserved.
 
 If uv fails or you press Ctrl+C, Pyfaro restores the previous bytes of
-`pyproject.toml` and `uv.lock` (removing incomplete new ones). Do not run
-another tool that writes those files at the same time.
+`pyproject.toml` and `uv.lock` (removing incomplete new ones) on every
+platform. Pressing Ctrl+C also stops uv and everything it started, and the
+command exits with `130`. Pyfaro writes each file by creating a temporary file
+next to it and renaming it over the original, so a file is never left half
+written. Applying a project that is already initialized again changes nothing.
+Do not run another tool that writes those files at the same time.
+
+**Line endings.** A `pyproject.toml` with CRLF line endings keeps them: the
+`[tool.pyfaro]` table is added with CRLF too. A file that mixes both endings
+takes the more common one when Pyfaro has to change it.
+
+**Read-only files.** On Linux and macOS a read-only `pyproject.toml` is
+replaced and keeps its permissions. Windows cannot rename over a read-only
+file, so there `--apply` stops before changing anything and asks you to clear
+the read-only attribute of `pyproject.toml` or `uv.lock`. It does the same,
+naming the file, when another program holds it open without allowing it to be
+replaced; close that program and run the command again.
 
 ## Errors you may hit
 
@@ -182,7 +195,8 @@ another tool that writes those files at the same time.
 | `tool.pyfaro.schema-version must be the integer 1` | Fix or remove the unsupported `[tool.pyfaro]` value. Unknown keys are rejected too. |
 | `could not find uv …` | Install uv (>= 0.9.26) as the message says, or pass `--uv <path>`. |
 | uv's own error, then `uv … failed` | Read uv's output above. Dynamic or source dependencies that need a build can fail with `--no-build`. |
-| unsupported platform on `--apply` | Run it on Linux for now. |
+| `… is read-only; clear its read-only attribute and rerun init` | Windows only. Make `pyproject.toml` or `uv.lock` writable, or change them by hand. |
+| `cannot replace …: it is read-only or another program has it open` | Windows only. Close the editor, antivirus scan or tool that holds the file, then rerun. |
 
 uv workspaces, and projects below a workspace root, are rejected before
 anything is modified. Symlinked `pyproject.toml` or `uv.lock` files are

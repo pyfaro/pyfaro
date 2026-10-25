@@ -226,7 +226,22 @@ pub(crate) fn prepare(original: &str) -> Result<String> {
     if settings.get("schema-version").is_none() {
         settings.insert("schema-version", value(1));
     }
-    Ok(document.to_string())
+    Ok(keep_line_endings(original, document.to_string()))
+}
+
+/// The edited document uses `\n` throughout. Give the original text back
+/// when nothing changed, and keep a CRLF file CRLF otherwise (a mixed file
+/// takes its dominant style).
+fn keep_line_endings(original: &str, edited: String) -> String {
+    let crlf = original.matches("\r\n").count();
+    let lf = original.matches('\n').count() - crlf;
+    if edited == original.replace("\r\n", "\n") {
+        original.to_owned()
+    } else if crlf > lf {
+        edited.replace('\n', "\r\n")
+    } else {
+        edited
+    }
 }
 
 fn validate(document: &DocumentMut) -> Result<Tasks> {
@@ -273,6 +288,32 @@ fn validate(document: &DocumentMut) -> Result<Tasks> {
 #[cfg(test)]
 mod tests {
     use super::{Config, prepare};
+
+    #[test]
+    fn crlf_files_keep_their_line_endings() {
+        let source = "[project]\r\nname = 'x'\r\n\r\n[tool.ruff]\r\nline-length = 100\r\n";
+        assert_eq!(
+            prepare(source).unwrap(),
+            format!("{source}\r\n[tool.pyfaro]\r\nschema-version = 1\r\n")
+        );
+    }
+
+    #[test]
+    fn a_configured_crlf_or_mixed_file_is_returned_untouched() {
+        for source in [
+            "[project]\r\nname = 'x'\r\n\r\n[tool.pyfaro]\r\nschema-version = 1\r\n",
+            "[project]\nname = 'x'\r\n\n[tool.pyfaro]\r\nschema-version = 1\n",
+        ] {
+            assert_eq!(prepare(source).unwrap(), source);
+        }
+    }
+
+    #[test]
+    fn a_mixed_file_takes_its_dominant_line_ending() {
+        let prepared =
+            prepare("[project]\r\nname = 'x'\r\nversion = '1'\n").unwrap();
+        assert!(!prepared.replace("\r\n", "").contains('\n'), "{prepared:?}");
+    }
 
     #[test]
     fn loading_defaults_to_schema_one_without_writing_metadata() {

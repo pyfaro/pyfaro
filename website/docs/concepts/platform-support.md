@@ -4,34 +4,29 @@ description: "Which operating systems and architectures Pyfaro supports, and wha
 
 # Platform support
 
-| Platform | Prebuilt archive | Implemented commands | `init --apply` |
-| --- | --- | --- | --- |
-| Linux x86_64 | yes | all | yes |
-| Linux aarch64 | yes | all | yes |
-| macOS arm64 | yes | all except `init --apply` | no |
-| macOS x86_64 | yes | all except `init --apply` | no |
-| Windows x86_64 | yes | all except `init --apply` | no |
+| Platform | Prebuilt archive | Implemented commands |
+| --- | --- | --- |
+| Linux x86_64 | yes | all |
+| Linux aarch64 | yes | all |
+| macOS arm64 | yes | all |
+| macOS x86_64 | yes | all |
+| Windows x86_64 | yes | all |
 
 Continuous integration runs the implemented workflows on Linux, macOS and
-Windows. The macOS x86_64 archive is cross-compiled and is not executed during
-the release.
+Windows, including `init --apply` with its rollback and cancellation
+guarantees. The macOS x86_64 archive is cross-compiled and is not executed
+during the release.
 
-## `init --apply` is Linux-only
-
-!!! warning "Linux only for now"
-    `pyfaro init` without flags prints a plan on every platform. Applying it
-    with `--apply` works on **Linux only** for now: `init` rewrites
-    `pyproject.toml` and `uv.lock`, and restores them if uv fails or you cancel.
-    That restoration guarantee has only been validated on Linux.
-
-On macOS and Windows, run `pyfaro init` to read the plan and make the changes
-yourself, or run `pyfaro init --apply` on Linux, for example in a container.
-See [`pyfaro init`](../commands/init.md).
+!!! note "`init --apply` before 0.6.0"
+    Releases up to `0.5.0-beta.1` apply `init` on Linux only; on macOS and
+    Windows they preview the plan and stop at `--apply`. From `0.6.0-beta.1`
+    every platform applies it. See [`pyfaro init`](../commands/init.md).
 
 ## Process handling
 
 Pyfaro runs tools without a shell and cleans up their process tree on
-cancellation. The mechanism depends on the platform:
+cancellation, which is how `init --apply` can restore your files when you press
+Ctrl+C. The mechanism depends on the platform:
 
 - **Linux** uses process groups and a child subreaper.
 - **macOS** uses a process group and sends SIGINT before forcing cleanup.

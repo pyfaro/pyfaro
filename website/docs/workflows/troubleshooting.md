@@ -253,8 +253,8 @@ for the exact rules.
 
 - Run `pyfaro doctor` and `pyfaro tools` and read every line, then rerun the
   failing command with [`-v`](#verbose-output) (`pyfaro -v <command>`).
-- Check [Platform support](../concepts/platform-support.md): `init --apply` is
-  Linux-only for now.
+- Check [Platform support](../concepts/platform-support.md) for what each
+  platform supports.
 - Not sure it is a bug? Ask in
   [GitHub Discussions → Q&A](https://github.com/pyfaro/pyfaro/discussions/categories/q-a).
 - Open a [bug report](https://github.com/pyfaro/pyfaro/issues/new?template=bug_report.yml)

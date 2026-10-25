@@ -16,7 +16,7 @@ Workspaces are planned and not available.
 | Command | What it does |
 | --- | --- |
 | [`create`](create.md) | Generate a packaged library, command-line or FastAPI project. |
-| [`init`](init.md) | Preview or apply uv-backed initialization of an existing or bare project (apply is Linux-only). |
+| [`init`](init.md) | Preview or apply uv-backed initialization of an existing or bare project. |
 | [`sync`](sync.md) | Synchronize the project environment through uv. |
 | [`add`, `remove`](add-remove.md) | Add or remove dependencies through uv, without syncing. |
 | [`run`](run.md) | Run a command, or a named task, in the project environment. |

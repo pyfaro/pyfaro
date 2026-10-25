@@ -3,7 +3,6 @@ use std::process::Command;
 
 use tempfile::tempdir;
 
-#[cfg(target_os = "linux")]
 mod support;
 
 #[test]
@@ -95,7 +94,6 @@ fn invalid_init_configuration_names_the_project_metadata() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn applying_an_existing_project_with_real_uv_is_preserving_and_idempotent() {
     let project = tempdir().unwrap();
     let cache = tempdir().unwrap();
@@ -135,7 +133,6 @@ fn applying_an_existing_project_with_real_uv_is_preserving_and_idempotent() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn a_new_project_is_previewed_without_writes_then_initialized_with_real_uv() {
     let sandbox = tempdir().unwrap();
     let cache = tempdir().unwrap();
@@ -240,7 +237,6 @@ fn a_symlinked_parent_cannot_hide_a_workspace_for_a_new_project() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn uv_failure_restores_metadata_and_lockfile_and_preserves_its_exit_code() {
     let project = tempdir().unwrap();
     let original =
@@ -270,7 +266,6 @@ fn uv_failure_restores_metadata_and_lockfile_and_preserves_its_exit_code() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn failed_new_initialization_removes_partial_metadata() {
     let sandbox = tempdir().unwrap();
     let project = sandbox.path().join("new-project");
@@ -287,7 +282,6 @@ fn failed_new_initialization_removes_partial_metadata() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn absent_or_incompatible_uv_fails_without_changing_the_project() {
     let project = tempdir().unwrap();
     let original = "[project]\nname = 'example'\nversion = '1.0.0'\n";
@@ -334,7 +328,6 @@ fn absent_or_incompatible_uv_fails_without_changing_the_project() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn an_exited_uv_leader_does_not_leave_a_running_descendant() {
     use std::thread;
     use std::time::Duration;
@@ -371,7 +364,6 @@ fn an_exited_uv_leader_does_not_leave_a_running_descendant() {
 }
 
 #[test]
-#[cfg(target_os = "linux")]
 fn real_uv_locks_existing_local_dependencies_without_rewriting_them() {
     let sandbox = tempdir().unwrap();
     let cache = tempdir().unwrap();
@@ -418,8 +410,8 @@ fn real_uv_locks_existing_local_dependencies_without_rewriting_them() {
     assert!(!dependency.join(".venv").exists());
 }
 
+#[cfg(unix)]
 #[test]
-#[cfg(target_os = "linux")]
 fn a_relative_path_entry_is_resolved_once_before_changing_directories() {
     let sandbox = tempdir().unwrap();
     let tools = sandbox.path().join("relative-tools");
@@ -468,7 +460,7 @@ fn both_failed_file_restorations_are_reported() {
     assert!(stderr.contains("42"));
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 #[test]
 fn metadata_symlinks_are_rejected_and_regular_file_permissions_are_preserved() {
     use std::os::unix::fs::{PermissionsExt, symlink};
@@ -502,7 +494,7 @@ fn metadata_symlinks_are_rejected_and_regular_file_permissions_are_preserved() {
     );
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(unix)]
 #[test]
 fn ctrl_c_stops_uv_and_its_descendants_and_restores_the_project() {
     use nix::sys::signal::{Signal, killpg};
@@ -552,26 +544,6 @@ fn ctrl_c_stops_uv_and_its_descendants_and_restores_the_project() {
     let heartbeat = fs::read(project.path().join("heartbeat")).unwrap();
     thread::sleep(Duration::from_millis(150));
     assert_eq!(fs::read(project.path().join("heartbeat")).unwrap(), heartbeat);
-    assert_eq!(
-        fs::read_to_string(project.path().join("pyproject.toml")).unwrap(),
-        original
-    );
-    assert!(!project.path().join("uv.lock").exists());
-}
-
-#[cfg(not(target_os = "linux"))]
-#[test]
-fn apply_is_explicitly_unavailable_outside_linux_in_this_alpha() {
-    let project = tempdir().unwrap();
-    let original = "[project]\nname = 'example'\nversion = '1.0.0'\n";
-    fs::write(project.path().join("pyproject.toml"), original).unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_pyfaro"))
-        .args(["init", "--apply", "--uv", "missing-uv"])
-        .arg(project.path())
-        .output()
-        .unwrap();
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
-    assert!(String::from_utf8_lossy(&output.stderr).contains("Linux only"));
     assert_eq!(
         fs::read_to_string(project.path().join("pyproject.toml")).unwrap(),
         original

@@ -9,6 +9,9 @@
 #[macro_use]
 mod harness;
 
+#[path = "../support/mod.rs"]
+mod support;
+
 mod build;
 mod cli;
 mod completions;
@@ -16,6 +19,7 @@ mod create_init;
 mod dev;
 mod diagnostics;
 mod environment;
+mod init_apply;
 mod project_env;
 mod quality;
 mod tasks;

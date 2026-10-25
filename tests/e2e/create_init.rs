@@ -947,7 +947,6 @@ const PREVIEW_NEW: &str = "Initialization plan for fresh:\n  Run uv init --bare 
 const PREVIEW_EXISTING: &str = "Initialization plan for .:\n  Ensure the following configuration in pyproject.toml:\n\n[tool.pyfaro]\nschema-version = 1\n\n  Run uv lock --no-build to create or update uv.lock.\nPreview only: rerun with --apply to initialize this project.\n";
 const PREVIEW_CONFIGURED: &str = "Initialization plan for .:\n  [tool.pyfaro] is already configured.\n  Run uv lock --no-build to create or update uv.lock.\nPreview only: rerun with --apply to initialize this project.\n";
 const PLAIN: &str = "[project]\nname = \"example\"\nversion = \"1.0.0\"\nrequires-python = \">=3.10\"\ndependencies = []\n";
-const UNSUPPORTED_APPLY: &str = "error: init --apply is supported on Linux only in this alpha; preview is available on all platforms\n";
 
 /// A `PATH` that cannot find uv, to prove a path never needs it.
 fn without_uv(sandbox: &Sandbox) -> PathBuf {
@@ -1189,37 +1188,9 @@ fn init_usage_errors_exit_2() {
     assert_eq!(entries(sandbox.path()), 0);
 }
 
-// `--apply` is only supported on Linux; elsewhere it is rejected before uv is
-// looked up or any file is written.
-
-#[test]
-fn init_apply_is_rejected_off_linux_for_new_and_existing_projects() {
-    e2e_guard!();
-    if cfg!(target_os = "linux") {
-        return;
-    }
-    let sandbox = Sandbox::new();
-    sandbox.write("existing/pyproject.toml", PLAIN);
-    let before = snapshot(sandbox.path());
-    // A missing uv proves the platform check runs first.
-    let out = sandbox
-        .pyfaro(["init", "fresh", "--apply", "--uv", "missing-uv"])
-        .run();
-    out.code(1)
-        .stderr_eq(UNSUPPORTED_APPLY)
-        .stdout_contains("Initialization plan for fresh:\n");
-    let out = sandbox.pyfaro(["init", "existing", "--apply"]).run();
-    out.code(1).stderr_eq(UNSUPPORTED_APPLY);
-    assert_eq!(snapshot(sandbox.path()), before);
-    assert!(!sandbox.join("fresh").exists());
-}
-
 #[test]
 fn init_apply_creates_a_new_project_with_a_lockfile() {
     e2e_guard!();
-    if !cfg!(target_os = "linux") {
-        return;
-    }
     let sandbox = Sandbox::new();
     sandbox
         .pyfaro(["init", "fresh", "--apply"])
@@ -1239,9 +1210,6 @@ fn init_apply_creates_a_new_project_with_a_lockfile() {
 #[test]
 fn init_apply_preserves_existing_content_and_adds_only_the_pyfaro_section() {
     e2e_guard!();
-    if !cfg!(target_os = "linux") {
-        return;
-    }
     let sandbox = Sandbox::new();
     let original = format!(
         "# keep this comment\n{PLAIN}\n[build-system]\nrequires = [\"uv_build>=0.9.26,<0.10.0\"]\nbuild-backend = \"uv_build\"\n\n[dependency-groups]\ndev = [\"pytest=={PYTEST}\"]  # pinned\n\n[tool.ruff]\nline-length = 100  # wide\nsrc = [\"src\"]\n\n[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n\n[tool.ty.environment]\npython-version = \"3.12\"\n"
@@ -1268,9 +1236,6 @@ fn init_apply_preserves_existing_content_and_adds_only_the_pyfaro_section() {
 #[test]
 fn init_apply_keeps_an_existing_compatible_pyfaro_section_byte_for_byte() {
     e2e_guard!();
-    if !cfg!(target_os = "linux") {
-        return;
-    }
     let sandbox = Sandbox::new();
     let original = format!("{PLAIN}\n[tool.pyfaro]\nschema-version = 1\n");
     sandbox.write("pyproject.toml", &original);
@@ -1282,9 +1247,6 @@ fn init_apply_keeps_an_existing_compatible_pyfaro_section_byte_for_byte() {
 #[test]
 fn init_apply_is_idempotent() {
     e2e_guard!();
-    if !cfg!(target_os = "linux") {
-        return;
-    }
     let sandbox = Sandbox::new();
     sandbox.write("pyproject.toml", PLAIN);
     sandbox.pyfaro(["init", "--apply"]).run().success();
@@ -1301,9 +1263,6 @@ fn init_apply_is_idempotent() {
 #[test]
 fn init_apply_offline_initializes_a_dependency_free_project() {
     e2e_guard!();
-    if !cfg!(target_os = "linux") {
-        return;
-    }
     let sandbox = Sandbox::new();
     sandbox
         .pyfaro(["init", "fresh", "--apply", "--offline"])
@@ -1322,9 +1281,6 @@ fn init_apply_offline_initializes_a_dependency_free_project() {
 #[test]
 fn init_apply_offline_with_an_unavailable_dependency_fails_and_restores() {
     e2e_guard!();
-    if !cfg!(target_os = "linux") {
-        return;
-    }
     let sandbox = Sandbox::new();
     // A name that cannot be in any local cache, with no network allowed.
     let original = "[project]\nname = \"example\"\nversion = \"1.0.0\"\nrequires-python = \">=3.10\"\ndependencies = [\"pyfaro-e2e-no-such-package-0xdead\"]\n";
@@ -1338,8 +1294,8 @@ fn init_apply_offline_with_an_unavailable_dependency_fails_and_restores() {
     assert!(!sandbox.join("uv.lock").exists());
 }
 
-#[cfg(target_os = "linux")]
-mod linux_uv {
+#[cfg(unix)]
+mod unix_uv {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
 
