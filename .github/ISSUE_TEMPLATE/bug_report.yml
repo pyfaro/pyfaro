@@ -6,21 +6,86 @@ body:
   - type: markdown
     attributes:
       value: |
-        Search existing issues first. Report vulnerabilities privately via
-        https://github.com/pyfaro/pyfaro/security/advisories/new.
+        Thanks for reporting a bug. Search [existing issues](https://github.com/pyfaro/pyfaro/issues?q=is%3Aissue) first.
+        Have a question rather than a bug? Ask in [Discussions](https://github.com/pyfaro/pyfaro/discussions/categories/q-a).
+        Report vulnerabilities privately through the
+        [security advisory form](https://github.com/pyfaro/pyfaro/security/advisories/new), never here.
+
+        **Redact secrets before you paste anything.** `pyfaro -v` masks the password of a URL
+        (`https://user:****@host`), but not other arguments, file paths or the output of uv, Ruff, ty
+        and pytest. Remove tokens, passwords, private package index URLs and personal data.
+
         Maintainers will adjust the default area and priority during triage.
-  - type: textarea
-    id: environment
+  - type: input
+    id: version
     attributes:
-      label: Environment
-      description: Pyfaro commit/version, OS, and relevant tool versions.
+      label: Pyfaro version
+      description: Output of `pyfaro --version`.
+      placeholder: pyfaro 0.5.0-beta.1
+    validations:
+      required: true
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How did you install Pyfaro?
+      options:
+        - Install script (install.sh or install.ps1)
+        - uv tool install
+        - pipx
+        - pip
+        - cargo install
+        - Prebuilt archive from GitHub Releases
+        - Built from source
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system and architecture
+      description: For example Ubuntu 24.04 x86_64, macOS 15 arm64 or Windows 11 x86_64, and your shell.
+    validations:
+      required: true
+  - type: input
+    id: uv-version
+    attributes:
+      label: uv version
+      description: Output of `uv --version`.
+      placeholder: uv 0.9.26
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: The command you ran
+      description: The exact command line, and the directory you ran it from if it matters.
+      render: shell
+      placeholder: pyfaro check
+    validations:
+      required: true
+  - type: input
+    id: exit-code
+    attributes:
+      label: Exit code
+      description: '`echo $?` in a POSIX shell, `$LASTEXITCODE` in PowerShell, `echo %ERRORLEVEL%` in cmd.'
+      placeholder: '1'
+    validations:
+      required: true
+  - type: textarea
+    id: verbose-output
+    attributes:
+      label: "`pyfaro -v` output"
+      description: |
+        Rerun the failing command with `-v` before the subcommand (`pyfaro -v <command>`) and paste
+        everything it prints, standard error included. `pyfaro doctor` output helps for project problems.
+      render: text
     validations:
       required: true
   - type: textarea
     id: reproduction
     attributes:
       label: Steps to reproduce
-      description: Include a minimal example and exact commands; redact secrets.
+      description: A minimal example, ideally from an empty directory (`pyfaro create` or a small `pyproject.toml`).
     validations:
       required: true
   - type: textarea
@@ -29,3 +94,12 @@ body:
       label: Expected and actual behavior
     validations:
       required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+        - label: I removed secrets and personal data from everything I pasted.
+          required: true

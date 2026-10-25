@@ -3,6 +3,29 @@
 Thank you for helping build Pyfaro. Please follow our
 [code of conduct](CODE_OF_CONDUCT.md).
 
+## Where to start
+
+- **A question, or something you are not sure is a bug:** ask in
+  [Discussions → Q&A](https://github.com/pyfaro/pyfaro/discussions/categories/q-a).
+- **A bug:** open a [bug report](https://github.com/pyfaro/pyfaro/issues/new?template=bug_report.yml).
+  It asks for the Pyfaro and uv versions, your OS, the command, its exit code
+  and the output of `pyfaro -v <command>`; redact secrets first.
+- **How the beta went for you:** use the
+  [beta feedback form](https://github.com/pyfaro/pyfaro/issues/new?template=beta_feedback.yml)
+  or the pinned Beta feedback discussion.
+- **An idea:** talk it through in
+  [Discussions → Ideas](https://github.com/pyfaro/pyfaro/discussions/categories/ideas),
+  then open a [feature request](https://github.com/pyfaro/pyfaro/issues/new?template=feature_request.yml)
+  for a focused proposal.
+- **A security problem:** never in public. Use the
+  [private advisory form](https://github.com/pyfaro/pyfaro/security/advisories/new)
+  described in the [security policy](SECURITY.md).
+- **Code or docs:** browse issues labelled
+  [`good first issue`](https://github.com/pyfaro/pyfaro/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+  and [`help wanted`](https://github.com/pyfaro/pyfaro/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22),
+  comment on the one you pick so nobody duplicates the work, then follow the
+  setup below. Open an issue before a large change.
+
 ## Development tools
 
 - Git and Rust through rustup. `rust-toolchain.toml` pins Rust 1.90.0 with

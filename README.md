@@ -247,8 +247,18 @@ planning targets, not release announcements. Follow the
 
 Contributions are welcome. Read the [contribution guide](CONTRIBUTING.md) and
 the [code of conduct](CODE_OF_CONDUCT.md); report vulnerabilities as described
-in the [security policy](SECURITY.md). Questions are welcome in
-[Discussions](https://github.com/pyfaro/pyfaro/discussions).
+in the [security policy](SECURITY.md).
+
+Where to go with what:
+
+- Questions and ideas: [Discussions](https://github.com/pyfaro/pyfaro/discussions)
+  ([Q&A](https://github.com/pyfaro/pyfaro/discussions/categories/q-a),
+  [Ideas](https://github.com/pyfaro/pyfaro/discussions/categories/ideas),
+  [Show and tell](https://github.com/pyfaro/pyfaro/discussions/categories/show-and-tell)).
+- Bugs: the [bug report form](https://github.com/pyfaro/pyfaro/issues/new?template=bug_report.yml)
+  (it asks for `pyfaro --version`, your OS, uv version and `pyfaro -v` output).
+- Feature proposals: the [feature request form](https://github.com/pyfaro/pyfaro/issues/new?template=feature_request.yml).
+- How the beta went for you: the [beta feedback form](https://github.com/pyfaro/pyfaro/issues/new?template=beta_feedback.yml).
 
 To build from source you need Rust (the toolchain is pinned in
 `rust-toolchain.toml`):
