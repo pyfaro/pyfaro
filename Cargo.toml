@@ -59,10 +59,10 @@ toml_edit = "0.25.17"
 which = "8.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-nix = { version = "0.31", features = ["signal", "process", "poll"] }
+nix = { version = "0.32", features = ["signal", "process", "poll"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-nix = { version = "0.31", features = ["signal", "process", "poll"] }
+nix = { version = "0.32", features = ["signal", "process", "poll"] }
 process-wrap = { version = "10.0.1", default-features = false, features = ["std", "process-group"] }
 rustix = { version = "1.1", features = ["process"] }
 
